@@ -480,6 +480,7 @@ void MainWindow::clipboard_later(void)
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(0);
 		this->__scroll_widget->removeItemWidget(tmp_item);
 		delete tmp_item;
+		delete itemData.mimeData;
 		return;
 	}
 
