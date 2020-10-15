@@ -456,10 +456,9 @@ void MainWindow::clipboard_later(void)
 
 	widget = this->insertItemWidget();
 
-	if (itemData.mimeData->hasHtml() && !itemData.mimeData->text().isEmpty()) {
-		widget->setRichText(itemData.mimeData->html(), itemData.mimeData->text());
-		md5_data = itemData.mimeData->text().toLocal8Bit();
-
+	if (itemData.mimeData->hasHtml() && !itemData.mimeData->text().trimmed().isEmpty()) {
+		widget->setRichText(itemData.mimeData->html(), itemData.mimeData->text().trimmed());
+		md5_data = itemData.mimeData->text().trimmed().toLocal8Bit();
 	} else if (itemData.mimeData->hasImage()) {
 		widget->setImage(itemData.image);
 
@@ -473,9 +472,9 @@ void MainWindow::clipboard_later(void)
 			md5_data += url.toEncoded();
 		}
 		widget->setUrls(urls);
-	} else if (itemData.mimeData->hasText() && !itemData.mimeData->text().isEmpty()) {
+	} else if (itemData.mimeData->hasText() && !itemData.mimeData->text().trimmed().isEmpty()) {
 		widget->setPlainText(itemData.mimeData->text().trimmed());
-		md5_data = itemData.mimeData->text().toLocal8Bit();
+		md5_data = itemData.mimeData->text().trimmed().toLocal8Bit();
 	} else {
 		/* No data, remove it */
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(0);
