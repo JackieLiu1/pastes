@@ -32,6 +32,10 @@ out:
 
 #endif
 
+#ifndef QM_FILES_INSTALL_PATH
+#define QM_FILES_INSTALL_PATH "."
+#endif
+
 void LoadTranlateFile(SingleApplication *app)
 {
 	QTranslator *translator = new QTranslator;
@@ -46,12 +50,6 @@ void LoadTranlateFile(SingleApplication *app)
 
 int main(int argc, char *argv[])
 {
-#ifdef Q_OS_LINUX
-	if (getScreenWidth() > 2560) {
-		QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-		QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-	}
-#endif
 	QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 	QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 

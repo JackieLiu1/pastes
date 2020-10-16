@@ -4,13 +4,23 @@
 #include <QObject>
 #include <QTimer>
 
-#ifdef Q_OS_LINUX
-#include "shortcut_x11.h"
-#endif
+#include <QThread>
 
-#ifdef Q_OS_WIN
-#include "shortcut_win.h"
-#endif
+class ShortcutPrivate : public QThread
+{
+	Q_OBJECT
+public:
+	ShortcutPrivate();
+	~ShortcutPrivate();
+
+	void stop(void);
+
+Q_SIGNALS:
+	void activated(void);
+
+protected:
+	void run(void);
+};
 
 class DoubleCtrlShortcut : public QObject
 {
@@ -24,12 +34,8 @@ signals:
 
 private:
 
-#ifdef Q_OS_LINUX
-	ShortcutPrivateX11	*m_shortcut;
-#endif
-#ifdef Q_OS_WIN
-	ShortcutPrivateWin	*m_shortcut;
-#endif
+	ShortcutPrivate		*m_shortcut;
+
 	QTimer			*m_timer;
 	bool			m_isActive;
 };

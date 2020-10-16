@@ -1,20 +1,21 @@
-#include "shortcut_win.h"
+#include "shortcut.h"
 
 #include <QtWin>
 #include <winuser.h>
 
-ShortcutPrivateWin::ShortcutPrivateWin() :
-	stoped(false)
+bool stoped;
+
+ShortcutPrivate::ShortcutPrivate()
 {
 	this->start();
 }
 
-ShortcutPrivateWin::~ShortcutPrivateWin()
+ShortcutPrivate::~ShortcutPrivate()
 {
 	this->stop();
 }
 
-void ShortcutPrivateWin::run()
+void ShortcutPrivate::run()
 {
 	RegisterHotKey(NULL, 1, MOD_CONTROL, 0);
 
@@ -28,7 +29,7 @@ void ShortcutPrivateWin::run()
 	}
 }
 
-void ShortcutPrivateWin::stop()
+void ShortcutPrivate::stop()
 {
 	stoped = true;
 	UnregisterHotKey(NULL, 1);

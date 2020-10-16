@@ -2,7 +2,6 @@ QT       += core gui sql
 
 unix:!macx {
         QT += KWindowSystem
-        HEADERS += shortcut_x11.h
         SOURCES += shortcut_x11.cpp
         CONFIG += link_pkgconfig
         PKGCONFIG += gio-2.0 glib-2.0 gio-unix-2.0
@@ -11,7 +10,6 @@ unix:!macx {
 
 win32: {
         QT += winextras
-        HEADERS += shortcut_win.h
         SOURCES += shortcut_win.cpp
         LIBS += -lpsapi
 }
