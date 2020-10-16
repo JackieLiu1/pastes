@@ -5,7 +5,7 @@
 #include <X11/extensions/record.h>
 #include <X11/Xlibint.h>
 
-#include "shortcut_x11.h"
+#include "shortcut.h"
 
 Display		*m_display;
 XRecordContext	m_context;
@@ -18,7 +18,7 @@ static void callback(XPointer ptr, XRecordInterceptData *data)
 		case KeyPress:
 			if (static_cast<unsigned char*>(data->data)[1] == 37  /* Left  Control */||
 			    static_cast<unsigned char*>(data->data)[1] == 105 /* Right Control */)
-				emit reinterpret_cast<ShortcutPrivateX11*>(ptr)->activated();
+				emit reinterpret_cast<ShortcutPrivate*>(ptr)->activated();
 			break;
 		default:
 			break;
@@ -28,18 +28,18 @@ static void callback(XPointer ptr, XRecordInterceptData *data)
 	XRecordFreeData(data);
 }
 
-ShortcutPrivateX11::ShortcutPrivateX11(QObject *parent) : QThread(parent)
+ShortcutPrivate::ShortcutPrivate(QObject *parent) : QThread(parent)
 {
 	this->start();
 }
 
-ShortcutPrivateX11::~ShortcutPrivateX11()
+ShortcutPrivate::~ShortcutPrivate()
 {
 	this->stop();
 	this->deleteLater();
 }
 
-void ShortcutPrivateX11::run(void)
+void ShortcutPrivate::run(void)
 {
 	Display *display = XOpenDisplay(nullptr);
 	XRecordClientSpec clients = XRecordAllClients;
@@ -57,7 +57,7 @@ void ShortcutPrivateX11::run(void)
 	XRecordEnableContext(m_display, m_context, &callback, reinterpret_cast<XPointer>(this));
 }
 
-void ShortcutPrivateX11::stop()
+void ShortcutPrivate::stop()
 {
 	XRecordDisableContext(m_display, m_context);
 	XFlush(m_display);

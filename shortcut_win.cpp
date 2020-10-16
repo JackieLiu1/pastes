@@ -5,7 +5,7 @@
 
 bool stoped;
 
-ShortcutPrivate::ShortcutPrivate()
+ShortcutPrivate::ShortcutPrivate(QObject *parent) : QThread(parent)
 {
 	this->start();
 }

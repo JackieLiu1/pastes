@@ -1,7 +1,6 @@
 #include <QDebug>
 
 #include "shortcut.h"
-#include "shortcut_win.h"
 
 DoubleCtrlShortcut::DoubleCtrlShortcut(QObject *parent) : QObject(parent),
 	m_timer(new QTimer),

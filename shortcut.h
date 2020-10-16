@@ -10,7 +10,7 @@ class ShortcutPrivate : public QThread
 {
 	Q_OBJECT
 public:
-	ShortcutPrivate();
+	ShortcutPrivate(QObject *parent = nullptr);
 	~ShortcutPrivate();
 
 	void stop(void);
