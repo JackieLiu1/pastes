@@ -7,6 +7,7 @@
 #include "mainwindow.h"
 
 #ifdef Q_OS_LINUX
+#include <X11/Xlib.h>
 
 static int getScreenWidth(void)
 {

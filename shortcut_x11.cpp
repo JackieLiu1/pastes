@@ -1,10 +1,34 @@
 #include <QKeySequence>
 #include <QDebug>
 
+#include <X11/Xlib.h>
+#include <X11/extensions/record.h>
+#include <X11/Xlibint.h>
+
 #include "shortcut_x11.h"
 
-ShortcutPrivateX11::ShortcutPrivateX11(QObject *parent) : QThread(parent),
-	m_display(nullptr)
+Display		*m_display;
+XRecordContext	m_context;
+
+static void callback(XPointer ptr, XRecordInterceptData *data)
+{
+	if (data->category == XRecordFromServer) {
+		xEvent *event = reinterpret_cast<xEvent*>(data->data);
+		switch (event->u.u.type) {
+		case KeyPress:
+			if (static_cast<unsigned char*>(data->data)[1] == 37  /* Left  Control */||
+			    static_cast<unsigned char*>(data->data)[1] == 105 /* Right Control */)
+				emit reinterpret_cast<ShortcutPrivateX11*>(ptr)->activated();
+			break;
+		default:
+			break;
+		}
+	}
+
+	XRecordFreeData(data);
+}
+
+ShortcutPrivateX11::ShortcutPrivateX11(QObject *parent) : QThread(parent)
 {
 	this->start();
 }
@@ -29,31 +53,13 @@ void ShortcutPrivateX11::run(void)
 	XFree(range);
 	XSync(display, True);
 
-	this->m_display = XOpenDisplay(nullptr);
-	XRecordEnableContext(this->m_display, m_context, &ShortcutPrivateX11::callback, reinterpret_cast<XPointer>(this));
+	m_display = XOpenDisplay(nullptr);
+	XRecordEnableContext(m_display, m_context, &callback, reinterpret_cast<XPointer>(this));
 }
 
 void ShortcutPrivateX11::stop()
 {
-	XRecordDisableContext(this->m_display, this->m_context);
-	XFlush(this->m_display);
-	XCloseDisplay(this->m_display);
-}
-
-void ShortcutPrivateX11::callback(XPointer ptr, XRecordInterceptData *data)
-{
-	if (data->category == XRecordFromServer) {
-		xEvent *event = reinterpret_cast<xEvent*>(data->data);
-		switch (event->u.u.type) {
-		case KeyPress:
-			if (static_cast<unsigned char*>(data->data)[1] == 37  /* Left  Control */||
-			    static_cast<unsigned char*>(data->data)[1] == 105 /* Right Control */)
-				emit reinterpret_cast<ShortcutPrivateX11*>(ptr)->activated();
-			break;
-		default:
-			break;
-		}
-	}
-
-	XRecordFreeData(data);
+	XRecordDisableContext(m_display, m_context);
+	XFlush(m_display);
+	XCloseDisplay(m_display);
 }

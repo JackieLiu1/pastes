@@ -40,6 +40,7 @@
 #include <KF5/KWindowSystem/KWindowEffects>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/Xutil.h>
 #endif
 
 #ifdef Q_OS_WIN
@@ -518,6 +519,43 @@ void MainWindow::clipboard_later(void)
 	this->__db.insertPasteItem(&itemData);
 }
 
+#ifdef Q_OS_LINUX
+static bool get_window_name2(Display* dpy, Window window, char* buf)
+{
+	XTextProperty tp;
+
+	XGetTextProperty(dpy, window, &tp, XInternAtom(dpy, "WM_NAME", False));
+	if (tp.nitems > 0) {
+		int count = 0, i, ret;
+		char **list = NULL;
+
+		ret = XmbTextPropertyToTextList(dpy, &tp, &list, &count);
+		if((ret == Success || ret > 0) && list != NULL){
+			for(i=0; i<count; i++)
+				sprintf(buf, "%s", list[i]);
+			XFreeStringList(list);
+		} else {
+			sprintf(buf, "%s", tp.value);
+		}
+
+		return true;
+	} else {
+		return false;
+	}
+}
+
+static QString strip_cmd(QString window_title)
+{
+	if (window_title.contains("Qt Selection Owner")) {
+		return window_title.mid(23);
+	} else if (window_title.contains("Chromium ")) {
+		return "chrome";
+	}
+
+	return window_title;
+}
+#endif
+
 QPixmap MainWindow::getClipboardOwnerIcon(void)
 {
 	QPixmap pixmap;
@@ -571,14 +609,21 @@ QPixmap MainWindow::getClipboardOwnerIcon(void)
 	int i = 0;
 	Display *display = XOpenDisplay(NULL);
 	Atom clipboard_atom = XInternAtom(display, "CLIPBOARD", False);
-	/* Search from [-100, 100] */
-	Window clipboard_owner_win = XGetSelectionOwner(display, clipboard_atom) - 100;
-
+	Window clipboard_owner_win = XGetSelectionOwner(display, clipboard_atom);
+	char buf[1024] = {0};
 	unsigned long nitems, bytesafter;
 	unsigned char *ret;
 	int format;
 	Atom type;
 	Atom wm_icon_atom = XInternAtom(display, "_NET_WM_ICON", True);
+	qDebug() << clipboard_owner_win;
+	/* Get clipboard owner title name */
+	get_window_name2(display, clipboard_owner_win, buf);
+	QString command = strip_cmd(buf);
+	qDebug() << buf << command;
+
+	/* Search from [-100, 100] */
+	clipboard_owner_win -= 100;
 again:
 	/* Get the width of the icon */
 	XGetWindowProperty(display,
