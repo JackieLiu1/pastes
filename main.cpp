@@ -6,32 +6,6 @@
 
 #include "mainwindow.h"
 
-#ifdef Q_OS_LINUX
-#include <X11/Xlib.h>
-
-static int getScreenWidth(void)
-{
-	Display *display;
-	Screen *screen;
-	int width = 0;
-
-	display = XOpenDisplay(NULL);
-	if (!display)
-		return 0;
-
-	screen = DefaultScreenOfDisplay(display);
-	if (!screen)
-		goto out;
-
-	width = screen->width;
-out:
-	XCloseDisplay(display);
-
-	return width;
-}
-
-#endif
-
 #ifndef QM_FILES_INSTALL_PATH
 #define QM_FILES_INSTALL_PATH "."
 #endif
