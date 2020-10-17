@@ -162,9 +162,10 @@ void PasteItem::copyData(void)
 		itemData.mimeData->setImageData(itemData.image);
 
 	clipboard->setMimeData(itemData.mimeData, QClipboard::Clipboard);
-	clipboard->setMimeData(itemData.mimeData, QClipboard::Selection);
 
 #ifdef Q_OS_LINUX
+	clipboard->setMimeData(itemData.mimeData, QClipboard::Selection);
+
 	if (itemData.mimeData->hasUrls())
 		return;
 
