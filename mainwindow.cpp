@@ -130,6 +130,15 @@ MainWindow::MainWindow(QWidget *parent)
 	this->__main_frame->setGraphicsEffect(this->__main_frame_shadow);
 	this->__main_frame->setFocusPolicy(Qt::ClickFocus);
 	QObject::connect(this->__main_frame, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));
+	QObject::connect(this->__main_frame, &MainFrame::hideWindow, [this](void) {
+		this->hide_window();
+	});
+	QObject::connect(this->__main_frame, &MainFrame::selectItem, [this](void) {
+		QListWidgetItem *item = this->__scroll_widget->selectedItems()[0];
+		PasteItem *widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
+		this->__current_item = nullptr;
+		widget->copyData();
+	});
 
 	QObject::connect(this->__clipboard, &QClipboard::dataChanged, [this](void) {
 		QTimer::singleShot(100, this, SLOT(clipboard_later()));

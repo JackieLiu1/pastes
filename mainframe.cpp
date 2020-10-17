@@ -15,6 +15,13 @@ bool MainFrame::event(QEvent *event)
 		QKeyEvent *ke = static_cast<QKeyEvent *>(event);
 
 		switch (ke->key()) {
+		case Qt::Key_Return:
+		case Qt::Key_Enter:
+			emit this->selectItem();
+			break;
+		case Qt::Key_Escape:
+			emit this->hideWindow();
+			break;
 		case Qt::Key_Tab:
 			emit this->moveFocusPrevNext(false);
 			return true;

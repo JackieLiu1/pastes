@@ -15,6 +15,8 @@ protected:
 
 signals:
 	void moveFocusPrevNext(bool);
+	void selectItem(void);
+	void hideWindow(void);
 };
 
 #endif // MAINFRAME_H
