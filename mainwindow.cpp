@@ -212,8 +212,8 @@ void MainWindow::show_window(void)
 	this->__hide_animation->setDirection(QAbstractAnimation::Backward);
 	this->__hide_animation->start();
 	this->__hide_state = false;
-	this->activateWindow();
 	this->show();
+	this->activateWindow();
 }
 
 void MainWindow::hide_window(void)
