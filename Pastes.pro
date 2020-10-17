@@ -66,26 +66,24 @@ HEADERS += \
 TRANSLATIONS += \
     Pastes_zh_CN.ts
 
-unix:!macx {
-        # CONFIG += lrelase not work for qt5.6, add those from lrelease.prf for compatibility
-        qtPrepareTool(QMAKE_LRELEASE, lrelease)
-        lrelease.name = lrelease
-        lrelease.input = TRANSLATIONS
-        lrelease.output = ${QMAKE_FILE_IN_BASE}.qm
-        lrelease.commands = $$QMAKE_LRELEASE ${QMAKE_FILE_IN} -qm ${QMAKE_FILE_OUT}
-        lrelease.CONFIG = no_link
-        QMAKE_EXTRA_COMPILERS += lrelease
-        PRE_TARGETDEPS += compiler_lrelease_make_all
+# CONFIG += lrelase not work for qt5.6, add those from lrelease.prf for compatibility
+qtPrepareTool(QMAKE_LRELEASE, lrelease)
+lrelease.name = lrelease
+lrelease.input = TRANSLATIONS
+lrelease.output = ${QMAKE_FILE_IN_BASE}.qm
+lrelease.commands = $$QMAKE_LRELEASE ${QMAKE_FILE_IN} -qm ${QMAKE_FILE_OUT}
+lrelease.CONFIG = no_link
+QMAKE_EXTRA_COMPILERS += lrelease
+PRE_TARGETDEPS += compiler_lrelease_make_all
 
-        for (translation, TRANSLATIONS) {
-            translation = $$basename(translation)
-            QM_FILES += $$OUT_PWD/$$replace(translation, \\..*$, .qm)
-        }
-        qm_files.files = $$QM_FILES
-        qm_files.path = $$QM_FILES_INSTALL_PATH
-        qm_files.CONFIG = no_check_exist
-        INSTALLS += qm_files
+for (translation, TRANSLATIONS) {
+    translation = $$basename(translation)
+    QM_FILES += $$OUT_PWD/$$replace(translation, \\..*$, .qm)
 }
+qm_files.files = $$QM_FILES
+qm_files.path = $$QM_FILES_INSTALL_PATH
+qm_files.CONFIG = no_check_exist
+INSTALLS += qm_files
 
 RESOURCES += \
     sources.qrc
