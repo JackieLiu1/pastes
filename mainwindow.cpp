@@ -470,6 +470,10 @@ void MainWindow::clipboard_later(void)
 		widget->setRichText(itemData.mimeData->html(), itemData.mimeData->text().trimmed());
 		md5_data = itemData.mimeData->text().trimmed().toLocal8Bit();
 	} else if (itemData.mimeData->hasImage()) {
+		/* Don't have data in image, drop it */
+		if (itemData.image.isNull())
+			goto cleanup;
+
 		widget->setImage(itemData.image);
 
 		QBuffer buffer(&md5_data);
@@ -486,6 +490,7 @@ void MainWindow::clipboard_later(void)
 		widget->setPlainText(itemData.mimeData->text().trimmed());
 		md5_data = itemData.mimeData->text().trimmed().toLocal8Bit();
 	} else {
+cleanup:
 		/* No data, remove it */
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(0);
 		this->__scroll_widget->removeItemWidget(tmp_item);
