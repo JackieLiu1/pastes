@@ -45,6 +45,7 @@ public slots:
 	void show_window(void);
 	void clipboard_later(void);
 	void move_to_prev_next_focus_widget(bool);
+	void parsingData(QList<ItemData *> list);
 
 private:
 	MainFrame			*__main_frame;

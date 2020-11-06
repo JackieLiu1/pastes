@@ -365,8 +365,15 @@ void MainWindow::reloadData()
 		this->__db.createTable();
 		return;
 	}
+	qRegisterMetaType<QList<ItemData *>> ("QList<ItemData *>");
 
-	for (auto itemData : this->__db.loadData()) {
+	QObject::connect(&this->__db, SIGNAL(dataLoaded(QList<ItemData *>)), this, SLOT(parsingData(QList<ItemData *>)));
+	this->__db.loadData();
+}
+
+void MainWindow::parsingData(QList<ItemData *> list)
+{
+	for (auto itemData : list) {
 		/* remove the data if it's too old (than a week) */
 		if (QDateTime::currentDateTime().toSecsSinceEpoch() - itemData->time.toSecsSinceEpoch() > (60 * 60 * 24 * 7)) {
 			this->__db.delelePasteItem(itemData->md5);

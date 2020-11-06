@@ -17,7 +17,7 @@ public:
 	bool isTableExist(void);
 	void createTable(void);
 	void insertPasteItem(ItemData *itemData);
-	QList<ItemData *> loadData(void);
+	void loadData(void);
 	void delelePasteItem(QByteArray);
 
 private:
@@ -25,6 +25,9 @@ private:
 
 private:
 	QSqlDatabase	m_db;
+
+signals:
+	void dataLoaded(QList<ItemData *>);
 };
 
 #endif // DATABASE_H

@@ -170,21 +170,16 @@ void PasteItem::copyData(void)
 		return;
 
 	/* Send keypress event 'Ctrl +v' for direct paste */
-	QThread *thread = new QThread;
 	QTimer *timer = new QTimer;
-	timer->setInterval(1000);
-	timer->moveToThread(thread);
-	QObject::connect(timer, &QTimer::timeout, [thread, timer](void) {
+	timer->setSingleShot(true);
+	QObject::connect(timer, &QTimer::timeout, [timer](void) {
 		Display *disp = XOpenDisplay(nullptr);
 		SendKey(disp, XK_Insert, XK_Shift_L);
 		XCloseDisplay(disp);
 
 		timer->stop();
 		timer->deleteLater();
-		thread->quit();
-		thread->deleteLater();
 	});
-	QObject::connect(thread, SIGNAL(started()), timer, SLOT(start()));
-	thread->start();
+	timer->start(1);
 #endif
 }

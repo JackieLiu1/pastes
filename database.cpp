@@ -67,7 +67,6 @@ QByteArray Database::convertImage2Array(QImage image)
 
 /* Used for lock database */
 QMutex mutex;
-
 void Database::insertPasteItem(ItemData *itemData)
 {
 	/*
@@ -131,39 +130,44 @@ void Database::delelePasteItem(QByteArray md5)
 	delete_thread->start();
 }
 
-QList<ItemData *> Database::loadData(void)
+void Database::loadData(void)
 {
-	QList<ItemData *> list;
-	QSqlQuery query(this->m_db);
+	QThread *load_thread = QThread::create([this](void) {
+		QList<ItemData *> list;
+		QSqlQuery query(this->m_db);
+		QMutexLocker locker(&mutex);
 
-	query.prepare("select * from item;");
-	if (!query.exec())
-		DEBUG() << query.lastError();
-
-	while (query.next()) {
-		ItemData *itemData = new ItemData;
-		itemData->md5 = query.value("md5").toByteArray();
-		itemData->image = QImage::fromData(query.value("imagedata").toByteArray());
-		itemData->icon = QPixmap::fromImage(QImage::fromData(query.value("icondata").toByteArray()));
-		itemData->time = QDateTime::fromSecsSinceEpoch(query.value("time").toUInt());
-
-		itemData->mimeData = new QMimeData;
-		QSqlQuery query_data(this->m_db);
-		query_data.prepare("select * from data where md5 = x'" + itemData->md5.toHex() + "'");
-		if (!query_data.exec())
+		query.prepare("select * from item;");
+		if (!query.exec())
 			DEBUG() << query.lastError();
 
-		while (query_data.next()) {
-			QString mimeType = query_data.value("formats").toString();
-			QByteArray data = query_data.value("format_data").toByteArray();
-			itemData->mimeData->setData(mimeType, data);
+		while (query.next()) {
+			ItemData *itemData = new ItemData;
+			itemData->md5 = query.value("md5").toByteArray();
+			itemData->image = QImage::fromData(query.value("imagedata").toByteArray());
+			itemData->icon = QPixmap::fromImage(QImage::fromData(query.value("icondata").toByteArray()));
+			itemData->time = QDateTime::fromSecsSinceEpoch(query.value("time").toUInt());
+
+			itemData->mimeData = new QMimeData;
+			QSqlQuery query_data(this->m_db);
+			query_data.prepare("select * from data where md5 = x'" + itemData->md5.toHex() + "'");
+			if (!query_data.exec())
+				DEBUG() << query.lastError();
+
+			while (query_data.next()) {
+				QString mimeType = query_data.value("formats").toString();
+				QByteArray data = query_data.value("format_data").toByteArray();
+				itemData->mimeData->setData(mimeType, data);
+			}
+
+			if (!itemData->image.isNull())
+				itemData->mimeData->setImageData(itemData->image);
+
+			list.push_back(itemData);
 		}
 
-		if (!itemData->image.isNull())
-			itemData->mimeData->setImageData(itemData->image);
+		emit this->dataLoaded(list);
+	});
 
-		list.push_back(itemData);
-	}
-
-	return list;
+	load_thread->start();
 }
