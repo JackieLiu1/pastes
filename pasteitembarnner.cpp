@@ -48,7 +48,7 @@ void Barnner::setBackground(QRgb rgb)
 				.arg(qRed(rgb))
 				.arg(qGreen(rgb))
 				.arg(qBlue(rgb));
-	this->setStyleSheet(s);
+	this->setStyleSheet(s + "border-top-right-radius: 8px;");
 }
 
 QRgb Barnner::averageColor(QPixmap *pixmap)
@@ -85,15 +85,9 @@ void Barnner::resizeEvent(QResizeEvent *event)
 		QPixmap mp;
 
 		m_icon->setFixedHeight(size.height());
-		if (m_pixmap.height() >= 128 || m_pixmap.width() >= 128) {
-			m_icon->setFixedWidth(size.height()*1.45);
-			mp = this->m_pixmap.scaled(128, 128, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-			this->m_icon->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-		} else {
-			m_icon->setFixedWidth(size.height()*0.8);
-			mp = this->m_pixmap.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-			m_icon->setAlignment(Qt::AlignCenter);
-		}
+		m_icon->setFixedWidth(size.height()*0.8);
+		mp = this->m_pixmap.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		m_icon->setAlignment(Qt::AlignCenter);
 
 		this->setBackground(Barnner::averageColor(&this->m_pixmap));
 		this->m_icon->setPixmap(mp);
