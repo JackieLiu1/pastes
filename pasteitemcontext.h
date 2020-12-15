@@ -98,9 +98,6 @@ public:
 	void setRichText(QString &richText, QString &plainText);
 	bool setUrls(QList<QUrl> &);
 
-	enum V { IMAGE, TEXT, RICHTEXT, URLS };
-	Q_ENUM(V)
-
 private:
 	PixmapFrame	*m_pixmap_frame;
 	TextFrame	*m_text_frame;

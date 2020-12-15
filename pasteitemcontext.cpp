@@ -252,76 +252,71 @@ void FileFrame::resizeEvent(QResizeEvent *event)
 	TextFrame::resizeEvent(event);
 }
 
-StackedWidget::StackedWidget(QWidget *parent) : QStackedWidget(parent),
-	m_pixmap_frame(new PixmapFrame(this)),
-	m_text_frame(new TextFrame(this)),
-	m_richtext_frame(new TextFrame(this)),
-	m_file_frame(new FileFrame(this))
+StackedWidget::StackedWidget(QWidget *parent) : QStackedWidget(parent)
 {
 	this->setObjectName("Context");
-	this->addWidget(m_pixmap_frame);
-	this->addWidget(m_text_frame);
-	this->addWidget(m_richtext_frame);
-	this->addWidget(m_file_frame);
 }
 
 StackedWidget::~StackedWidget()
-{
-	delete m_pixmap_frame;
-	delete m_text_frame;
-	delete m_richtext_frame;
-	delete m_file_frame;
-}
+{}
 
 void StackedWidget::setPixmap(QPixmap &pixmap)
 {
-	m_pixmap_frame->setStorePixmap(pixmap);
-	this->setCurrentIndex(StackedWidget::IMAGE);
+	PixmapFrame *pixmap_frame = new PixmapFrame(this);
 
+	pixmap_frame->setStorePixmap(pixmap);
 	QString s = QString("%1x%2 ").arg(pixmap.width()).arg(pixmap.height()) + QObject::tr("px");
-	m_pixmap_frame->setMaskFrameText(s);
+	pixmap_frame->setMaskFrameText(s);
+
+	this->addWidget(pixmap_frame);
 }
 
 void StackedWidget::setText(QString &s)
 {
+	TextFrame *text_frame = new TextFrame(this);
+
 	if (QColor::isValidColor(s)) {
-		m_text_frame->setBackgroundColor(s);
-		m_text_frame->setMaskFrameText(s);
+		text_frame->setBackgroundColor(s);
+		text_frame->setMaskFrameText(s);
 	} else {
-		m_text_frame->setText(s);
-		m_text_frame->setIndent(4);
-		m_text_frame->setMaskFrameText(QString("%1 ").arg(s.count()) + QObject::tr("characters"));
+		text_frame->setText(s);
+		text_frame->setIndent(4);
+		text_frame->setMaskFrameText(QString("%1 ").arg(s.count()) + QObject::tr("characters"));
 	}
 
-	this->setCurrentIndex(StackedWidget::TEXT);
+	this->addWidget(text_frame);
 }
 
 void StackedWidget::setRichText(QString &richText, QString &plainText)
 {
+	TextFrame *richtext_frame = new TextFrame(this);
+
 	if (QColor::isValidColor(plainText.simplified().trimmed())) {
-		m_richtext_frame->setBackgroundColor(plainText);
-		m_richtext_frame->setMaskFrameText(plainText);
+		richtext_frame->setBackgroundColor(plainText);
+		richtext_frame->setMaskFrameText(plainText);
 	} else {
-		m_richtext_frame->setText(richText);
-		m_richtext_frame->setTextFormat(Qt::RichText);
-		m_richtext_frame->setMaskFrameText(QString("%1 ").arg(plainText.count()) + QObject::tr("characters"));
+		richtext_frame->setText(richText);
+		richtext_frame->setTextFormat(Qt::RichText);
+		richtext_frame->setMaskFrameText(QString("%1 ").arg(plainText.count()) + QObject::tr("characters"));
 	}
 
-	this->setCurrentIndex(StackedWidget::RICHTEXT);
+	this->addWidget(richtext_frame);
 }
 
 bool StackedWidget::setUrls(QList<QUrl> &urls)
 {
-	if (!m_file_frame->setUrls(urls))
+	FileFrame *file_frame = new FileFrame(this);
+
+	if (!file_frame->setUrls(urls))
 		return false;
 
 	if (urls.count() > 1)
-		m_file_frame->setMaskFrameText(QObject::tr("MultiPath"));
+		file_frame->setMaskFrameText(QObject::tr("MultiPath"));
 	else {
-		m_file_frame->setFilename(urls[0].toLocalFile());
+		file_frame->setFilename(urls[0].toLocalFile());
 	}
 
-	this->setCurrentIndex(StackedWidget::URLS);
+	this->addWidget(file_frame);
 
 	return true;
 }

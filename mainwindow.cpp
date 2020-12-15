@@ -365,6 +365,7 @@ void MainWindow::reloadData()
 		this->__db.createTable();
 		return;
 	}
+
 	qRegisterMetaType<QList<ItemData *>> ("QList<ItemData *>");
 
 	QObject::connect(&this->__db, SIGNAL(dataLoaded(QList<ItemData *>)), this, SLOT(parsingData(QList<ItemData *>)));
@@ -404,7 +405,7 @@ cleanup:
 		}
 		widget->setTime(itemData->time);
 		widget->setIcon(itemData->icon);
-		widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(*itemData));
+		widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue((unsigned long)itemData));
 
 		QApplication::processEvents();
 	}
