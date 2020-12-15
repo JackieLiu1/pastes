@@ -42,6 +42,11 @@ public:
 		return m_text;
 	}
 
+	QListWidgetItem *widgetItem(void)
+	{
+		return m_listwidget_item;
+	}
+
 protected:
 	void resizeEvent(QResizeEvent *event);
 	void mouseDoubleClickEvent(QMouseEvent *event);

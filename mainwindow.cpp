@@ -380,7 +380,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 			continue;
 		}
 
-		PasteItem *widget = this->insertItemWidget();
+		PasteItem *widget = this->insertItemWidget(true);
 
 		if (itemData->mimeData->hasHtml() && !itemData->mimeData->text().isEmpty()) {
 			widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text());
@@ -390,21 +390,27 @@ void MainWindow::parsingData(QList<ItemData *> list)
 			QList<QUrl> urls = itemData->mimeData->urls();
 			if (!widget->setUrls(urls)) {
 				this->__db.delelePasteItem(itemData->md5);
-				delete this->__scroll_widget->takeItem(0);
-				continue;
+				goto cleanup;
 			}
 		} else if (itemData->mimeData->hasText() && !itemData->mimeData->text().isEmpty()) {
 			widget->setPlainText(itemData->mimeData->text().trimmed());
 		} else {
+cleanup:
 			/* No data, remove it */
-			delete this->__scroll_widget->takeItem(0);
+			this->__scroll_widget->removeItemWidget(widget->widgetItem());
+			delete widget->widgetItem();
+			delete widget;
 			continue;
 		}
 		widget->setTime(itemData->time);
 		widget->setIcon(itemData->icon);
+		widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(*itemData));
 
-		this->__scroll_widget->item(0)->setData(Qt::UserRole, QVariant::fromValue(*itemData));
+		QApplication::processEvents();
 	}
+
+	this->__scroll_widget->setCurrentRow(0);
+	this->resetItemTabOrder();
 }
 
 void MainWindow::loadStyleSheet(QWidget *w, const QString &styleSheetFile)
@@ -422,7 +428,7 @@ void MainWindow::loadStyleSheet(QWidget *w, const QString &styleSheetFile)
 }
 
 /* Insert a PasteItem into listwidget */
-PasteItem *MainWindow::insertItemWidget(void)
+PasteItem *MainWindow::insertItemWidget(bool back)
 {
 	QListWidgetItem *item = new QListWidgetItem;
 	auto *widget = new PasteItem(nullptr, item);
@@ -435,10 +441,13 @@ PasteItem *MainWindow::insertItemWidget(void)
 	/* resize item, It's use for pasteitem frame */
 	item->setSizeHint(QSize(rect.width()/6, 1));
 
-	this->__scroll_widget->insertItem(0, item);
-	this->__scroll_widget->setCurrentRow(0);
+	if (back) {
+		this->__scroll_widget->addItem(item);
+	} else {
+		this->__scroll_widget->insertItem(0, item);
+		this->__scroll_widget->setCurrentRow(0);
+	}
 	this->__scroll_widget->setItemWidget(item, widget);
-	this->resetItemTabOrder();
 
 	return widget;
 }
@@ -471,7 +480,7 @@ void MainWindow::clipboard_later(void)
 		itemData.image = qvariant_cast<QImage>(mime_data->imageData());
 	}
 
-	widget = this->insertItemWidget();
+	widget = this->insertItemWidget(false);
 
 	if (itemData.mimeData->hasHtml() && !itemData.mimeData->text().trimmed().isEmpty()) {
 		widget->setRichText(itemData.mimeData->html(), itemData.mimeData->text().trimmed());
@@ -538,6 +547,7 @@ cleanup:
 	widget->setIcon(itemData.icon);
 	this->__scroll_widget->item(0)->setData(Qt::UserRole, QVariant::fromValue(itemData));
 	this->__db.insertPasteItem(&itemData);
+	this->resetItemTabOrder();
 }
 
 #ifdef Q_OS_LINUX

@@ -163,7 +163,7 @@ void Database::loadData(void)
 			if (!itemData->image.isNull())
 				itemData->mimeData->setImageData(itemData->image);
 
-			list.push_back(itemData);
+			list.push_front(itemData);
 		}
 
 		emit this->dataLoaded(list);
