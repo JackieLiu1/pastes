@@ -18,10 +18,10 @@ bool MainFrame::event(QEvent *event)
 		case Qt::Key_Return:
 		case Qt::Key_Enter:
 			emit this->selectItem();
-			break;
+			return true;
 		case Qt::Key_Escape:
 			emit this->hideWindow();
-			break;
+			return true;
 		case Qt::Key_Tab:
 			emit this->moveFocusPrevNext(false);
 			return true;

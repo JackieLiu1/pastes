@@ -471,83 +471,86 @@ void MainWindow::clipboard_later(void)
 	const QMimeData *mime_data = this->__clipboard->mimeData();
 	PasteItem *widget = nullptr;
 	QByteArray md5_data;
-	ItemData itemData;
-	itemData.mimeData = new QMimeData;
+	ItemData *itemData = new ItemData;
+	itemData->mimeData = new QMimeData;
 
 	foreach (QString format, mime_data->formats()) {
-		itemData.mimeData->setData(format, mime_data->data(format));
+		itemData->mimeData->setData(format, mime_data->data(format));
 	}
 	if (mime_data->hasImage()) {
-		itemData.image = qvariant_cast<QImage>(mime_data->imageData());
+		itemData->image = qvariant_cast<QImage>(mime_data->imageData());
 	}
 
 	widget = this->insertItemWidget(false);
 
-	if (itemData.mimeData->hasHtml() && !itemData.mimeData->text().trimmed().isEmpty()) {
-		widget->setRichText(itemData.mimeData->html(), itemData.mimeData->text().trimmed());
-		md5_data = itemData.mimeData->text().trimmed().toLocal8Bit();
-	} else if (itemData.mimeData->hasImage()) {
+	if (itemData->mimeData->hasHtml() && !itemData->mimeData->text().trimmed().isEmpty()) {
+		widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text().trimmed());
+		md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
+	} else if (itemData->mimeData->hasImage()) {
 		/* Don't have data in image, drop it */
-		if (itemData.image.isNull())
+		if (itemData->image.isNull())
 			goto cleanup;
 
-		widget->setImage(itemData.image);
+		widget->setImage(itemData->image);
 
 		QBuffer buffer(&md5_data);
 		buffer.open(QIODevice::WriteOnly);
-		itemData.image.save(&buffer, "png");
+		itemData->image.save(&buffer, "png");
 		buffer.close();
-	} else if (itemData.mimeData->hasUrls()) {
-		QList<QUrl> urls = itemData.mimeData->urls();
+	} else if (itemData->mimeData->hasUrls()) {
+		QList<QUrl> urls = itemData->mimeData->urls();
 		foreach(QUrl url, urls) {
 			md5_data += url.toEncoded();
 		}
 		widget->setUrls(urls);
-	} else if (itemData.mimeData->hasText() && !itemData.mimeData->text().trimmed().isEmpty()) {
-		widget->setPlainText(itemData.mimeData->text().trimmed());
-		md5_data = itemData.mimeData->text().trimmed().toLocal8Bit();
+	} else if (itemData->mimeData->hasText() && !itemData->mimeData->text().trimmed().isEmpty()) {
+		widget->setPlainText(itemData->mimeData->text().trimmed());
+		md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
 	} else {
 cleanup:
 		/* No data, remove it */
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(0);
 		this->__scroll_widget->removeItemWidget(tmp_item);
 		delete tmp_item;
-		delete itemData.mimeData;
+		delete itemData->mimeData;
+		delete itemData;
 		return;
 	}
 
-	itemData.md5 = QCryptographicHash::hash(md5_data, QCryptographicHash::Md5);
+	itemData->md5 = QCryptographicHash::hash(md5_data, QCryptographicHash::Md5);
 	/* Remove dup item */
 	for (int i = 1; i < this->__scroll_widget->count(); i++) {
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(i);
-		ItemData tmp_itemData = tmp_item->data(Qt::UserRole).value<ItemData>();
+		ItemData *tmp_itemData = (ItemData *)tmp_item->data(Qt::UserRole).value<unsigned long>();
 		/* They have same md5, remove it */
-		if (itemData.md5 == tmp_itemData.md5) {
+		if (itemData->md5 == tmp_itemData->md5) {
 			/* move icon from old data */
-			itemData.icon = tmp_itemData.icon;
-			this->__db.delelePasteItem(tmp_itemData.md5);
+			itemData->icon = tmp_itemData->icon;
+			this->__db.delelePasteItem(tmp_itemData->md5);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			delete tmp_item;
+			delete tmp_itemData;
 			continue;
 		}
 		/* remove the data if it's too old (than a week) */
-		if (QDateTime::currentDateTime().toSecsSinceEpoch() - tmp_itemData.time.toSecsSinceEpoch() >= (60 * 60 * 24 * 7)) {
-			this->__db.delelePasteItem(tmp_itemData.md5);
+		if (QDateTime::currentDateTime().toSecsSinceEpoch() - tmp_itemData->time.toSecsSinceEpoch() >= (60 * 60 * 24 * 7)) {
+			this->__db.delelePasteItem(tmp_itemData->md5);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			delete tmp_item;
+			delete tmp_itemData;
 		}
 	}
 
-	itemData.time = QDateTime::currentDateTime();
-	widget->setTime(itemData.time);
+	itemData->time = QDateTime::currentDateTime();
+	widget->setTime(itemData->time);
 
-	if (itemData.icon.isNull()) {
+	if (itemData->icon.isNull()) {
 		/* Find and set icon who triggers the clipboard */
-		itemData.icon = this->getClipboardOwnerIcon();
+		itemData->icon = this->getClipboardOwnerIcon();
 	}
-	widget->setIcon(itemData.icon);
-	this->__scroll_widget->item(0)->setData(Qt::UserRole, QVariant::fromValue(itemData));
-	this->__db.insertPasteItem(&itemData);
+	widget->setIcon(itemData->icon);
+	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue((unsigned long)itemData));
+	this->__db.insertPasteItem(itemData);
 	this->resetItemTabOrder();
 }
 

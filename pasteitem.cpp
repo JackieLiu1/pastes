@@ -109,10 +109,10 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 	case Qt::Key_Return:
 	case Qt::Key_Enter:
 		this->copyData();
-		break;
+		return;
 	case Qt::Key_Escape:
 		emit this->hideWindow();
-		break;
+		return;
 	}
 
 	QWidget::keyPressEvent(event);
@@ -150,28 +150,6 @@ static void SendKey(Display * disp, KeySym keysym, KeySym modsym)
 	XSync (disp, False);
 	XTestGrabControl (disp, False);
 }
-
-class PasteThread : public QThread
-{
-public:
-	void run(void)
-	{
-		QTimer *timer = new QTimer;
-
-		timer->setSingleShot(true);
-		timer->setInterval(1000);
-		timer->start();
-		QObject::connect(timer, &QTimer::timeout, [timer](){
-			Display *disp = XOpenDisplay(nullptr);
-			SendKey(disp, XK_Insert, XK_Shift_L);
-			XCloseDisplay(disp);
-
-			delete timer;
-		});
-
-		exec();
-	}
-};
 #endif
 
 void PasteItem::copyData(void)
@@ -192,10 +170,10 @@ void PasteItem::copyData(void)
 		return;
 
 	/* Send keypress event 'Ctrl +v' for direct paste */
-	PasteThread *thread = new PasteThread;
-	thread->start();
-	QObject::connect(thread, &QThread::finished, [thread](){
-		delete thread;
+	QTimer::singleShot(1000, [this]() {
+		Display *disp = XOpenDisplay(nullptr);
+		SendKey(disp, XK_Insert, XK_Shift_L);
+		XCloseDisplay(disp);
 	});
 #endif
 }

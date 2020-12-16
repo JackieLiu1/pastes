@@ -50,17 +50,15 @@ bool LineEdit::event(QEvent *event)
 		case Qt::Key_Return:
 		case Qt::Key_Enter:
 			emit this->selectItem();
-			break;
+			return true;
 		case Qt::Key_Escape:
 			emit this->hideWindow();
-			break;
+			return true;
 		case Qt::Key_Tab:
 			emit this->moveFocusPrevNext(false);
-			/* event is done */
 			return true;
 		case Qt::Key_Backtab:
 			emit this->moveFocusPrevNext(true);
-			/* event is done */
 			return true;
 		}
 	}
