@@ -412,6 +412,10 @@ cleanup:
 
 	this->__scroll_widget->setCurrentRow(0);
 	this->resetItemTabOrder();
+
+	/* Need create window init time, it's speed up for show */
+	this->setVisible(true);
+	this->setVisible(false);
 }
 
 void MainWindow::loadStyleSheet(QWidget *w, const QString &styleSheetFile)
