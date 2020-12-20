@@ -405,7 +405,7 @@ cleanup:
 		}
 		widget->setTime(itemData->time);
 		widget->setIcon(itemData->icon);
-		widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue((unsigned long)itemData));
+		widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
 
 		QApplication::processEvents();
 	}
@@ -525,7 +525,7 @@ cleanup:
 	/* Remove dup item */
 	for (int i = 1; i < this->__scroll_widget->count(); i++) {
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(i);
-		ItemData *tmp_itemData = (ItemData *)tmp_item->data(Qt::UserRole).value<unsigned long>();
+		ItemData *tmp_itemData = reinterpret_cast<ItemData *>(tmp_item->data(Qt::UserRole).value<uint64_t>());
 		/* They have same md5, remove it */
 		if (itemData->md5 == tmp_itemData->md5) {
 			/* move icon from old data */
@@ -553,7 +553,7 @@ cleanup:
 		itemData->icon = this->getClipboardOwnerIcon();
 	}
 	widget->setIcon(itemData->icon);
-	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue((unsigned long)itemData));
+	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
 	this->__db.insertPasteItem(itemData);
 	this->resetItemTabOrder();
 }
