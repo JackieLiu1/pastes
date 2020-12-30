@@ -238,16 +238,22 @@ void MainWindow::hide_window(void)
 void MainWindow::move_to_prev_next_focus_widget(bool prev)
 {
 	QListWidgetItem *item = this->__scroll_widget->selectedItems()[0];
-	PasteItem *widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
+	PasteItem *widget = nullptr;
+	int row = this->__scroll_widget->row(item);
 
 	do {
 		if (prev) {
 			/* Get prev focus widget and isn't hidden */
-			widget = reinterpret_cast<PasteItem *>(widget->previousInFocusChain());
+			if (--row < 0)
+				row = this->__scroll_widget->count()-1;
 		} else {
 			/* Get next focus widget and isn't hidden */
-			widget = reinterpret_cast<PasteItem *>(widget->nextInFocusChain());
+			if (++row > this->__scroll_widget->count()-1)
+				row = 0;
 		}
+
+		item = this->__scroll_widget->item(row);
+		widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
 	} while (widget->isHidden());
 	widget->setFocus();
 }
