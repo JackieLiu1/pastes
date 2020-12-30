@@ -53,7 +53,6 @@ public:
 
 private:
 	LineEdit		*m_search_edit;
-	PushButton		*m_search_button;
 
 Q_SIGNALS:
 	void moveFocusPrevNext(bool);

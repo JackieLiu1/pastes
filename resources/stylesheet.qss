@@ -125,13 +125,10 @@ QListWidget::Item:selected
         font-family: Monospace;
         font-size: 14px;
         color: rgb(184, 184, 184);
-        border: 1px solid rgb(170, 170, 170);
-        border-top-left-radius: 3px;
-        border-bottom-left-radius: 3px;
+        border-radius: 3px;
 }
 
 #SearchBar > QLineEdit:focus
 {
         color: rgb(79, 79, 79);
-        border-color: rgb(79, 79, 79);
 }

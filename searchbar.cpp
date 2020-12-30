@@ -4,6 +4,8 @@
 #include <QResizeEvent>
 
 #include <QApplication>
+#include <QGraphicsDropShadowEffect>
+#include <QAction>
 #include <QDebug>
 
 LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLineEdit(parent),
@@ -24,6 +26,10 @@ LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLine
 		if (focusWidget)
 			focusWidget->update();
 	});
+
+	QAction *searchAction = new QAction(this);
+	searchAction->setIcon(QIcon(":/resources/search.png"));
+	this->addAction(searchAction, QLineEdit::TrailingPosition);
 }
 
 void LineEdit::focusInEvent(QFocusEvent *event)
@@ -74,9 +80,8 @@ void LineEdit::hideEvent(QHideEvent *event)
 
 PushButton::PushButton(QWidget *parent) : QPushButton(parent),
 	m_label(new QLabel(this)),
-	m_pixmap(QPixmap(":/resources/search_white.png"))
+	m_pixmap(QPixmap(":/resources/search.png"))
 {
-	this->setObjectName("PushButton");
 	this->setAttribute(Qt::WA_StyledBackground);
 	this->setFocusPolicy(Qt::ClickFocus);
 	m_label->setAlignment(Qt::AlignCenter);
@@ -103,32 +108,23 @@ void PushButton::resizeEvent(QResizeEvent *event)
 	QPushButton::resizeEvent(event);
 }
 
-SearchBar::SearchBar(QWidget *parent, int width, int height) : QWidget(parent),
-	m_search_button(new PushButton(this))
+SearchBar::SearchBar(QWidget *parent, int width, int height) : QWidget(parent)
 {
 	this->setAttribute(Qt::WA_TranslucentBackground);
 	this->setAttribute(Qt::WA_StyledBackground);
 	this->setObjectName("SearchBar");
 	this->setFixedSize(width, height);
 
+	QGraphicsDropShadowEffect *effect = new QGraphicsDropShadowEffect(this);
+	effect->setOffset(0, 0);
+	effect->setColor(QColor(0, 0, 0, 90));
+	effect->setBlurRadius(5);
+	this->setGraphicsEffect(effect);
+
 	this->m_search_edit = new LineEdit(this, width, height);
-
-	this->m_search_button->setFocusPolicy(Qt::NoFocus);
-	this->m_search_button->setDisabled(true);
-	this->m_search_button->setFixedSize(height*1.2, height);
-
 	m_search_edit->setPlaceholderText(QObject::tr("Search"));
 	m_search_edit->setTextMargins(10, 0, 0, 0);
-	QObject::connect(m_search_edit, &LineEdit::focusOut, [this](void) {
-		this->m_search_button->setStyleSheet("background-color: rgb(170, 170, 170);"
-						     "border-top-right-radius: 3px;"
-						     "border-bottom-right-radius: 3px;");
-	});
-	QObject::connect(m_search_edit, &LineEdit::focusIn, [this](void) {
-		this->m_search_button->setStyleSheet("background-color: rgb(79, 79, 79);"
-						     "border-top-right-radius: 3px;"
-						     "border-bottom-right-radius: 3px;");
-	});
+
 	QObject::connect(m_search_edit, &LineEdit::hideWindow, [this](void) {
 		emit this->hideWindow();
 	});
@@ -145,9 +141,7 @@ SearchBar::SearchBar(QWidget *parent, int width, int height) : QWidget(parent),
 	QHBoxLayout *layout = new QHBoxLayout();
 	layout->addStretch();
 	layout->addWidget(this->m_search_edit);
-	layout->addWidget(this->m_search_button);
 	layout->addStretch();
-	layout->setSpacing(0);
 	layout->setContentsMargins(0, 0, 0, 0);
 
 	this->setLayout(layout);
