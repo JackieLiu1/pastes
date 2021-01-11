@@ -5,11 +5,11 @@
 
 #include <QApplication>
 #include <QGraphicsDropShadowEffect>
-#include <QAction>
 #include <QDebug>
 
 LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLineEdit(parent),
-	m_zoom_animation(new QPropertyAnimation(this, "minimumWidth"))
+	m_zoom_animation(new QPropertyAnimation(this, "minimumWidth")),
+	m_searchAction(new QAction(this))
 {
 	this->setFocusPolicy(Qt::ClickFocus);
 	this->setContextMenuPolicy(Qt::NoContextMenu);
@@ -27,9 +27,16 @@ LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLine
 			focusWidget->update();
 	});
 
-	QAction *searchAction = new QAction(this);
-	searchAction->setIcon(QIcon(":/resources/search.png"));
-	this->addAction(searchAction, QLineEdit::TrailingPosition);
+	m_searchAction->setIcon(QIcon(":/resources/search.png"));
+	this->addAction(m_searchAction, QLineEdit::TrailingPosition);
+	QObject::connect(m_searchAction, &QAction::triggered, [this]() {
+		this->setText("");
+	});
+}
+
+void LineEdit::updateIcon(const QString &url)
+{
+	this->m_searchAction->setIcon(QIcon(url));
 }
 
 void LineEdit::focusInEvent(QFocusEvent *event)
@@ -129,6 +136,11 @@ SearchBar::SearchBar(QWidget *parent, int width, int height) : QWidget(parent)
 		emit this->hideWindow();
 	});
 	QObject::connect(m_search_edit, &LineEdit::textChanged, [this](const QString &text) {
+		if (text.isEmpty()) {
+			this->m_search_edit->updateIcon(":/resources/search.png");
+		} else {
+			this->m_search_edit->updateIcon(":/resources/search_clear.png");
+		}
 		emit this->textChanged(text);
 	});
 	QObject::connect(m_search_edit, &LineEdit::selectItem, [this](void) {

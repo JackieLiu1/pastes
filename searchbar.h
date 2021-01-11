@@ -5,6 +5,7 @@
 #include <QWidget>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QAction>
 #include <QPropertyAnimation>
 
 class LineEdit : public QLineEdit
@@ -12,6 +13,7 @@ class LineEdit : public QLineEdit
 	Q_OBJECT
 public:
 	LineEdit(QWidget *parent = nullptr, int parent_width = 0, int parent_height = 0);
+	void updateIcon(const QString &);
 
 protected:
 	void focusInEvent(QFocusEvent *event);
@@ -28,6 +30,7 @@ Q_SIGNALS:
 
 private:
 	QPropertyAnimation	*m_zoom_animation;
+	QAction			*m_searchAction;
 };
 
 class PushButton : public QPushButton
