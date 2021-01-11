@@ -33,21 +33,6 @@ private:
 	QAction			*m_searchAction;
 };
 
-class PushButton : public QPushButton
-{
-public:
-	PushButton(QWidget *parent = nullptr);
-	void updatePixmap(void);
-	void setPixmap(QPixmap pixmap);
-
-protected:
-	void resizeEvent(QResizeEvent *event);
-
-private:
-	QLabel	*m_label;
-	QPixmap	m_pixmap;
-};
-
 class SearchBar : public QWidget
 {
 	Q_OBJECT

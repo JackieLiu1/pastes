@@ -58,7 +58,7 @@ private:
 
 	/* widgets */
 	SearchBar			*__searchbar;
-	PushButton			*__menu_button;
+	QPushButton			*__menu_button;
 	QListWidget			*__scroll_widget;
 
 	QClipboard			*__clipboard;

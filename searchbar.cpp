@@ -2,7 +2,6 @@
 
 #include <QHBoxLayout>
 #include <QResizeEvent>
-
 #include <QApplication>
 #include <QGraphicsDropShadowEffect>
 #include <QDebug>
@@ -83,36 +82,6 @@ void LineEdit::hideEvent(QHideEvent *event)
 {
 	this->clear();
 	QLineEdit::hideEvent(event);
-}
-
-PushButton::PushButton(QWidget *parent) : QPushButton(parent),
-	m_label(new QLabel(this)),
-	m_pixmap(QPixmap(":/resources/search.png"))
-{
-	this->setAttribute(Qt::WA_StyledBackground);
-	this->setFocusPolicy(Qt::ClickFocus);
-	m_label->setAlignment(Qt::AlignCenter);
-}
-
-void PushButton::updatePixmap(void)
-{
-	if (!m_pixmap.isNull()) {
-		QPixmap pixmap = m_pixmap.scaled(this->size()*0.8, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-		m_label->setPixmap(pixmap);
-	}
-}
-
-void PushButton::setPixmap(QPixmap pixmap)
-{
-	m_pixmap = pixmap;
-	this->updatePixmap();
-}
-
-void PushButton::resizeEvent(QResizeEvent *event)
-{
-	m_label->setGeometry(QRect(0, 0, event->size().width(), event->size().height()));
-	this->updatePixmap();
-	QPushButton::resizeEvent(event);
 }
 
 SearchBar::SearchBar(QWidget *parent, int width, int height) : QWidget(parent)

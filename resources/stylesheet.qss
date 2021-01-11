@@ -113,7 +113,7 @@ QListWidget::Item:selected
         border: 0;
 }
 
-#SearchBar #PushButton
+#SearchBar > QPushButton
 {
         background-color: rgb(170, 170, 170);
         border-top-right-radius: 3px;
@@ -130,5 +130,5 @@ QListWidget::Item:selected
 
 #SearchBar > QLineEdit:focus
 {
-        color: rgb(79, 79, 79);
+        color: rgb(3, 3, 3);
 }

@@ -309,11 +309,11 @@ void MainWindow::initUI(void)
 	});
 	QObject::connect(this->__searchbar, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));
 
-	this->__menu_button = new PushButton(this->__main_frame);
-	this->__menu_button->setPixmap(QPixmap(":/resources/points.png"));
+	this->__menu_button = new QPushButton(this->__main_frame);
+	this->__menu_button->setIcon(QIcon(":/resources/points.png"));
 	this->__menu_button->setFixedSize(30, 30);
 	this->__menu_button->setFlat(true);
-	QObject::connect(this->__menu_button, &PushButton::clicked, [this](void) {
+	QObject::connect(this->__menu_button, &QPushButton::clicked, [this](void) {
 		QMenu *menu = new QMenu();
 		QAction *about_me = new QAction(QObject::tr("About me"), this);
 		QObject::connect(about_me, &QAction::triggered, [this](void) {
