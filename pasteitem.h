@@ -15,7 +15,6 @@
 struct ItemData : QObjectUserData
 {
 	QMimeData	*mimeData;
-	QImage		image;
 	QPixmap		icon;
 	QByteArray	md5;
 

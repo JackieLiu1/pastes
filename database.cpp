@@ -86,8 +86,10 @@ void Database::insertPasteItem(ItemData *itemData)
 
 		query.prepare("insert into item (md5, imagedata, icondata, time) values (:md5, :imagedata, :icondata, :time);");
 		query.bindValue(":md5", itd->md5);
-		if (!itd->image.isNull()) {
-			query.bindValue(":imagedata", Database::convertImage2Array(itd->image));
+		if (!itd->mimeData->hasImage()) {
+			QImage image;
+			query.bindValue(":imagedata", Database::convertImage2Array(image));
+			itd->mimeData->setImageData(image);
 		}
 		query.bindValue(":icondata", Database::convertImage2Array(itd->icon.toImage()));
 		query.bindValue(":time", itd->time.toSecsSinceEpoch());
@@ -144,8 +146,8 @@ void Database::loadData(void)
 		while (query.next()) {
 			ItemData *itemData = new ItemData;
 			itemData->md5 = query.value("md5").toByteArray();
-			itemData->image = QImage::fromData(query.value("imagedata").toByteArray());
-			itemData->icon = QPixmap::fromImage(QImage::fromData(query.value("icondata").toByteArray()));
+			QImage image = QImage::fromData(query.value("imagedata").toByteArray());
+			itemData->icon = QPixmap::fromImage(QImage::fromData(query.value("icondata").toByteArray())).scaled(QSize(32, 32), Qt::KeepAspectRatio, Qt::SmoothTransformation);
 			itemData->time = QDateTime::fromSecsSinceEpoch(query.value("time").toUInt());
 
 			itemData->mimeData = new QMimeData;
@@ -160,8 +162,8 @@ void Database::loadData(void)
 				itemData->mimeData->setData(mimeType, data);
 			}
 
-			if (!itemData->image.isNull())
-				itemData->mimeData->setImageData(itemData->image);
+			if (!itemData->mimeData->hasImage())
+				itemData->mimeData->setImageData(image);
 
 			list.push_front(itemData);
 		}

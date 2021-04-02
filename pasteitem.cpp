@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QVBoxLayout>
 #include <QMimeData>
+#include <QUrl>
 #include <QDebug>
 
 PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
@@ -67,7 +68,7 @@ void PasteItem::setRichText(QString richText, QString plainText)
 
 bool PasteItem::setUrls(QList<QUrl> &urls)
 {
-	for (auto url : urls) {
+	for (auto &url : urls) {
 		m_text += url.toString();
 	}
 	if (!m_context->setUrls(urls))
@@ -158,8 +159,6 @@ void PasteItem::copyData(void)
 
 	QClipboard *clipboard = QApplication::clipboard();
 	ItemData *itemData = (ItemData *)this->m_listwidget_item->data(Qt::UserRole).value<unsigned long>();
-	if (!itemData->image.isNull())
-		itemData->mimeData->setImageData(itemData->image);
 
 	clipboard->setMimeData(itemData->mimeData, QClipboard::Clipboard);
 
@@ -170,7 +169,7 @@ void PasteItem::copyData(void)
 		return;
 
 	/* Send keypress event 'Ctrl +v' for direct paste */
-	QTimer::singleShot(1000, [this]() {
+	QTimer::singleShot(1000, [](void) {
 		Display *disp = XOpenDisplay(nullptr);
 		SendKey(disp, XK_Insert, XK_Shift_L);
 		XCloseDisplay(disp);

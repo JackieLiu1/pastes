@@ -391,8 +391,10 @@ void MainWindow::parsingData(QList<ItemData *> list)
 
 		if (itemData->mimeData->hasHtml() && !itemData->mimeData->text().isEmpty()) {
 			widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text());
-		} else if (itemData->mimeData->hasImage()) {
-			widget->setImage(itemData->image);
+		} else if (itemData->mimeData->hasImage() && itemData->mimeData->imageData().isValid() &&
+			   !itemData->mimeData->imageData().isNull()) {
+			QImage image = qvariant_cast<QImage>(itemData->mimeData->imageData());
+			widget->setImage(image);
 		} else if (itemData->mimeData->hasUrls()) {
 			QList<QUrl> urls = itemData->mimeData->urls();
 			if (!widget->setUrls(urls)) {
@@ -474,10 +476,8 @@ void MainWindow::resetItemTabOrder(void)
 	}
 }
 
-QMutex clipboard_mutex;
 void MainWindow::clipboard_later(void)
 {
-	QMutexLocker locker(&clipboard_mutex);
 	const QMimeData *mime_data = this->__clipboard->mimeData();
 	PasteItem *widget = nullptr;
 	QByteArray md5_data;
@@ -488,7 +488,7 @@ void MainWindow::clipboard_later(void)
 		itemData->mimeData->setData(format, mime_data->data(format));
 	}
 	if (mime_data->hasImage()) {
-		itemData->image = qvariant_cast<QImage>(mime_data->imageData());
+		itemData->mimeData->setImageData(mime_data->imageData());
 	}
 
 	widget = this->insertItemWidget(false);
@@ -497,16 +497,9 @@ void MainWindow::clipboard_later(void)
 		widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text().trimmed());
 		md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
 	} else if (itemData->mimeData->hasImage()) {
-		/* Don't have data in image, drop it */
-		if (itemData->image.isNull())
-			goto cleanup;
-
-		widget->setImage(itemData->image);
-
-		QBuffer buffer(&md5_data);
-		buffer.open(QIODevice::WriteOnly);
-		itemData->image.save(&buffer, "png");
-		buffer.close();
+		QImage image = qvariant_cast<QImage>(itemData->mimeData->imageData());
+		widget->setImage(image);
+		md5_data = itemData->mimeData->imageData().toByteArray();
 	} else if (itemData->mimeData->hasUrls()) {
 		QList<QUrl> urls = itemData->mimeData->urls();
 		foreach(QUrl url, urls) {
@@ -517,7 +510,6 @@ void MainWindow::clipboard_later(void)
 		widget->setPlainText(itemData->mimeData->text().trimmed());
 		md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
 	} else {
-cleanup:
 		/* No data, remove it */
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(0);
 		this->__scroll_widget->removeItemWidget(tmp_item);
