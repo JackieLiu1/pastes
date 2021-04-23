@@ -11,6 +11,23 @@
 #include <QByteArray>
 #include <QGraphicsDropShadowEffect>
 #include <QMimeData>
+#include <QDebug>
+
+static inline QMimeData *dup_mimedata(const QMimeData *mimeData)
+{
+	QMimeData *mime = new QMimeData;
+
+	for (auto formats : mimeData->formats()) {
+		mime->setData(formats, mimeData->data(formats));
+	}
+
+	if (mimeData->hasImage()) {
+		QImage image = qvariant_cast<QImage>(mimeData->imageData());
+		mime->setImageData(image);
+	}
+
+	return mime;
+}
 
 struct ItemData : QObjectUserData
 {

@@ -67,29 +67,17 @@ QByteArray Database::convertImage2Array(QImage image)
 
 /* Used for lock database */
 QMutex mutex;
-void Database::insertPasteItem(ItemData *itemData)
+void Database::insertPasteItem(ItemData *itd)
 {
-	/*
-	 * We need copy an new itemdata for thread, because QImage or QPixmap
-	 * and others is an private data for Class, can't share for another
-	 * thread, That is an workaround.
-	 */
-	ItemData *itd = new ItemData(*itemData);
-	itd->mimeData = new QMimeData;
-	for (auto formats : itemData->mimeData->formats()) {
-		itd->mimeData->setData(formats, itemData->mimeData->data(formats));
-	}
-
 	QThread *insert_thread = QThread::create([this, itd](void){
-		QSqlQuery query(this->m_db);
 		QMutexLocker locker(&mutex);
+		QSqlQuery query(this->m_db);
 
 		query.prepare("insert into item (md5, imagedata, icondata, time) values (:md5, :imagedata, :icondata, :time);");
 		query.bindValue(":md5", itd->md5);
-		if (!itd->mimeData->hasImage()) {
-			QImage image;
+		if (itd->mimeData->hasImage()) {
+			QImage image = qvariant_cast<QImage>(itd->mimeData->imageData());
 			query.bindValue(":imagedata", Database::convertImage2Array(image));
-			itd->mimeData->setImageData(image);
 		}
 		query.bindValue(":icondata", Database::convertImage2Array(itd->icon.toImage()));
 		query.bindValue(":time", itd->time.toSecsSinceEpoch());
@@ -107,9 +95,6 @@ void Database::insertPasteItem(ItemData *itemData)
 			if (!query.exec())
 				DEBUG() << query.lastError();
 		}
-
-		delete itd->mimeData;
-		delete itd;
 	});
 
 	insert_thread->start();
@@ -118,8 +103,8 @@ void Database::insertPasteItem(ItemData *itemData)
 void Database::delelePasteItem(QByteArray md5)
 {
 	QThread *delete_thread = QThread::create([this, md5](void){
-		QSqlQuery query(this->m_db);
 		QMutexLocker locker(&mutex);
+		QSqlQuery query(this->m_db);
 
 		query.prepare("delete from item where md5 = x'" + md5.toHex() + "'");
 		if (!query.exec())
@@ -135,9 +120,9 @@ void Database::delelePasteItem(QByteArray md5)
 void Database::loadData(void)
 {
 	QThread *load_thread = QThread::create([this](void) {
+		QMutexLocker locker(&mutex);
 		QList<ItemData *> list;
 		QSqlQuery query(this->m_db);
-		QMutexLocker locker(&mutex);
 
 		query.prepare("select * from item;");
 		if (!query.exec())
@@ -162,7 +147,7 @@ void Database::loadData(void)
 				itemData->mimeData->setData(mimeType, data);
 			}
 
-			if (!itemData->mimeData->hasImage())
+			if (itemData->mimeData->hasImage())
 				itemData->mimeData->setImageData(image);
 
 			list.push_front(itemData);

@@ -21,6 +21,7 @@
 #include <QDebug>
 
 #include "mainwindow.h"
+#include "pasteitem.h"
 
 #ifdef Q_OS_WIN
 #include <QtWin>
@@ -106,7 +107,6 @@ MainWindow::MainWindow(QWidget *parent)
 	  __hide_animation(new QPropertyAnimation(this, "pos")),
 	  __shortcut(new DoubleCtrlShortcut(this)),
 	  __hide_state(true),
-	  __clipboard(QApplication::clipboard()),
 	  __current_item(nullptr)
 {
 	QRect rect = QApplication::primaryScreen()->geometry();
@@ -140,8 +140,8 @@ MainWindow::MainWindow(QWidget *parent)
 		widget->copyData();
 	});
 
-	QObject::connect(this->__clipboard, &QClipboard::dataChanged, [this](void) {
-		QTimer::singleShot(100, this, SLOT(clipboard_later()));
+	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, [this](void) {
+		QTimer::singleShot(1000, this, SLOT(clipboard_later()));
 	});
 	QObject::connect(this->__hide_animation, &QPropertyAnimation::finished, [this](void) {
 		if (this->__hide_animation->direction() == QAbstractAnimation::Forward) {
@@ -478,38 +478,55 @@ void MainWindow::resetItemTabOrder(void)
 
 void MainWindow::clipboard_later(void)
 {
-	const QMimeData *mime_data = this->__clipboard->mimeData();
+	const QMimeData *mime_data = QApplication::clipboard()->mimeData();
 	PasteItem *widget = nullptr;
 	QByteArray md5_data;
 	ItemData *itemData = new ItemData;
-	itemData->mimeData = new QMimeData;
 
-	foreach (QString format, mime_data->formats()) {
-		itemData->mimeData->setData(format, mime_data->data(format));
-	}
-	if (mime_data->hasImage()) {
-		itemData->mimeData->setImageData(mime_data->imageData());
-	}
-
+	itemData->mimeData = dup_mimedata(mime_data);
 	widget = this->insertItemWidget(false);
 
-	if (itemData->mimeData->hasHtml() && !itemData->mimeData->text().trimmed().isEmpty()) {
-		widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text().trimmed());
-		md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
-	} else if (itemData->mimeData->hasImage()) {
-		QImage image = qvariant_cast<QImage>(itemData->mimeData->imageData());
-		widget->setImage(image);
-		md5_data = itemData->mimeData->imageData().toByteArray();
-	} else if (itemData->mimeData->hasUrls()) {
-		QList<QUrl> urls = itemData->mimeData->urls();
-		foreach(QUrl url, urls) {
-			md5_data += url.toEncoded();
+	do {
+		if (itemData->mimeData->hasUrls() && !itemData->mimeData->urls().isEmpty()) {
+			QList<QUrl> urls = itemData->mimeData->urls();
+			foreach(QUrl url, urls) {
+				md5_data += url.toEncoded();
+			}
+			widget->setUrls(urls);
+			qDebug() << "It's urls";
+			break;
 		}
-		widget->setUrls(urls);
-	} else if (itemData->mimeData->hasText() && !itemData->mimeData->text().trimmed().isEmpty()) {
-		widget->setPlainText(itemData->mimeData->text().trimmed());
-		md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
-	} else {
+
+		if (itemData->mimeData->hasHtml() && !mime_data->text().trimmed().isEmpty()) {
+			md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
+			widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text().trimmed());
+			qDebug() << "It's htmls";
+			break;
+		}
+
+		if (mime_data->hasImage()) {
+			QImage image = qvariant_cast<QImage>(mime_data->imageData());
+			if (image.width() && image.height()) {
+				for (auto i = 0; i < image.height(); i++) {
+					for (auto j = 0; j < image.width(); j++) {
+						md5_data.push_back(image.scanLine(i)[j]);
+					}
+				}
+
+				widget->setImage(image);
+				qDebug() << "It's Images" << mime_data->imageData().toByteArray().size();
+				break;
+			}
+		}
+
+		if (mime_data->hasText() && !itemData->mimeData->text().trimmed().isEmpty()) {
+			md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
+			widget->setPlainText(itemData->mimeData->text().trimmed());
+			qDebug() << "It's text";
+			break;
+		}
+
+		qDebug() << "It's nothing";
 		/* No data, remove it */
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(0);
 		this->__scroll_widget->removeItemWidget(tmp_item);
@@ -517,7 +534,7 @@ void MainWindow::clipboard_later(void)
 		delete itemData->mimeData;
 		delete itemData;
 		return;
-	}
+	} while (0);
 
 	itemData->md5 = QCryptographicHash::hash(md5_data, QCryptographicHash::Md5);
 	/* Remove dup item */

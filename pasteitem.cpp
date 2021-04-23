@@ -160,14 +160,15 @@ void PasteItem::copyData(void)
 	QClipboard *clipboard = QApplication::clipboard();
 	ItemData *itemData = (ItemData *)this->m_listwidget_item->data(Qt::UserRole).value<unsigned long>();
 
-	clipboard->setMimeData(itemData->mimeData, QClipboard::Clipboard);
+	clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Clipboard);
 
 #ifdef Q_OS_LINUX
-	clipboard->setMimeData(itemData->mimeData, QClipboard::Selection);
-
+	clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Selection);
+#endif
 	if (itemData->mimeData->hasUrls())
 		return;
 
+#ifdef Q_OS_LINUX
 	/* Send keypress event 'Ctrl +v' for direct paste */
 	QTimer::singleShot(1000, [](void) {
 		Display *disp = XOpenDisplay(nullptr);

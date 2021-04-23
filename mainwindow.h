@@ -61,8 +61,6 @@ private:
 	QPushButton			*__menu_button;
 	QListWidget			*__scroll_widget;
 
-	QClipboard			*__clipboard;
-
 	/* It's copyed from myself, We need save icon */
 	QPixmap				__pasteitem_icon;
 
