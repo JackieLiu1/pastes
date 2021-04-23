@@ -18,7 +18,7 @@ public:
 	void createTable(void);
 	void insertPasteItem(ItemData *itemData);
 	void loadData(void);
-	void delelePasteItem(QByteArray);
+	void delelePasteItem(ItemData *itemData);
 
 private:
 	static QByteArray convertImage2Array(QImage image);

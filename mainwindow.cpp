@@ -383,7 +383,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 	for (auto itemData : list) {
 		/* remove the data if it's too old (than a week) */
 		if (QDateTime::currentDateTime().toSecsSinceEpoch() - itemData->time.toSecsSinceEpoch() > (60 * 60 * 24 * 7)) {
-			this->__db.delelePasteItem(itemData->md5);
+			this->__db.delelePasteItem(itemData);
 			continue;
 		}
 
@@ -398,7 +398,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 		} else if (itemData->mimeData->hasUrls()) {
 			QList<QUrl> urls = itemData->mimeData->urls();
 			if (!widget->setUrls(urls)) {
-				this->__db.delelePasteItem(itemData->md5);
+				this->__db.delelePasteItem(itemData);
 				goto cleanup;
 			}
 		} else if (itemData->mimeData->hasText() && !itemData->mimeData->text().isEmpty()) {
@@ -545,18 +545,16 @@ void MainWindow::clipboard_later(void)
 		if (itemData->md5 == tmp_itemData->md5) {
 			/* move icon from old data */
 			itemData->icon = tmp_itemData->icon;
-			this->__db.delelePasteItem(tmp_itemData->md5);
+			this->__db.delelePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			delete tmp_item;
-			delete tmp_itemData;
 			continue;
 		}
 		/* remove the data if it's too old (than a week) */
 		if (QDateTime::currentDateTime().toSecsSinceEpoch() - tmp_itemData->time.toSecsSinceEpoch() >= (60 * 60 * 24 * 7)) {
-			this->__db.delelePasteItem(tmp_itemData->md5);
+			this->__db.delelePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			delete tmp_item;
-			delete tmp_itemData;
 		}
 	}
 

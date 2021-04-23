@@ -100,11 +100,12 @@ void Database::insertPasteItem(ItemData *itd)
 	insert_thread->start();
 }
 
-void Database::delelePasteItem(QByteArray md5)
+void Database::delelePasteItem(ItemData *itemData)
 {
-	QThread *delete_thread = QThread::create([this, md5](void){
+	QThread *delete_thread = QThread::create([this, itemData](void){
 		QMutexLocker locker(&mutex);
 		QSqlQuery query(this->m_db);
+		QByteArray md5 = itemData->md5;
 
 		query.prepare("delete from item where md5 = x'" + md5.toHex() + "'");
 		if (!query.exec())
@@ -112,6 +113,9 @@ void Database::delelePasteItem(QByteArray md5)
 		query.prepare("delete from data where md5 = x'" + md5.toHex() + "'");
 		if (!query.exec())
 			DEBUG() << query.lastError();
+
+		delete itemData->mimeData;
+		delete itemData;
 	});
 
 	delete_thread->start();
