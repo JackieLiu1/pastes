@@ -563,7 +563,7 @@ void MainWindow::clipboard_later(void)
 
 	if (itemData->icon.isNull()) {
 		/* Find and set icon who triggers the clipboard */
-		itemData->icon = this->getClipboardOwnerIcon();
+		itemData->icon = this->getClipboardOwnerIcon().scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 	}
 	widget->setIcon(itemData->icon);
 	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
