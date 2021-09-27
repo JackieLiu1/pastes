@@ -95,6 +95,10 @@ unix:!macx {
         desktop_file.files = $${TARGET}.desktop
         desktop_file.path = /etc/xdg/autostart
         INSTALLS += desktop_file
+
+	icon_file.files = resources/$${TARGET}.svg
+	icon_file.path = /usr/share/icons/hicolor/scalable/apps
+	INSTALLS += icon_file
 }
 
 INSTALLS += target
