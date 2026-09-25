@@ -4,6 +4,8 @@
 #include <gio/gdesktopappinfo.h>
 #endif
 
+#include <algorithm>
+
 #include <QResizeEvent>
 #include <QFileInfo>
 #include <QDir>
@@ -78,6 +80,46 @@ FileFrame::~FileFrame()
 }
 
 #ifdef Q_OS_WIN
+/* Replacement for QtWinExtras' QtWin::fromHICON() (the module was removed
+ * in Qt6): reads the icon's color bitmap into an ARGB32 QImage. */
+QPixmap pixmapFromHICON(HICON icon)
+{
+	QPixmap pixmap;
+	ICONINFO iconInfo;
+
+	if (!icon || !GetIconInfo(icon, &iconInfo))
+		return pixmap;
+
+	BITMAP bm;
+	if (iconInfo.hbmColor &&
+	    GetObject(iconInfo.hbmColor, sizeof(bm), &bm) &&
+	    bm.bmWidth > 0 && bm.bmHeight > 0) {
+		QImage image(bm.bmWidth, bm.bmHeight, QImage::Format_ARGB32);
+
+		BITMAPINFO bmi;
+		ZeroMemory(&bmi, sizeof(bmi));
+		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		bmi.bmiHeader.biWidth = bm.bmWidth;
+		bmi.bmiHeader.biHeight = -bm.bmHeight; /* top-down rows */
+		bmi.bmiHeader.biPlanes = 1;
+		bmi.bmiHeader.biBitCount = 32;
+		bmi.bmiHeader.biCompression = BI_RGB;
+
+		HDC hdc = GetDC(nullptr);
+		if (GetDIBits(hdc, iconInfo.hbmColor, 0, bm.bmHeight,
+			      image.bits(), &bmi, DIB_RGB_COLORS))
+			pixmap = QPixmap::fromImage(image);
+		ReleaseDC(nullptr, hdc);
+	}
+
+	if (iconInfo.hbmColor)
+		DeleteObject(iconInfo.hbmColor);
+	if (iconInfo.hbmMask)
+		DeleteObject(iconInfo.hbmMask);
+
+	return pixmap;
+}
+
 QPixmap pixmapFromShellImageList(int iImageList, const SHFILEINFO &info)
 {
 	QPixmap result;
@@ -90,7 +132,7 @@ QPixmap pixmapFromShellImageList(int iImageList, const SHFILEINFO &info)
 
 	HICON hIcon = 0;
 	if (SUCCEEDED(imageList->GetIcon(info.iIcon, ILD_TRANSPARENT, &hIcon))) {
-		result = QtWin::fromHICON(hIcon);
+		result = pixmapFromHICON(hIcon);
 		DestroyIcon(hIcon);
 	}
 

@@ -1,7 +1,9 @@
 QT       += core gui sql
 
 unix:!macx {
-        QT += KWindowSystem
+        # KWindowEffects only exists in the KF5 (Qt5) module; on Qt6 the
+        # blur-behind call is compiled out (see mainwindow.cpp)
+        lessThan(QT_MAJOR_VERSION, 6): QT += KWindowSystem
         SOURCES += shortcut_x11.cpp
         CONFIG += link_pkgconfig
         PKGCONFIG += gio-2.0 glib-2.0 gio-unix-2.0
@@ -9,21 +11,20 @@ unix:!macx {
 }
 
 win32: {
-        QT += winextras
         SOURCES += shortcut_win.cpp
-        LIBS += -lpsapi
+        LIBS += -lpsapi -lgdi32
 }
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-CONFIG += c++11
+CONFIG += c++17
 
 # 3rd library
 include(3rd/SingleApplication/singleapplication.pri)
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
-# depend on your compiler). Please consult the documentation of the
+# depend on your compiler). Please consult the documentation for the
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QAPPLICATION_CLASS=QApplication
@@ -38,7 +39,7 @@ unix:!macx {
 }
 
 # You can also make your code fail to compile if it uses deprecated APIs.
-# In order to do so, uncomment the following line.
+# To do so, uncomment the following line.
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
@@ -78,7 +79,7 @@ PRE_TARGETDEPS += compiler_lrelease_make_all
 
 for (translation, TRANSLATIONS) {
     translation = $$basename(translation)
-    QM_FILES += $$OUT_PWD/$$replace(translation, \\..*$, .qm)
+    QM_FILES += $$OUT_PWD/$$replace(translation, \..*$, .qm)
 }
 qm_files.files = $$QM_FILES
 qm_files.path = $$QM_FILES_INSTALL_PATH
@@ -96,9 +97,9 @@ unix:!macx {
         desktop_file.path = /etc/xdg/autostart
         INSTALLS += desktop_file
 
-	icon_file.files = resources/$${TARGET}.svg
-	icon_file.path = /usr/share/icons/hicolor/scalable/apps
-	INSTALLS += icon_file
+        icon_file.files = resources/$${TARGET}.svg
+        icon_file.path = /usr/share/icons/hicolor/scalable/apps
+        INSTALLS += icon_file
 }
 
 INSTALLS += target

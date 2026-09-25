@@ -30,7 +30,6 @@ static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
 static const int CLIPBOARD_SETTLE_MS = 1000;
 
 #ifdef Q_OS_WIN
-#include <QtWin>
 #include <windows.h>
 #include <windowsx.h>
 #include <winuser.h>
@@ -44,10 +43,14 @@ static const int CLIPBOARD_SETTLE_MS = 1000;
 #endif
 
 #ifdef Q_OS_LINUX
-#include <KF5/KWindowSystem/KWindowEffects>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+/* KWindowEffects only exists in the KF5 (Qt5) module */
+#include <KF5/KWindowSystem/KWindowEffects>
+#define PASTES_HAVE_KWINDOWEFFECTS 1
+#endif
 #endif
 
 #ifdef Q_OS_WIN
@@ -462,7 +465,7 @@ void MainWindow::loadStyleSheet(QWidget *w, const QString &styleSheetFile)
 	file.open(QFile::ReadOnly);
 	if (file.isOpen()) {
 		QString styleSheet = w->styleSheet();
-		styleSheet += QLatin1String(file.readAll());
+		styleSheet += QString::fromUtf8(file.readAll());
 		w->setStyleSheet(styleSheet);
 		file.close();
 	} else {
@@ -519,7 +522,7 @@ void MainWindow::clipboard_later(void)
 	do {
 		if (itemData->mimeData->hasUrls() && !itemData->mimeData->urls().isEmpty()) {
 			QList<QUrl> urls = itemData->mimeData->urls();
-			foreach (QUrl url, urls) {
+			for (const QUrl &url : urls) {
 				hash.addData(url.toEncoded());
 			}
 			widget->setUrls(urls);
@@ -678,24 +681,24 @@ QPixmap MainWindow::getClipboardOwnerIcon(void)
 					SHGFI_OPENICON | SHGFI_USEFILEATTRIBUTES;
 				const HRESULT hr = SHGetFileInfo(filename, 0, &info, sizeof(SHFILEINFO), flags);
 				if (FAILED(hr)) {
-					pixmap = QtWin::fromHICON(::LoadIcon(0, IDI_APPLICATION));
+					pixmap = pixmapFromHICON(::LoadIcon(0, IDI_APPLICATION));
 				} else  {
 					pixmap = pixmapFromShellImageList(0x4, info);
 					if (pixmap.isNull())
 						pixmap = pixmapFromShellImageList(0x2, info);
 					if (pixmap.isNull())
-						pixmap = QtWin::fromHICON(info.hIcon);
+						pixmap = pixmapFromHICON(info.hIcon);
 					if (pixmap.isNull())
-						pixmap = QtWin::fromHICON(::LoadIcon(0, IDI_APPLICATION));
+						pixmap = pixmapFromHICON(::LoadIcon(0, IDI_APPLICATION));
 				}
 			}
 			::CloseHandle(processHandle);
 		} else {
 			/* Failed, use default windows icon */
-			pixmap = QtWin::fromHICON(::LoadIcon(0, IDI_APPLICATION));
+			pixmap = pixmapFromHICON(::LoadIcon(0, IDI_APPLICATION));
 		}
 	} else {
-		pixmap = QtWin::fromHICON(icon);
+		pixmap = pixmapFromHICON(icon);
 	}
 #endif
 
@@ -807,7 +810,7 @@ again:
 void MainWindow::enabledGlassEffect(void)
 {
 #ifdef Q_OS_WIN
-	if (QOperatingSystemVersion::current() >= QOperatingSystemVersion(QOperatingSystemVersion::Windows, 10, 0)) {
+	if (QOperatingSystemVersion::current() >= QOperatingSystemVersion::Windows10) {
 		HWND hWnd = HWND(this->winId());
 		HMODULE hUser = GetModuleHandle(L"user32.dll");
 		if (hUser) {
@@ -825,7 +828,7 @@ void MainWindow::enabledGlassEffect(void)
 	}
 #endif
 
-#ifdef Q_OS_LINUX
+#ifdef PASTES_HAVE_KWINDOWEFFECTS
 	KWindowEffects::enableBlurBehind(this->winId(), true);
 #endif
 }

@@ -24,8 +24,11 @@ void LoadTranlateFile(SingleApplication *app)
 
 int main(int argc, char *argv[])
 {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+	/* On Qt6 high-DPI scaling is always on and these attributes are gone */
 	QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 	QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+#endif
 
 	SingleApplication a(argc, argv);
 	LoadTranlateFile(&a);

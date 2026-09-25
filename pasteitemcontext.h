@@ -9,7 +9,6 @@
 #include <QStyleOption>
 
 #ifdef Q_OS_WIN
-#include <QtWin>
 #include <windows.h>
 #include <windowsx.h>
 #include <winuser.h>
@@ -23,6 +22,8 @@
 #define LABEL_HEIGHT	30
 
 #ifdef Q_OS_WIN
+/* Replaces QtWinExtras (removed in Qt6): converts a native HICON to a QPixmap */
+QPixmap pixmapFromHICON(HICON icon);
 QPixmap pixmapFromShellImageList(int iImageList, const SHFILEINFO &info);
 #endif
 
