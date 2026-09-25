@@ -102,5 +102,20 @@
         <source>Search</source>
         <translation>搜索</translation>
     </message>
+    <message>
+        <location filename="mainwindow.cpp" line="411"/>
+        <source>Show</source>
+        <translation>显示</translation>
+    </message>
+    <message>
+        <location filename="mainwindow.cpp" line="425"/>
+        <source>Quit</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <location filename="mainwindow.cpp" line="455"/>
+        <source>records</source>
+        <translation>条记录</translation>
+    </message>
 </context>
 </TS>

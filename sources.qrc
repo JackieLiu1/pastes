@@ -2,6 +2,7 @@
     <qresource prefix="/">
         <file>resources/stylesheet.qss</file>
         <file>resources/background.jpg</file>
+        <file>resources/pastes.svg</file>
         <file>resources/ubuntu.png</file>
         <file>resources/points.png</file>
         <file>resources/search.png</file>

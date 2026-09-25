@@ -18,6 +18,8 @@
 #include <QClipboard>
 #include <QTimer>
 
+class QSystemTrayIcon;
+
 class MainWindow : public QMainWindow
 {
 	Q_OBJECT
@@ -33,6 +35,8 @@ protected:
 
 private:
 	void initUI(void);
+	void setupTrayIcon(void);
+	void updateTrayTooltip(void);
 	void reloadData(void);
 	PasteItem *insertItemWidget(bool);
 	void resetItemTabOrder(void);
@@ -63,6 +67,9 @@ private:
 	SearchBar			*__searchbar;
 	QPushButton			*__menu_button;
 	QListWidget			*__scroll_widget;
+
+	/* system tray entry (bottom-right corner) */
+	QSystemTrayIcon			*__tray_icon;
 
 	/* It's copyed from myself, We need save icon */
 	QPixmap				__pasteitem_icon;

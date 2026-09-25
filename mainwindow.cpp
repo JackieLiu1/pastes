@@ -19,6 +19,7 @@
 #include <QShortcut>
 #include <QEvent>
 #include <QDebug>
+#include <QSystemTrayIcon>
 
 #include "mainwindow.h"
 #include "pasteitem.h"
@@ -397,8 +398,61 @@ void MainWindow::initUI(void)
 	/* need this for resize this->__scroll_widget size */
 	this->__main_frame->show();
 
+	this->setupTrayIcon();
+
 	/* load data from database */
 	this->reloadData();
+}
+
+void MainWindow::setupTrayIcon(void)
+{
+	QMenu *tray_menu = new QMenu(this);
+
+	QAction *show_action = new QAction(QObject::tr("Show"), this);
+	QObject::connect(show_action, &QAction::triggered, [this](void) {
+		this->show_window();
+	});
+	tray_menu->addAction(show_action);
+
+	QAction *about_me = new QAction(QObject::tr("About me"), this);
+	QObject::connect(about_me, &QAction::triggered, [this](void) {
+		QMessageBox::about(this, QObject::tr("About me"), "Powered by Jackie Liu <liuyun01@kylinos.cn>");
+	});
+	tray_menu->addAction(about_me);
+
+	tray_menu->addSeparator();
+
+	QAction *quit_action = new QAction(QObject::tr("Quit"), this);
+	QObject::connect(quit_action, &QAction::triggered, [](void) {
+		qApp->quit();
+	});
+	tray_menu->addAction(quit_action);
+
+	this->__tray_icon = new QSystemTrayIcon(this);
+	this->__tray_icon->setIcon(QIcon(":/resources/pastes.svg"));
+	this->__tray_icon->setToolTip("Pastes");
+	this->__tray_icon->setContextMenu(tray_menu);
+	QObject::connect(this->__tray_icon, &QSystemTrayIcon::activated, [this](QSystemTrayIcon::ActivationReason reason) {
+		/* left click / double click toggles the window */
+		if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
+			if (this->isVisible())
+				this->hide_window();
+			else
+				this->show_window();
+		}
+	});
+
+	if (!QSystemTrayIcon::isSystemTrayAvailable())
+		qWarning() << "Pastes: no system tray available";
+	this->__tray_icon->show();
+}
+
+void MainWindow::updateTrayTooltip(void)
+{
+	if (!this->__tray_icon)
+		return;
+
+	this->__tray_icon->setToolTip(QString("%1 ").arg(this->__scroll_widget->count()) + QObject::tr("records"));
 }
 
 void MainWindow::reloadData()
@@ -453,6 +507,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 
 	this->__scroll_widget->setCurrentRow(0);
 	this->resetItemTabOrder();
+	this->updateTrayTooltip();
 
 	/* Need create window init time, it's speed up for show */
 	this->setVisible(true);
@@ -614,6 +669,7 @@ void MainWindow::clipboard_later(void)
 	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
 	this->__db.insertPasteItem(itemData);
 	this->resetItemTabOrder();
+	this->updateTrayTooltip();
 }
 
 #ifdef Q_OS_LINUX
