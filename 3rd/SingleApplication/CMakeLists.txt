@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 3.7.0)
+cmake_minimum_required(VERSION 3.16)
 
 project(SingleApplication LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
+
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Core REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Network REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC
     singleapplication.cpp
@@ -10,20 +13,18 @@ add_library(${PROJECT_NAME} STATIC
 )
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-# Find dependencies
-find_package(Qt5 COMPONENTS Network REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt5::Network)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Network)
 
 if(QAPPLICATION_CLASS STREQUAL QApplication)
-    find_package(Qt5 COMPONENTS Widgets REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PUBLIC Qt5::Widgets)
+    find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PUBLIC Qt${QT_VERSION_MAJOR}::Widgets)
 elseif(QAPPLICATION_CLASS STREQUAL QGuiApplication)
-    find_package(Qt5 COMPONENTS Gui REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PUBLIC Qt5::Gui)
+    find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Gui REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PUBLIC Qt${QT_VERSION_MAJOR}::Gui)
 else()
     set(QAPPLICATION_CLASS QCoreApplication)
-    find_package(Qt5 COMPONENTS Core REQUIRED)
-    target_link_libraries(${PROJECT_NAME} PUBLIC Qt5::Core)
+    find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PUBLIC Qt${QT_VERSION_MAJOR}::Core)
 endif()
 
 if(WIN32)

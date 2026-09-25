@@ -1,0 +1,7 @@
+# build output
+build/
+*.o
+*.qm
+
+# local runtime data
+PastesDatabase.db

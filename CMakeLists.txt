@@ -1,0 +1,76 @@
+cmake_minimum_required(VERSION 3.16)
+
+project(pastes VERSION 0.7.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+include(GNUInstallDirs)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Sql LinguistTools)
+
+# used by the bundled SingleApplication build
+set(QAPPLICATION_CLASS QApplication)
+add_subdirectory(3rd/SingleApplication)
+
+set(PASTES_SOURCES
+    main.cpp
+    mainframe.cpp mainframe.h
+    mainwindow.cpp mainwindow.h
+    database.cpp database.h
+    pasteitem.cpp pasteitem.h
+    pasteitembarnner.cpp pasteitembarnner.h
+    pasteitemcontext.cpp pasteitemcontext.h
+    searchbar.cpp searchbar.h
+    shortcut.cpp shortcut.h
+    sources.qrc
+)
+
+if(WIN32)
+    list(APPEND PASTES_SOURCES shortcut_win.cpp)
+elseif(UNIX AND NOT APPLE)
+    list(APPEND PASTES_SOURCES shortcut_x11.cpp)
+endif()
+
+qt_add_executable(pastes ${PASTES_SOURCES})
+
+target_link_libraries(pastes PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Sql
+    SingleApplication::SingleApplication
+)
+
+if(WIN32)
+    set_target_properties(pastes PROPERTIES WIN32_EXECUTABLE TRUE)
+    target_link_libraries(pastes PRIVATE psapi gdi32)
+elseif(UNIX AND NOT APPLE)
+    find_package(X11 REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0 glib-2.0 gio-unix-2.0)
+    target_link_libraries(pastes PRIVATE
+        X11::X11
+        ${X11_Xtst_LIB}
+        PkgConfig::GIO
+    )
+endif()
+
+# translations: Pastes_zh_CN.ts -> Pastes_zh_CN.qm
+qt_add_translation(QM_FILES Pastes_zh_CN.ts)
+add_custom_target(translations ALL DEPENDS ${QM_FILES})
+
+if(UNIX AND NOT APPLE)
+    # main.cpp loads the .qm from this path at runtime
+    target_compile_definitions(pastes PRIVATE
+        QM_FILES_INSTALL_PATH="${CMAKE_INSTALL_FULL_DATADIR}/pastes/translations/"
+    )
+    install(FILES pastes.desktop DESTINATION /etc/xdg/autostart)
+    install(FILES resources/pastes.svg
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+endif()
+
+install(TARGETS pastes DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATADIR}/pastes/translations)
