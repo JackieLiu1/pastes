@@ -9,18 +9,16 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout pastes source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Update apt repository
         run: sudo apt-get update -y
-      - name: Install build dependcies
-        run: sudo apt-get install -y build-essential qt5-default qttools5-dev-tools qtmultimedia5-dev debhelper-compat pkg-kde-tools libglib2.0-dev libqt5x11extras5-dev libkf5windowsystem-dev libgsettings-qt-dev pkg-config qt5-qmake qtbase5-dev qtbase5-dev-tools qtbase5-private-dev qtchooser qttools5-dev-tools libxtst-dev
-      - name: QMake configure & Make
+      - name: Install build dependencies
+        run: sudo apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libglib2.0-dev libxtst-dev libx11-dev pkg-config
+      - name: CMake configure & build
         run: |
-          mkdir build;
-          cd build;
-          qmake ..;
-          make -j$(nproc);
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Release;
+          cmake --build build -j$(nproc);

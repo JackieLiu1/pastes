@@ -2,7 +2,15 @@ Source: pastes
 Section: unknown
 Priority: optional
 Maintainer: jackieliu <liuyun01@kylinos.cn>
-Build-Depends: debhelper-compat (= 12)
+Build-Depends: debhelper-compat (= 12),
+ cmake,
+ qt6-base-dev,
+ qt6-tools-dev,
+ qt6-tools-dev-tools,
+ libglib2.0-dev,
+ libxtst-dev,
+ libx11-dev,
+ pkg-config
 Standards-Version: 4.4.1
 #Homepage: <insert the upstream URL, if relevant>
 #Vcs-Browser: https://salsa.debian.org/debian/pastes
