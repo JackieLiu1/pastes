@@ -18,8 +18,8 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	this->setAttribute(Qt::WA_TranslucentBackground);
 
 	m_frame_effect->setOffset(0, 0);
-	m_frame_effect->setColor(QColor(0, 0, 0, 180));
-	m_frame_effect->setBlurRadius(8);
+	m_frame_effect->setColor(QColor(0, 0, 0, 80));
+	m_frame_effect->setBlurRadius(16);
 	m_frame->setGraphicsEffect(m_frame_effect);
 	m_frame->setObjectName("PasteItemFrame");
 

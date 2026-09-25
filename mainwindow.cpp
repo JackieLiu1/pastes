@@ -135,8 +135,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 	this->__main_frame->setGeometry(this->geometry());
 	this->__main_frame_shadow->setOffset(0, 0);
-	this->__main_frame_shadow->setColor(Qt::lightGray);
-	this->__main_frame_shadow->setBlurRadius(10);
+	this->__main_frame_shadow->setColor(QColor(0, 0, 0, 130));
+	this->__main_frame_shadow->setBlurRadius(24);
 	this->__main_frame->setGraphicsEffect(this->__main_frame_shadow);
 	this->__main_frame->setFocusPolicy(Qt::ClickFocus);
 	QObject::connect(this->__main_frame, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));

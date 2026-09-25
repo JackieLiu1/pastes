@@ -1,3 +1,8 @@
+/*
+ * Pastes — dark acrylic theme (Fluent-inspired)
+ * 面板：深色半透明叠加在系统模糊上；卡片：圆角 + 细边框 + 微弱高光
+ */
+
 * {
         margin: 0;
         padding: 0;
@@ -6,60 +11,82 @@
 
 #MainFrame
 {
-        background-color: rgba(244, 249, 255, 50%);
-        border-top: 1px solid rgb(202, 202, 202);
-        border-top-right-radius: 3px;
-        border-top-left-radius: 3px;
+        background-color: rgba(24, 26, 32, 87%);
+        border-top: 1px solid rgba(255, 255, 255, 32);
+        border-top-right-radius: 14px;
+        border-top-left-radius: 14px;
 }
+
+/* ---------- 条目列表 ---------- */
 
 QListWidget
 {
         background-color: transparent;
+        border: 0px;
 }
 
 QListWidget::Item
 {
         background-color: transparent;
+        border-radius: 14px;
 }
 
 QListWidget::Item:hover
 {
-        background: #A3ABBD;
-        border-radius: 8px;
+        background: rgba(255, 255, 255, 22);
 }
 
 QListWidget::Item:selected
 {
-        background: #4A9CF5;
-        border-radius: 8px;
+        background: rgba(255, 255, 255, 40);
+        border: 1px solid rgba(255, 255, 255, 90);
 }
+
+/* ---------- 条目卡片 ---------- */
 
 #PasteItemFrame
 {
         margin: 5px;
         padding: 0px;
-        background-color: white;
-        border-radius: 8px;
-        color: #000;
+        background-color: rgba(255, 255, 255, 26);
+        border: 1px solid rgba(255, 255, 255, 48);
+        border-radius: 12px;
+        color: #F5F7FA;
+        font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Noto Sans CJK SC";
 }
 
+#Context
+{
+        padding: 0px;
+        border: 0px;
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
+        background-color: transparent;
+}
+
+/* 文本内容 */
 #ContextTextFrame
 {
         padding: 10px;
-        border-bottom-right-radius: 8px;
-        border-bottom-left-radius: 8px;
+        color: #F5F7FA;
+        font-size: 13px;
+        background-color: transparent;
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
 }
 
+/* 底部信息条（尺寸/字数）*/
 #ContextTextFrame > QLabel
 {
-        color: rgb(183, 183, 183);
-        font-size: 12px;
-        font-family: Monospace;
-        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop: 0 rgba(255,255,255,0), stop: 0.2 rgba(255,255,255,1));
-        border-bottom-right-radius: 8px;
-        border-bottom-left-radius: 8px;
+        color: rgba(235, 238, 242, 225);
+        font-size: 11px;
+        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop: 0 rgba(20, 22, 26, 0), stop: 0.45 rgba(20, 22, 26, 190), stop: 1 rgba(20, 22, 26, 215));
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
 }
 
+/* 图片内容 */
 #ContextPixmapFrame
 {
         background-image: url(:/resources/background.jpg);
@@ -67,34 +94,27 @@ QListWidget::Item:selected
         background-position: top left;
         background-color: transparent;
         padding: 0px;
-        border-bottom-right-radius: 8px;
-        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
 }
 
 #ContextPixmapFrame > QLabel
 {
-        color: rgb(225, 225, 225);
-        font-size: 12px;
-        font-family: Monospace;
-        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop: 0 rgba(0,0,0,0), stop: 0.5 rgba(0,0,0,0.7), stop: 1 rgba(0,0,0,0.9));
-        border-bottom-right-radius: 8px;
-        border-bottom-left-radius: 8px;
+        color: rgba(235, 238, 242, 225);
+        font-size: 11px;
+        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop: 0 rgba(20, 22, 26, 0), stop: 0.5 rgba(20, 22, 26, 185), stop: 1 rgba(20, 22, 26, 215));
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
 }
 
-#Context
-{
-        padding: 0px;
-        border: 0px;
-        border-radius: 0px;
-        border-bottom-right-radius: 8px;
-        border-bottom-left-radius: 8px;
-        background-color: white;
-}
+/* ---------- 卡片头（类型 + 时间 + 来源图标）---------- */
 
 #Barnner
 {
-        border-top-right-radius: 8px;
-        border-top-left-radius: 8px;
+        background-color: transparent;
+        border-top-right-radius: 12px;
+        border-top-left-radius: 12px;
 }
 
 #Barnner > QLabel
@@ -102,33 +122,58 @@ QListWidget::Item:selected
         background-color: transparent;
         padding: 0px;
         margin: 0px;
-        color: white;
+        color: #F2F4F8;
 }
 
+/* ---------- 搜索栏 ---------- */
 
 #SearchBar
 {
         padding: 0;
         margin: 0;
         border: 0;
-}
-
-#SearchBar > QPushButton
-{
-        background-color: rgb(170, 170, 170);
-        border-top-right-radius: 3px;
-        border-bottom-right-radius: 3px;
+        background: transparent;
 }
 
 #SearchBar > QLineEdit
 {
-        font-family: Monospace;
-        font-size: 14px;
-        color: rgb(184, 184, 184);
-        border-radius: 3px;
+        font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Noto Sans CJK SC";
+        font-size: 13px;
+        color: #F2F4F8;
+        background-color: rgba(255, 255, 255, 26);
+        border: 1px solid rgba(255, 255, 255, 42);
+        border-radius: 20px;
+        padding-right: 6px;
+        selection-background-color: rgba(76, 194, 255, 90);
+}
+
+#SearchBar > QLineEdit:hover
+{
+        background-color: rgba(255, 255, 255, 34);
 }
 
 #SearchBar > QLineEdit:focus
 {
-        color: rgb(3, 3, 3);
+        background-color: rgba(255, 255, 255, 44);
+        border: 1px solid rgba(76, 194, 255, 200);
+        color: #FFFFFF;
+}
+
+/* ---------- 主面板上的按钮（右上角菜单）---------- */
+
+#MainFrame > QPushButton
+{
+        background-color: transparent;
+        border: 0px;
+        border-radius: 15px;
+}
+
+#MainFrame > QPushButton:hover
+{
+        background-color: rgba(255, 255, 255, 36);
+}
+
+#MainFrame > QPushButton:pressed
+{
+        background-color: rgba(255, 255, 255, 54);
 }

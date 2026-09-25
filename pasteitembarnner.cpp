@@ -15,8 +15,8 @@ Barnner::Barnner(QWidget *parent) : QWidget(parent),
 	this->setAttribute(Qt::WA_StyledBackground, true);
 
 	this->m_icon->setScaledContents(false);
-	this->m_text->setStyleSheet(this->m_text->styleSheet()+"font-size: 22px;");
-	this->m_time->setStyleSheet(this->m_time->styleSheet()+"font-size: 11px; color: rgba(255, 255, 255, 0.7);");
+	this->m_text->setStyleSheet(this->m_text->styleSheet()+"font-size: 15px; font-weight: 600;");
+	this->m_time->setStyleSheet(this->m_time->styleSheet()+"font-size: 11px; color: rgba(255, 255, 255, 0.92);");
 
 	QVBoxLayout *vboxlayout = new QVBoxLayout();
 	vboxlayout->setSpacing(3);
@@ -44,11 +44,13 @@ void Barnner::setBackground(QRgb rgb)
 
 	m_background = rgb;
 	m_has_background = true;
-	QString s = QString("background-color: rgb(%1, %2, %3);")
+	/* translucent tint: the card surface shows through, and the white
+	 * title text stays readable on any source color */
+	QString s = QString("background-color: rgba(%1, %2, %3, 90);")
 				.arg(qRed(rgb))
 				.arg(qGreen(rgb))
 				.arg(qBlue(rgb));
-	this->setStyleSheet(s + "border-top-right-radius: 8px;");
+	this->setStyleSheet(s + "border-top-left-radius: 12px; border-top-right-radius: 12px;");
 }
 
 QRgb Barnner::averageColor(QPixmap *pixmap)
@@ -57,7 +59,7 @@ QRgb Barnner::averageColor(QPixmap *pixmap)
 	QColor color;
 
 	if (!pixmap || pixmap->isNull())
-		return qRgb(255, 255, 255);
+		return qRgb(60, 62, 68);
 
 	QImage image = pixmap->toImage();
 	for (int i = 0; i < image.width(); i++) {
@@ -74,7 +76,9 @@ QRgb Barnner::averageColor(QPixmap *pixmap)
 	g /= count;
 	b /= count;
 
-	return qRgb((int)r, (int)g, (int)b);
+	/* Darken the average so the white title text stays readable whatever
+	 * the source color (a white icon must not produce a white banner) */
+	return qRgb((int)(r * 0.45 + 8), (int)(g * 0.45 + 8), (int)(b * 0.45 + 12));
 }
 
 void Barnner::resizeEvent(QResizeEvent *event)

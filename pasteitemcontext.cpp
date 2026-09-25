@@ -37,7 +37,11 @@ void TextFrame::setMaskFrameText(QString s)
 
 void TextFrame::setBackgroundColor(QString colorName)
 {
-	this->setStyleSheet(QString("background-color: %1;").arg(colorName));
+	/* color swatch card: round the bottom corners to match the card frame
+	 * (the top corners sit under the banner) */
+	this->setStyleSheet(QString("background-color: %1;"
+				    "border-bottom-right-radius: 12px;"
+				    "border-bottom-left-radius: 12px;").arg(colorName));
 }
 
 void TextFrame::resizeEvent(QResizeEvent *event)
@@ -228,8 +232,8 @@ bool FileFrame::setUrls(QList<QUrl> &urls)
 		/* The shadow effect only has to be attached once, not on every resize */
 		QGraphicsDropShadowEffect *shadow = new QGraphicsDropShadowEffect(label);
 		shadow->setOffset(0, 0);
-		shadow->setColor(Qt::gray);
-		shadow->setBlurRadius(8);
+		shadow->setColor(QColor(0, 0, 0, 110));
+		shadow->setBlurRadius(12);
 		label->setGraphicsEffect(shadow);
 		QPair<QLabel *, QPixmap> pair(label, pixmap);
 		this->m_labels.push_back(pair);
