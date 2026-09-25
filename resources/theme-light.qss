@@ -1,0 +1,180 @@
+/*
+ * Pastes — light theme (macOS Paste style)
+ * 白色卡片 + 浅灰面板 + 苹果蓝选中态，参考 pasteapp.io 的设计语言
+ */
+
+* {
+        margin: 0;
+        padding: 0;
+        outline: 0px;
+}
+
+#MainFrame
+{
+        background-color: rgba(243, 244, 246, 91%);
+        border-top: 1px solid rgba(0, 0, 0, 28);
+        border-top-right-radius: 14px;
+        border-top-left-radius: 14px;
+}
+
+/* ---------- 条目列表 ---------- */
+
+QListWidget
+{
+        background-color: transparent;
+        border: 0px;
+}
+
+QListWidget::Item
+{
+        background-color: transparent;
+        border-radius: 14px;
+}
+
+QListWidget::Item:hover
+{
+        background: rgba(0, 0, 0, 18);
+}
+
+QListWidget::Item:selected
+{
+        background: rgba(10, 132, 255, 36);
+        border: 1px solid rgba(10, 132, 255, 165);
+}
+
+/* ---------- 条目卡片 ---------- */
+
+#PasteItemFrame
+{
+        margin: 5px;
+        padding: 0px;
+        background-color: rgba(255, 255, 255, 242);
+        border: 1px solid rgba(0, 0, 0, 26);
+        border-radius: 12px;
+        color: #1D1D1F;
+        font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Noto Sans CJK SC";
+}
+
+#Context
+{
+        padding: 0px;
+        border: 0px;
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
+        background-color: transparent;
+}
+
+/* 文本内容 */
+#ContextTextFrame
+{
+        padding: 10px;
+        color: #1D1D1F;
+        font-size: 13px;
+        background-color: transparent;
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
+}
+
+/* 底部信息条（尺寸/字数）*/
+#ContextTextFrame > QLabel
+{
+        color: #6E6E73;
+        font-size: 11px;
+        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop: 0 rgba(255, 255, 255, 0), stop: 0.45 rgba(255, 255, 255, 225), stop: 1 rgba(250, 250, 252, 240));
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
+}
+
+/* 图片内容 */
+#ContextPixmapFrame
+{
+        background-image: url(:/resources/background.jpg);
+        background-repeat: repeat-xy;
+        background-position: top left;
+        background-color: transparent;
+        padding: 0px;
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
+}
+
+#ContextPixmapFrame > QLabel
+{
+        color: rgba(235, 238, 242, 235);
+        font-size: 11px;
+        background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop: 0 rgba(20, 22, 26, 0), stop: 0.5 rgba(20, 22, 26, 185), stop: 1 rgba(20, 22, 26, 215));
+        border-bottom-right-radius: 12px;
+        border-bottom-left-radius: 12px;
+}
+
+/* ---------- 卡片头（类型 + 时间 + 来源图标）---------- */
+
+#Barnner
+{
+        background-color: transparent;
+        border-top-right-radius: 12px;
+        border-top-left-radius: 12px;
+}
+
+#Barnner > QLabel
+{
+        background-color: transparent;
+        padding: 0px;
+        margin: 0px;
+        color: #F2F4F8;
+}
+
+/* ---------- 搜索栏 ---------- */
+
+#SearchBar
+{
+        padding: 0;
+        margin: 0;
+        border: 0;
+        background: transparent;
+}
+
+#SearchBar > QLineEdit
+{
+        font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "Noto Sans CJK SC";
+        font-size: 13px;
+        color: #1D1D1F;
+        background-color: rgba(255, 255, 255, 235);
+        border: 1px solid rgba(0, 0, 0, 34);
+        border-radius: 20px;
+        padding-right: 6px;
+        selection-background-color: rgba(10, 132, 255, 90);
+}
+
+#SearchBar > QLineEdit:hover
+{
+        background-color: rgba(255, 255, 255, 245);
+        border: 1px solid rgba(0, 0, 0, 52);
+}
+
+#SearchBar > QLineEdit:focus
+{
+        background-color: #FFFFFF;
+        border: 1px solid rgba(10, 132, 255, 210);
+        color: #1D1D1F;
+}
+
+/* ---------- 主面板上的按钮（右上角菜单）---------- */
+
+#MainFrame > QPushButton
+{
+        background-color: transparent;
+        border: 0px;
+        border-radius: 15px;
+}
+
+#MainFrame > QPushButton:hover
+{
+        background-color: rgba(0, 0, 0, 26);
+}
+
+#MainFrame > QPushButton:pressed
+{
+        background-color: rgba(0, 0, 0, 44);
+}

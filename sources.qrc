@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
-        <file>resources/stylesheet.qss</file>
+        <file>resources/theme-dark.qss</file>
+        <file>resources/theme-light.qss</file>
         <file>resources/background.jpg</file>
         <file>resources/pastes.svg</file>
         <file>resources/ubuntu.png</file>

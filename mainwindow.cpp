@@ -20,6 +20,7 @@
 #include <QEvent>
 #include <QDebug>
 #include <QSystemTrayIcon>
+#include <QSettings>
 
 #include "mainwindow.h"
 #include "pasteitem.h"
@@ -125,7 +126,7 @@ MainWindow::MainWindow(QWidget *parent)
 	this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
 			     Qt::BypassWindowManagerHint | Qt::SplashScreen);
 	this->setFocusPolicy(Qt::NoFocus);
-	MainWindow::loadStyleSheet(this, ":/resources/stylesheet.qss");
+	this->applyTheme(QSettings().value("theme", "dark").toString());
 	this->setCentralWidget(this->__main_frame);
 #if !defined Q_OS_LINUX && !defined Q_OS_WIN
 	this->setContentsMargins(0, 10, 0, 0);
@@ -420,6 +421,14 @@ void MainWindow::setupTrayIcon(void)
 	});
 	tray_menu->addAction(about_me);
 
+	QAction *light_theme = new QAction(QObject::tr("Light theme"), this);
+	light_theme->setCheckable(true);
+	light_theme->setChecked(this->__theme == "light");
+	QObject::connect(light_theme, &QAction::toggled, [this](bool checked) {
+		this->applyTheme(checked ? "light" : "dark");
+	});
+	tray_menu->addAction(light_theme);
+
 	tray_menu->addSeparator();
 
 	QAction *quit_action = new QAction(QObject::tr("Quit"), this);
@@ -514,18 +523,23 @@ void MainWindow::parsingData(QList<ItemData *> list)
 	this->setVisible(false);
 }
 
-void MainWindow::loadStyleSheet(QWidget *w, const QString &styleSheetFile)
+void MainWindow::applyTheme(const QString &name)
 {
-	QFile file(styleSheetFile);
-	file.open(QFile::ReadOnly);
-	if (file.isOpen()) {
-		QString styleSheet = w->styleSheet();
-		styleSheet += QString::fromUtf8(file.readAll());
-		w->setStyleSheet(styleSheet);
-		file.close();
+	QString file = (name == "light") ? ":/resources/theme-light.qss"
+					 : ":/resources/theme-dark.qss";
+
+	QFile qss(file);
+	qss.open(QFile::ReadOnly);
+	if (qss.isOpen()) {
+		/* replace (not append) so switching themes at runtime works */
+		this->setStyleSheet(QString::fromUtf8(qss.readAll()));
+		qss.close();
 	} else {
-		QMessageBox::information(nullptr, QObject::tr("tips"), QObject::tr("cannot find qss file"));
+		qWarning() << "Pastes: cannot find theme file" << file;
 	}
+
+	this->__theme = (name == "light") ? "light" : "dark";
+	QSettings().setValue("theme", this->__theme);
 }
 
 /* Insert a PasteItem into listwidget */

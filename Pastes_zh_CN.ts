@@ -52,20 +52,10 @@
         <translation>多个文件</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="222"/>
-        <location filename="mainwindow.cpp" line="224"/>
+        <location filename="mainwindow.cpp" line="55"/>
+        <location filename="mainwindow.cpp" line="57"/>
         <source>About me</source>
         <translation>关于我</translation>
-    </message>
-    <message>
-        <location filename="mainwindow.cpp" line="316"/>
-        <source>tips</source>
-        <translation>提示</translation>
-    </message>
-    <message>
-        <location filename="mainwindow.cpp" line="316"/>
-        <source>cannot find qss file</source>
-        <translation>没有找到 QSS 文件</translation>
     </message>
     <message>
         <location filename="pasteitembarnner.cpp" line="119"/>
@@ -106,6 +96,11 @@
         <location filename="mainwindow.cpp" line="411"/>
         <source>Show</source>
         <translation>显示</translation>
+    </message>
+    <message>
+        <location filename="mainwindow.cpp" line="424"/>
+        <source>Light theme</source>
+        <translation>浅色主题</translation>
     </message>
     <message>
         <location filename="mainwindow.cpp" line="425"/>

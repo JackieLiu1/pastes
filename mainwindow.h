@@ -19,7 +19,6 @@
 #include <QTimer>
 
 class QSystemTrayIcon;
-
 class MainWindow : public QMainWindow
 {
 	Q_OBJECT
@@ -37,11 +36,11 @@ private:
 	void initUI(void);
 	void setupTrayIcon(void);
 	void updateTrayTooltip(void);
+	void applyTheme(const QString &name);
 	void reloadData(void);
 	PasteItem *insertItemWidget(bool);
 	void resetItemTabOrder(void);
 	PasteItem *currentPasteItem(void);
-	static void loadStyleSheet(QWidget *, const QString &);
 	QPixmap getClipboardOwnerIcon(void);
 	void enabledGlassEffect(void);
 
@@ -70,6 +69,9 @@ private:
 
 	/* system tray entry (bottom-right corner) */
 	QSystemTrayIcon			*__tray_icon;
+
+	/* current theme: "dark" or "light" (persisted in QSettings) */
+	QString				__theme;
 
 	/* It's copyed from myself, We need save icon */
 	QPixmap				__pasteitem_icon;
