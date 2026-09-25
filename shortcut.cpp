@@ -3,7 +3,7 @@
 #include "shortcut.h"
 
 DoubleCtrlShortcut::DoubleCtrlShortcut(QObject *parent) : QObject(parent),
-	m_timer(new QTimer),
+	m_timer(new QTimer(this)),
 	m_isActive(false)
 {
 	this->m_shortcut = new ShortcutPrivate();
@@ -23,4 +23,9 @@ DoubleCtrlShortcut::DoubleCtrlShortcut(QObject *parent) : QObject(parent),
 		/* Record Press */
 		this->m_timer->start(300);
 	});
+}
+
+DoubleCtrlShortcut::~DoubleCtrlShortcut()
+{
+	delete this->m_shortcut;
 }

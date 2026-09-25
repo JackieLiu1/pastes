@@ -626,10 +626,10 @@ static bool get_window_name2(Display* dpy, Window window, char* buf)
 		ret = XmbTextPropertyToTextList(dpy, &tp, &list, &count);
 		if((ret == Success || ret > 0) && list != NULL){
 			for(i=0; i<count; i++)
-				sprintf(buf, "%s", list[i]);
+				snprintf(buf, 1024, "%s", list[i]);
 			XFreeStringList(list);
 		} else {
-			sprintf(buf, "%s", tp.value);
+			snprintf(buf, 1024, "%s", tp.value);
 		}
 
 		return true;

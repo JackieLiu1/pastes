@@ -158,7 +158,7 @@ void PasteItem::copyData(void)
 	emit this->hideWindow();
 
 	QClipboard *clipboard = QApplication::clipboard();
-	ItemData *itemData = (ItemData *)this->m_listwidget_item->data(Qt::UserRole).value<unsigned long>();
+	ItemData *itemData = (ItemData *)this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>();
 
 	clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Clipboard);
 

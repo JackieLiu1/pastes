@@ -5,6 +5,7 @@
 #include <QTimer>
 
 #include <QThread>
+#include <atomic>
 
 class ShortcutPrivate : public QThread
 {
@@ -20,6 +21,11 @@ Q_SIGNALS:
 
 protected:
 	void run(void);
+
+	/* atomic: written by the GUI thread, read by the hook thread */
+	std::atomic_bool	m_stoped{false};
+	/* platform thread id of run(), used to wake its blocking loop */
+	std::atomic<quintptr>	m_thread_id{0};
 };
 
 class DoubleCtrlShortcut : public QObject
@@ -28,6 +34,7 @@ class DoubleCtrlShortcut : public QObject
 
 public:
 	DoubleCtrlShortcut(QObject *parent = nullptr);
+	~DoubleCtrlShortcut();
 
 signals:
 	void activated(void);
