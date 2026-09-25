@@ -23,6 +23,12 @@
 #include "mainwindow.h"
 #include "pasteitem.h"
 
+/* History older than this is dropped on startup and on every clipboard update */
+static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
+/* Wait for the clipboard to settle before snapshotting it: rapid format
+ * updates from one copy collapse into a single entry */
+static const int CLIPBOARD_SETTLE_MS = 1000;
+
 #ifdef Q_OS_WIN
 #include <QtWin>
 #include <windows.h>
@@ -134,14 +140,21 @@ MainWindow::MainWindow(QWidget *parent)
 		this->hide_window();
 	});
 	QObject::connect(this->__main_frame, &MainFrame::selectItem, [this](void) {
-		QListWidgetItem *item = this->__scroll_widget->selectedItems()[0];
-		PasteItem *widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
+		PasteItem *widget = this->currentPasteItem();
+		if (!widget)
+			return;
 		this->__current_item = nullptr;
 		widget->copyData();
 	});
 
-	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, [this](void) {
-		QTimer::singleShot(1000, this, SLOT(clipboard_later()));
+	this->__clipboard_timer = new QTimer(this);
+	this->__clipboard_timer->setSingleShot(true);
+	this->__clipboard_timer->setInterval(CLIPBOARD_SETTLE_MS);
+	QObject::connect(this->__clipboard_timer, &QTimer::timeout, this, &MainWindow::clipboard_later);
+	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, this, [this](void) {
+		/* Restarting on every change collapses rapid clipboard updates
+		 * into one snapshot taken once the clipboard has settled. */
+		this->__clipboard_timer->start();
 	});
 	QObject::connect(this->__hide_animation, &QPropertyAnimation::finished, [this](void) {
 		if (this->__hide_animation->direction() == QAbstractAnimation::Forward) {
@@ -169,11 +182,6 @@ MainWindow::MainWindow(QWidget *parent)
 	});
 
 	this->initUI();
-}
-
-MainWindow::~MainWindow()
-{
-	delete this->__hide_animation;
 }
 
 bool MainWindow::event(QEvent *e)
@@ -237,25 +245,46 @@ void MainWindow::hide_window(void)
 
 void MainWindow::move_to_prev_next_focus_widget(bool prev)
 {
-	QListWidgetItem *item = this->__scroll_widget->selectedItems()[0];
-	PasteItem *widget = nullptr;
-	int row = this->__scroll_widget->row(item);
+	const int count = this->__scroll_widget->count();
+	if (count == 0)
+		return;
 
-	do {
+	int row = -1;
+	const QList<QListWidgetItem *> selected = this->__scroll_widget->selectedItems();
+	if (!selected.isEmpty())
+		row = this->__scroll_widget->row(selected.first());
+
+	/* Bounded by the item count: if every item is hidden (search filtered
+	 * everything out) this gives up instead of looping forever. */
+	PasteItem *widget = nullptr;
+	for (int i = 0; i < count; i++) {
 		if (prev) {
 			/* Get prev focus widget and isn't hidden */
 			if (--row < 0)
-				row = this->__scroll_widget->count()-1;
+				row = count - 1;
 		} else {
 			/* Get next focus widget and isn't hidden */
-			if (++row > this->__scroll_widget->count()-1)
+			if (++row > count - 1)
 				row = 0;
 		}
 
-		item = this->__scroll_widget->item(row);
+		QListWidgetItem *item = this->__scroll_widget->item(row);
 		widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
-	} while (widget->isHidden());
-	widget->setFocus();
+		if (widget && !widget->isHidden())
+			break;
+	}
+
+	if (widget && !widget->isHidden())
+		widget->setFocus();
+}
+
+PasteItem *MainWindow::currentPasteItem(void)
+{
+	const QList<QListWidgetItem *> selected = this->__scroll_widget->selectedItems();
+	if (selected.isEmpty())
+		return nullptr;
+
+	return reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(selected.first()));
 }
 
 void MainWindow::initUI(void)
@@ -295,15 +324,19 @@ void MainWindow::initUI(void)
 		}
 
 		if (show_row_count == this->__scroll_widget->count()) {
-			/* restore current row in search before */
-			this->__current_item->setSelected(true);
-			this->__scroll_widget->scrollToItem(this->__current_item);
+			/* restore current row in search before. The stored item may
+			 * already have been removed by the dedup logic meanwhile. */
+			if (this->__current_item) {
+				this->__current_item->setSelected(true);
+				this->__scroll_widget->scrollToItem(this->__current_item);
+			}
 			this->__current_item = nullptr;
 		}
 	});
 	QObject::connect(this->__searchbar, &SearchBar::selectItem, [this](void) {
-		QListWidgetItem *item = this->__scroll_widget->selectedItems()[0];
-		PasteItem *widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
+		PasteItem *widget = this->currentPasteItem();
+		if (!widget)
+			return;
 		this->__current_item = nullptr;
 		widget->copyData();
 	});
@@ -375,41 +408,44 @@ void MainWindow::parsingData(QList<ItemData *> list)
 {
 	for (auto itemData : list) {
 		/* remove the data if it's too old (than a week) */
-		if (QDateTime::currentDateTime().toSecsSinceEpoch() - itemData->time.toSecsSinceEpoch() > (60 * 60 * 24 * 7)) {
+		if (QDateTime::currentDateTime().toSecsSinceEpoch() - itemData->time.toSecsSinceEpoch() > MAX_HISTORY_SECS) {
 			this->__db.deletePasteItem(itemData);
 			continue;
 		}
 
 		PasteItem *widget = this->insertItemWidget(true);
+		bool hasContent = false;
 
 		if (itemData->mimeData->hasHtml() && !itemData->mimeData->text().isEmpty()) {
 			widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text());
+			hasContent = true;
 		} else if (itemData->mimeData->hasImage() && itemData->mimeData->imageData().isValid() &&
 			   !itemData->mimeData->imageData().isNull()) {
 			QImage image = qvariant_cast<QImage>(itemData->mimeData->imageData());
 			widget->setImage(image);
+			hasContent = true;
 		} else if (itemData->mimeData->hasUrls()) {
 			QList<QUrl> urls = itemData->mimeData->urls();
-			if (!widget->setUrls(urls)) {
-				this->__db.deletePasteItem(itemData);
-				goto cleanup;
-			}
+			hasContent = widget->setUrls(urls);
 		} else if (itemData->mimeData->hasText() && !itemData->mimeData->text().isEmpty()) {
 			widget->setPlainText(itemData->mimeData->text().trimmed());
-		} else {
-cleanup:
-			/* No data, remove it */
+			hasContent = true;
+		}
+
+		if (!hasContent) {
+			/* No displayable data, remove it from the UI and the database,
+			 * otherwise the empty row is reloaded on every start */
 			this->__scroll_widget->removeItemWidget(widget->widgetItem());
 			delete widget->widgetItem();
 			delete widget;
+			this->__db.deletePasteItem(itemData);
 			continue;
 		}
+
 		widget->setTime(itemData->time);
 		QPixmap icon = QPixmap::fromImage(itemData->icon);
 		widget->setIcon(icon);
 		widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
-
-		QApplication::processEvents();
 	}
 
 	this->__scroll_widget->setCurrentRow(0);
@@ -524,6 +560,8 @@ void MainWindow::clipboard_later(void)
 		/* No data, remove it */
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(0);
 		this->__scroll_widget->removeItemWidget(tmp_item);
+		if (this->__current_item == tmp_item)
+			this->__current_item = nullptr;
 		delete tmp_item;
 		delete itemData->mimeData;
 		delete itemData;
@@ -535,19 +573,25 @@ void MainWindow::clipboard_later(void)
 	for (int i = 1; i < this->__scroll_widget->count(); i++) {
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(i);
 		ItemData *tmp_itemData = reinterpret_cast<ItemData *>(tmp_item->data(Qt::UserRole).value<uint64_t>());
+		if (!tmp_itemData)
+			continue;
 		/* They have same md5, remove it */
 		if (itemData->md5 == tmp_itemData->md5) {
 			/* move icon from old data */
 			itemData->icon = tmp_itemData->icon;
 			this->__db.deletePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
+			if (this->__current_item == tmp_item)
+				this->__current_item = nullptr;
 			delete tmp_item;
 			continue;
 		}
 		/* remove the data if it's too old (than a week) */
-		if (QDateTime::currentDateTime().toSecsSinceEpoch() - tmp_itemData->time.toSecsSinceEpoch() >= (60 * 60 * 24 * 7)) {
+		if (QDateTime::currentDateTime().toSecsSinceEpoch() - tmp_itemData->time.toSecsSinceEpoch() >= MAX_HISTORY_SECS) {
 			this->__db.deletePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
+			if (this->__current_item == tmp_item)
+				this->__current_item = nullptr;
 			delete tmp_item;
 		}
 	}

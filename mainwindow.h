@@ -24,7 +24,7 @@ class MainWindow : public QMainWindow
 
 public:
 	MainWindow(QWidget *parent = nullptr);
-	~MainWindow();
+	~MainWindow() = default;
 
 protected:
 	bool event(QEvent *e);
@@ -36,6 +36,7 @@ private:
 	void reloadData(void);
 	PasteItem *insertItemWidget(bool);
 	void resetItemTabOrder(void);
+	PasteItem *currentPasteItem(void);
 	static void loadStyleSheet(QWidget *, const QString &);
 	QPixmap getClipboardOwnerIcon(void);
 	void enabledGlassEffect(void);
@@ -55,6 +56,8 @@ private:
 	/* That is a workaround for hide window */
 	bool				__hide_state;
 	Database			__db;
+	/* Debounces rapid clipboard updates into one snapshot */
+	QTimer				*__clipboard_timer;
 
 	/* widgets */
 	SearchBar			*__searchbar;
@@ -64,7 +67,8 @@ private:
 	/* It's copyed from myself, We need save icon */
 	QPixmap				__pasteitem_icon;
 
-	/* Use for store current row when searching */
-	QListWidgetItem			*__current_item;
+	/* Use for store current row when searching. Not a QObject, so it can't
+	 * be a QPointer: clipboard_later() resets it when it deletes the item. */
+	QListWidgetItem			*__current_item = nullptr;
 };
 #endif // MAINWINDOW_H
