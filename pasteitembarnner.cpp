@@ -35,15 +35,15 @@ Barnner::Barnner(QWidget *parent) : QWidget(parent),
 	this->setLayout(hboxlayout);
 }
 
-Barnner::~Barnner()
-{
-	delete m_time;
-	delete m_text;
-	delete m_icon;
-}
-
 void Barnner::setBackground(QRgb rgb)
 {
+	/* setStyleSheet() reparses the sheet and repaints: skip no-op updates,
+	 * resizeEvent used to call this for every event. */
+	if (m_has_background && rgb == m_background)
+		return;
+
+	m_background = rgb;
+	m_has_background = true;
 	QString s = QString("background-color: rgb(%1, %2, %3);")
 				.arg(qRed(rgb))
 				.arg(qGreen(rgb))
@@ -82,14 +82,12 @@ void Barnner::resizeEvent(QResizeEvent *event)
 	QSize size = event->size();
 
 	if (!this->m_pixmap.isNull()) {
-		QPixmap mp;
-
 		m_icon->setFixedHeight(size.height());
 		m_icon->setFixedWidth(size.height()*0.8);
-		mp = this->m_pixmap.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		QPixmap mp = this->m_pixmap.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 		m_icon->setAlignment(Qt::AlignCenter);
 
-		this->setBackground(Barnner::averageColor(&this->m_pixmap));
+		this->setBackground(m_avg_color);
 		this->m_icon->setPixmap(mp);
 	}
 

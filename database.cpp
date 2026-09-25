@@ -55,7 +55,6 @@ public slots:
 		while (query.next()) {
 			ItemData *itemData = new ItemData;
 			itemData->md5 = query.value("md5").toByteArray();
-			QImage image = QImage::fromData(query.value("imagedata").toByteArray());
 			itemData->time = QDateTime::fromSecsSinceEpoch(query.value("time").toUInt());
 			itemData->mimeData = new QMimeData;
 
@@ -70,12 +69,18 @@ public slots:
 				itemData->mimeData->setData(mimeType, data);
 			}
 
+			/* Decode the icon blob (small) and, only when this entry really
+			 * carries an image, the usually large imagedata blob. Decoding
+			 * every historical image here made startup O(all images). */
 			itemData->icon = QImage::fromData(query.value("icondata").toByteArray());
 			if (!itemData->icon.isNull())
 				itemData->icon = itemData->icon.scaled(QSize(32, 32), Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-			if (itemData->mimeData->hasImage())
-				itemData->mimeData->setImageData(image);
+			if (itemData->mimeData->hasImage()) {
+				QImage image = QImage::fromData(query.value("imagedata").toByteArray());
+				if (!image.isNull())
+					itemData->mimeData->setImageData(image);
+			}
 
 			list.push_front(itemData);
 		}

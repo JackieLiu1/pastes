@@ -11,11 +11,12 @@ class Barnner : public QWidget
 	Q_OBJECT
 public:
 	explicit Barnner(QWidget *parent = nullptr);
-	~Barnner();
 
 	void setIcon(QPixmap &pixmap)
 	{
 		m_pixmap = pixmap;
+		/* computed once here instead of on every resize */
+		m_avg_color = averageColor(&m_pixmap);
 	}
 
 	QPixmap icon(void)
@@ -49,6 +50,11 @@ private:
 
 	/* icon data */
 	QPixmap		m_pixmap;
+	/* cached average color of the icon */
+	QRgb		m_avg_color = qRgb(255, 255, 255);
+	/* last color applied, to skip redundant stylesheet updates */
+	QRgb		m_background = 0;
+	bool		m_has_background = false;
 	/* date time */
 	QDateTime	m_datetime;
 };

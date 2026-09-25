@@ -30,7 +30,6 @@ class TextFrame : public QLabel
 {
 public:
 	TextFrame(QWidget *parent = nullptr);
-	~TextFrame();
 
 	void setMaskFrameText(QString);
 	void setBackgroundColor(QString);
@@ -50,10 +49,13 @@ public:
 	void setStorePixmap(QPixmap pixmap)
 	{
 		m_pixmap = pixmap;
+		/* force a rescale on the next resize */
+		m_scaled_size = QSize();
 	}
 
 private:
 	QPixmap		m_pixmap;
+	QSize		m_scaled_size;
 
 protected:
 	void resizeEvent(QResizeEvent *event);
@@ -85,6 +87,8 @@ protected:
 private:
 	QList<QPair<QLabel *, QPixmap>> m_labels;
 	QString				m_filename;
+	/* label size the pixmaps were last scaled to (skip redundant rescales) */
+	int				m_last_label_size = -1;
 };
 
 class StackedWidget : public QStackedWidget

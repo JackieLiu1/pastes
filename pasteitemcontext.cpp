@@ -27,11 +27,6 @@ TextFrame::TextFrame(QWidget *parent) : QLabel(parent),
 	this->m_mask_label->setContentsMargins(0, 3, 0, 3);
 }
 
-TextFrame::~TextFrame()
-{
-	delete m_mask_label;
-}
-
 void TextFrame::setMaskFrameText(QString s)
 {
 	this->m_mask_label->setText(s);
@@ -59,7 +54,10 @@ PixmapFrame::PixmapFrame(QWidget *parent) : TextFrame(parent)
 
 void PixmapFrame::resizeEvent(QResizeEvent *event)
 {
-	if (!m_pixmap.isNull()) {
+	/* Rescaling is expensive (SmoothTransformation): only do it when the
+	 * size actually changed, resize events often repeat the same size. */
+	if (!m_pixmap.isNull() && m_scaled_size != event->size()) {
+		m_scaled_size = event->size();
 		this->setPixmap(m_pixmap.scaled(event->size(),
 						Qt::KeepAspectRatio,
 						Qt::SmoothTransformation));
@@ -185,6 +183,12 @@ bool FileFrame::setUrls(QList<QUrl> &urls)
 		}
 		QLabel *label = new QLabel(this);
 		label->setAttribute(Qt::WA_TranslucentBackground);
+		/* The shadow effect only has to be attached once, not on every resize */
+		QGraphicsDropShadowEffect *shadow = new QGraphicsDropShadowEffect(label);
+		shadow->setOffset(0, 0);
+		shadow->setColor(Qt::gray);
+		shadow->setBlurRadius(8);
+		label->setGraphicsEffect(shadow);
 		QPair<QLabel *, QPixmap> pair(label, pixmap);
 		this->m_labels.push_back(pair);
 	}
@@ -203,15 +207,18 @@ void FileFrame::resizeEvent(QResizeEvent *event)
 
 		for (auto pair : this->m_labels) {
 			QLabel *label = pair.first;
-			QPixmap pixmap = pair.second.scaled(label_size, label_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 			label->setGeometry(start_x, start_y, label_size, label_size);
-			label->setPixmap(pixmap);
+		}
 
-			QGraphicsDropShadowEffect *shadow = new QGraphicsDropShadowEffect(this);
-			shadow->setOffset(0, 0);
-			shadow->setColor(Qt::gray);
-			shadow->setBlurRadius(8);
-			label->setGraphicsEffect(shadow);
+		/* Only rescale the pixmaps when the size really changed; resize
+		 * storms used to run SmoothTransformation for every event. */
+		if (label_size > 0 && m_last_label_size != label_size) {
+			m_last_label_size = label_size;
+			for (auto pair : this->m_labels) {
+				QLabel *label = pair.first;
+				QPixmap pixmap = pair.second.scaled(label_size, label_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+				label->setPixmap(pixmap);
+			}
 		}
 
 		if (this->m_labels.count() == 2) {
