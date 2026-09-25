@@ -510,7 +510,7 @@ void MainWindow::clipboard_later(void)
 {
 	const QMimeData *mime_data = QApplication::clipboard()->mimeData();
 	PasteItem *widget = nullptr;
-	QByteArray md5_data;
+	QCryptographicHash hash(QCryptographicHash::Md5);
 	ItemData *itemData = new ItemData;
 
 	itemData->mimeData = dup_mimedata(mime_data);
@@ -519,38 +519,40 @@ void MainWindow::clipboard_later(void)
 	do {
 		if (itemData->mimeData->hasUrls() && !itemData->mimeData->urls().isEmpty()) {
 			QList<QUrl> urls = itemData->mimeData->urls();
-			foreach(QUrl url, urls) {
-				md5_data += url.toEncoded();
+			foreach (QUrl url, urls) {
+				hash.addData(url.toEncoded());
 			}
 			widget->setUrls(urls);
 			qDebug() << "It's urls";
 			break;
 		}
 
-		if (itemData->mimeData->hasHtml() && !mime_data->text().trimmed().isEmpty()) {
-			md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
+		if (itemData->mimeData->hasHtml() && !itemData->mimeData->text().trimmed().isEmpty()) {
+			hash.addData(itemData->mimeData->text().trimmed().toLocal8Bit());
 			widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text().trimmed());
 			qDebug() << "It's htmls";
 			break;
 		}
 
-		if (mime_data->hasImage()) {
-			QImage image = qvariant_cast<QImage>(mime_data->imageData());
+		if (itemData->mimeData->hasImage()) {
+			QImage image = qvariant_cast<QImage>(itemData->mimeData->imageData());
 			if (image.width() && image.height()) {
-				for (auto i = 0; i < image.height(); i++) {
-					for (auto j = 0; j < image.width(); j++) {
-						md5_data.push_back(image.scanLine(i)[j]);
-					}
+				/* Hash the raw pixel rows. The old code copied one byte at a
+				 * time and only covered a quarter of the row (one channel of
+				 * each ARGB pixel), which was both slow and a weak digest. */
+				for (int row = 0; row < image.height(); ++row) {
+					hash.addData(reinterpret_cast<const char *>(image.constScanLine(row)),
+						     image.bytesPerLine());
 				}
 
 				widget->setImage(image);
-				qDebug() << "It's Images" << mime_data->imageData().toByteArray().size();
+				qDebug() << "It's Images" << image.sizeInBytes();
 				break;
 			}
 		}
 
-		if (mime_data->hasText() && !itemData->mimeData->text().trimmed().isEmpty()) {
-			md5_data = itemData->mimeData->text().trimmed().toLocal8Bit();
+		if (itemData->mimeData->hasText() && !itemData->mimeData->text().trimmed().isEmpty()) {
+			hash.addData(itemData->mimeData->text().trimmed().toLocal8Bit());
 			widget->setPlainText(itemData->mimeData->text().trimmed());
 			qDebug() << "It's text";
 			break;
@@ -568,7 +570,7 @@ void MainWindow::clipboard_later(void)
 		return;
 	} while (0);
 
-	itemData->md5 = QCryptographicHash::hash(md5_data, QCryptographicHash::Md5);
+	itemData->md5 = hash.result();
 	/* Remove dup item */
 	for (int i = 1; i < this->__scroll_widget->count(); i++) {
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(i);
