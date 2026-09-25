@@ -367,13 +367,6 @@ void MainWindow::initUI(void)
 
 void MainWindow::reloadData()
 {
-	if (!this->__db.isTableExist()) {
-		this->__db.createTable();
-		return;
-	}
-
-	qRegisterMetaType<QList<ItemData *>> ("QList<ItemData *>");
-
 	QObject::connect(&this->__db, SIGNAL(dataLoaded(QList<ItemData *>)), this, SLOT(parsingData(QList<ItemData *>)));
 	this->__db.loadData();
 }
@@ -383,7 +376,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 	for (auto itemData : list) {
 		/* remove the data if it's too old (than a week) */
 		if (QDateTime::currentDateTime().toSecsSinceEpoch() - itemData->time.toSecsSinceEpoch() > (60 * 60 * 24 * 7)) {
-			this->__db.delelePasteItem(itemData);
+			this->__db.deletePasteItem(itemData);
 			continue;
 		}
 
@@ -398,7 +391,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 		} else if (itemData->mimeData->hasUrls()) {
 			QList<QUrl> urls = itemData->mimeData->urls();
 			if (!widget->setUrls(urls)) {
-				this->__db.delelePasteItem(itemData);
+				this->__db.deletePasteItem(itemData);
 				goto cleanup;
 			}
 		} else if (itemData->mimeData->hasText() && !itemData->mimeData->text().isEmpty()) {
@@ -412,7 +405,8 @@ cleanup:
 			continue;
 		}
 		widget->setTime(itemData->time);
-		widget->setIcon(itemData->icon);
+		QPixmap icon = QPixmap::fromImage(itemData->icon);
+		widget->setIcon(icon);
 		widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
 
 		QApplication::processEvents();
@@ -545,14 +539,14 @@ void MainWindow::clipboard_later(void)
 		if (itemData->md5 == tmp_itemData->md5) {
 			/* move icon from old data */
 			itemData->icon = tmp_itemData->icon;
-			this->__db.delelePasteItem(tmp_itemData);
+			this->__db.deletePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			delete tmp_item;
 			continue;
 		}
 		/* remove the data if it's too old (than a week) */
 		if (QDateTime::currentDateTime().toSecsSinceEpoch() - tmp_itemData->time.toSecsSinceEpoch() >= (60 * 60 * 24 * 7)) {
-			this->__db.delelePasteItem(tmp_itemData);
+			this->__db.deletePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			delete tmp_item;
 		}
@@ -563,9 +557,11 @@ void MainWindow::clipboard_later(void)
 
 	if (itemData->icon.isNull()) {
 		/* Find and set icon who triggers the clipboard */
-		itemData->icon = this->getClipboardOwnerIcon().scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		QPixmap owner_icon = this->getClipboardOwnerIcon().scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		itemData->icon = owner_icon.toImage();
 	}
-	widget->setIcon(itemData->icon);
+	QPixmap icon = QPixmap::fromImage(itemData->icon);
+	widget->setIcon(icon);
 	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
 	this->__db.insertPasteItem(itemData);
 	this->resetItemTabOrder();

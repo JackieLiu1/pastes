@@ -32,7 +32,8 @@ static inline QMimeData *dup_mimedata(const QMimeData *mimeData)
 struct ItemData
 {
 	QMimeData	*mimeData;
-	QPixmap		icon;
+	/* QImage (not QPixmap) so the value can safely cross threads */
+	QImage		icon;
 	QByteArray	md5;
 
 	/* The time of data create */
