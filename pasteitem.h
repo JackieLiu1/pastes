@@ -29,7 +29,7 @@ static inline QMimeData *dup_mimedata(const QMimeData *mimeData)
 	return mime;
 }
 
-struct ItemData : QObjectUserData
+struct ItemData
 {
 	QMimeData	*mimeData;
 	QPixmap		icon;
