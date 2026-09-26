@@ -19,6 +19,8 @@
 #include <QTimer>
 
 class QSystemTrayIcon;
+class QLabel;
+class QAction;
 class MainWindow : public QMainWindow
 {
 	Q_OBJECT
@@ -29,8 +31,10 @@ public:
 
 protected:
 	bool event(QEvent *e);
+	bool eventFilter(QObject *object, QEvent *event);
 	void showEvent(QShowEvent *event);
 	void hideEvent(QHideEvent *event);
+	void resizeEvent(QResizeEvent *event);
 
 private:
 	void initUI(void);
@@ -40,6 +44,7 @@ private:
 	void reloadData(void);
 	PasteItem *insertItemWidget(bool);
 	void resetItemTabOrder(void);
+	void updateHistoryStatus(void);
 	PasteItem *currentPasteItem(void);
 	QPixmap getClipboardOwnerIcon(void);
 	void enabledGlassEffect(void);
@@ -63,12 +68,15 @@ private:
 	QTimer				*__clipboard_timer;
 
 	/* widgets */
-	SearchBar			*__searchbar;
+	SearchBar			*__searchbar = nullptr;
+	QLabel				*__history_count = nullptr;
+	QLabel				*__keyboard_hint = nullptr;
+	QLabel				*__empty_state = nullptr;
 	QPushButton			*__menu_button;
-	QListWidget			*__scroll_widget;
+	QListWidget			*__scroll_widget = nullptr;
 
 	/* system tray entry (bottom-right corner) */
-	QSystemTrayIcon			*__tray_icon;
+	QSystemTrayIcon			*__tray_icon = nullptr;
 
 	/* current theme: "dark" or "light" (persisted in QSettings) */
 	QString				__theme;

@@ -44,7 +44,7 @@
         <location filename="pasteitemcontext.cpp" line="336"/>
         <location filename="pasteitemcontext.cpp" line="350"/>
         <source>characters</source>
-        <translation>字节</translation>
+        <translation>字符</translation>
     </message>
     <message>
         <location filename="pasteitemcontext.cpp" line="361"/>
@@ -111,6 +111,46 @@
         <location filename="mainwindow.cpp" line="455"/>
         <source>records</source>
         <translation>条记录</translation>
+    </message>
+    <message>
+        <source>Clipboard</source>
+        <translation>剪贴板历史</translation>
+    </message>
+    <message>
+        <source>Text</source>
+        <translation>文本</translation>
+    </message>
+    <message>
+        <source>Code</source>
+        <translation>代码</translation>
+    </message>
+    <message>
+        <source>Pastes</source>
+        <translation>Pastes</translation>
+    </message>
+    <message>
+        <source>Menu</source>
+        <translation>菜单</translation>
+    </message>
+    <message>
+        <source>Type to search</source>
+        <translation>输入即可搜索</translation>
+    </message>
+    <message>
+        <source>%1 items</source>
+        <translation>%1 条记录</translation>
+    </message>
+    <message>
+        <source>%1 of %2 items</source>
+        <translation>%2 条记录中找到 %1 条</translation>
+    </message>
+    <message>
+        <source>Copy something to get started</source>
+        <translation>复制一段文字或一张图片，从这里开始</translation>
+    </message>
+    <message>
+        <source>No matching items</source>
+        <translation>没有找到匹配的内容</translation>
     </message>
 </context>
 </TS>

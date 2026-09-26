@@ -1,4 +1,5 @@
 #include "pasteitem.h"
+#include "roundedwidgets.h"
 
 #include <QClipboard>
 #include <QApplication>
@@ -6,9 +7,11 @@
 #include <QMimeData>
 #include <QUrl>
 #include <QDebug>
+#include <QKeyEvent>
+#include <QStyle>
 
 PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
-	m_frame(new QWidget(this)),
+	m_frame(new RoundedWidget(RoundedRole::Card, this)),
 	m_frame_effect(new QGraphicsDropShadowEffect(this)),
 	m_barnner(new Barnner(this->m_frame)),
 	m_context(new StackedWidget(this->m_frame)),
@@ -17,9 +20,9 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	this->setFocusPolicy(Qt::StrongFocus);
 	this->setAttribute(Qt::WA_TranslucentBackground);
 
-	m_frame_effect->setOffset(0, 0);
-	m_frame_effect->setColor(QColor(0, 0, 0, 80));
-	m_frame_effect->setBlurRadius(16);
+	m_frame_effect->setOffset(0, 2);
+	m_frame_effect->setColor(QColor(19, 44, 38, 22));
+	m_frame_effect->setBlurRadius(8);
 	m_frame->setGraphicsEffect(m_frame_effect);
 	m_frame->setObjectName("PasteItemFrame");
 
@@ -27,10 +30,32 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	vboxlayout->addWidget(m_barnner);
 	vboxlayout->addWidget(m_context);
 	vboxlayout->setSpacing(0);
-	vboxlayout->setContentsMargins(5, 5, 5, 5);
+	vboxlayout->setContentsMargins(1, 1, 1, 1);
 
 	m_frame->setLayout(vboxlayout);
 	m_frame->show();
+}
+
+void PasteItem::setCardKind(const char *kind)
+{
+	m_frame->setProperty("contentKind", kind);
+	m_frame->style()->unpolish(m_frame);
+	m_frame->style()->polish(m_frame);
+	/* Content children inherit their kind-specific colors from the theme. */
+	for (QWidget *child : m_frame->findChildren<QWidget *>()) {
+		child->style()->unpolish(child);
+		child->style()->polish(child);
+	}
+}
+
+void PasteItem::setSelected(bool selected)
+{
+	if (m_frame->property("selected").isValid() && m_frame->property("selected").toBool() == selected)
+		return;
+	m_frame->setProperty("selected", selected);
+	m_frame->style()->unpolish(m_frame);
+	m_frame->style()->polish(m_frame);
+	m_frame->update();
 }
 
 void PasteItem::setImage(QImage &image)
@@ -38,6 +63,7 @@ void PasteItem::setImage(QImage &image)
 	QPixmap pixmap = QPixmap::fromImage(image);
 	m_context->setPixmap(pixmap);
 	this->m_barnner->setTitle(QObject::tr("Image"));
+	this->setCardKind("image");
 }
 
 void PasteItem::setPlainText(QString s)
@@ -45,12 +71,18 @@ void PasteItem::setPlainText(QString s)
 	m_context->setText(s);
 	m_text = s;
 
-	if (s.startsWith("http://") || s.startsWith("ftp://") || s.startsWith("https://"))
+	if (s.startsWith("http://") || s.startsWith("ftp://") || s.startsWith("https://")) {
 		this->m_barnner->setTitle(QObject::tr("Link"));
-	else if (QColor::isValidColor(s))
+		this->setCardKind("link");
+	} else if (QColor::isValidColor(s)) {
 		this->m_barnner->setTitle(QObject::tr("Color"));
-	else
-		this->m_barnner->setTitle(QObject::tr("PlainText"));
+		this->setCardKind("color");
+	} else {
+		const bool code = s.contains('\n') &&
+					(s.contains('{') || s.contains("#include") || s.contains("def "));
+		this->m_barnner->setTitle(code ? QObject::tr("Code") : QObject::tr("Text"));
+		this->setCardKind(code ? "code" : "text");
+	}
 }
 
 void PasteItem::setRichText(QString richText, QString plainText)
@@ -58,12 +90,16 @@ void PasteItem::setRichText(QString richText, QString plainText)
 	m_context->setRichText(richText, plainText);
 	m_text = plainText;
 
-	if (plainText.startsWith("http://") || plainText.startsWith("ftp://") || plainText.startsWith("https://"))
+	if (plainText.startsWith("http://") || plainText.startsWith("ftp://") || plainText.startsWith("https://")) {
 		this->m_barnner->setTitle(QObject::tr("Link"));
-	else if (QColor::isValidColor(plainText.simplified().trimmed()))
+		this->setCardKind("link");
+	} else if (QColor::isValidColor(plainText.simplified().trimmed())) {
 		this->m_barnner->setTitle(QObject::tr("Color"));
-	else
-		this->m_barnner->setTitle(QObject::tr("RichText"));
+		this->setCardKind("color");
+	} else {
+		this->m_barnner->setTitle(QObject::tr("Text"));
+		this->setCardKind("text");
+	}
 }
 
 bool PasteItem::setUrls(QList<QUrl> &urls)
@@ -75,6 +111,7 @@ bool PasteItem::setUrls(QList<QUrl> &urls)
 		return false;
 
 	this->m_barnner->setTitle(QString("%1 ").arg(urls.count()) + QObject::tr("Files"));
+	this->setCardKind("file");
 	return true;
 }
 
@@ -91,8 +128,8 @@ void PasteItem::setTime(QDateTime &dateTime)
 void PasteItem::resizeEvent(QResizeEvent *event)
 {
 	QSize size = event->size();
-	m_frame->resize(size);
-	m_barnner->setFixedHeight(size.height()/5);
+	m_frame->setGeometry(4, 4, qMax(0, size.width()-8), qMax(0, size.height()-8));
+	m_barnner->setFixedHeight(44);
 
 	QWidget::resizeEvent(event);
 }

@@ -21,6 +21,8 @@
 #include <QDebug>
 #include <QSystemTrayIcon>
 #include <QSettings>
+#include <QKeyEvent>
+#include <QResizeEvent>
 
 #include "mainwindow.h"
 #include "pasteitem.h"
@@ -126,7 +128,8 @@ MainWindow::MainWindow(QWidget *parent)
 	this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
 			     Qt::BypassWindowManagerHint | Qt::SplashScreen);
 	this->setFocusPolicy(Qt::NoFocus);
-	this->applyTheme(QSettings().value("theme", "dark").toString());
+	this->setFont(QFont(QStringLiteral("Segoe UI"), 10));
+	this->applyTheme(QSettings().value("theme", "light").toString());
 	this->setCentralWidget(this->__main_frame);
 #if !defined Q_OS_LINUX && !defined Q_OS_WIN
 	this->setContentsMargins(0, 10, 0, 0);
@@ -169,7 +172,7 @@ MainWindow::MainWindow(QWidget *parent)
 	});
 	this->__hide_animation->setDuration(200);
 	this->__hide_animation->setStartValue(this->pos());
-	this->__hide_animation->setEndValue(QPoint(0, QApplication::primaryScreen()->geometry().height()));
+	this->__hide_animation->setEndValue(QPoint(0, rect.height()));
 	this->__hide_animation->setEasingCurve(QEasingCurve::OutQuad);
 
 	QObject::connect(this->__shortcut, &DoubleCtrlShortcut::activated, [this](void) {
@@ -199,6 +202,13 @@ bool MainWindow::event(QEvent *e)
 	return QMainWindow::event(e);
 }
 
+bool MainWindow::eventFilter(QObject *object, QEvent *event)
+{
+	if (this->__scroll_widget && object == this->__scroll_widget->viewport() &&
+	    event->type() == QEvent::Resize && this->__empty_state)
+		this->__empty_state->setGeometry(QRect(QPoint(0, 0), static_cast<QResizeEvent *>(event)->size()));
+	return QMainWindow::eventFilter(object, event);
+}
 void MainWindow::showEvent(QShowEvent *event)
 {
 	QListWidgetItem *item = this->__scroll_widget->currentItem();
@@ -209,24 +219,25 @@ void MainWindow::showEvent(QShowEvent *event)
 		this->__scroll_widget->scrollToItem(item);
 	}
 
-	/* That is a workaround for QListWidget pixel scroll */
-	int count = this->__scroll_widget->count();
-	if (count > 0) {
-		this->__scroll_widget->item(count-1)->setHidden(false);
-	}
-
 	QWidget::showEvent(event);
 }
 
 void MainWindow::hideEvent(QHideEvent *event)
 {
-	/* That is a workaround for QListWidget pixel scroll */
-	int count = this->__scroll_widget->count();
-	if(count > 0) {
-		this->__scroll_widget->item(count-1)->setHidden(true);
-	}
-
 	QWidget::hideEvent(event);
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+	QMainWindow::resizeEvent(event);
+	if (!this->__scroll_widget)
+		return;
+	const int cardWidth = qBound(210, this->width()/6, 280);
+	const int cardHeight = qMax(110, this->height()-124);
+	for (int i = 0; i < this->__scroll_widget->count(); ++i)
+		this->__scroll_widget->item(i)->setSizeHint(QSize(cardWidth, cardHeight));
+	if (this->__empty_state)
+		this->__empty_state->setGeometry(this->__scroll_widget->viewport()->rect());
 }
 
 void MainWindow::show_window(void)
@@ -292,9 +303,34 @@ PasteItem *MainWindow::currentPasteItem(void)
 	return reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(selected.first()));
 }
 
+void MainWindow::updateHistoryStatus(void)
+{
+	int number = 0;
+	for (int i = 0; i < this->__scroll_widget->count(); ++i) {
+		QListWidgetItem *item = this->__scroll_widget->item(i);
+		PasteItem *widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
+		if (!widget)
+			continue;
+		if (!item->isHidden())
+			++number;
+	}
+	if (this->__history_count) {
+		const int count = this->__scroll_widget->count();
+		this->__history_count->setText(number == count ? QObject::tr("%1 items").arg(count) :
+					     QObject::tr("%1 of %2 items").arg(number).arg(count));
+	}
+	if (this->__empty_state) {
+		this->__empty_state->setText(this->__scroll_widget->count() == 0 ?
+			QObject::tr("Copy something to get started") : QObject::tr("No matching items"));
+		this->__empty_state->setGeometry(this->__scroll_widget->viewport()->rect());
+		this->__empty_state->setVisible(number == 0);
+	}
+}
+
 void MainWindow::initUI(void)
 {
-	this->__searchbar = new SearchBar(this->__main_frame, 2*this->width()/5, 40);
+	this->__searchbar = new SearchBar(this->__main_frame,
+					  qBound(260, this->width()/3, 360), 38);
 	QObject::connect(this->__searchbar, &SearchBar::hideWindow, [this](void) {
 		this->hide_window();
 	});
@@ -337,6 +373,7 @@ void MainWindow::initUI(void)
 			}
 			this->__current_item = nullptr;
 		}
+		this->updateHistoryStatus();
 	});
 	QObject::connect(this->__searchbar, &SearchBar::selectItem, [this](void) {
 		PasteItem *widget = this->currentPasteItem();
@@ -347,25 +384,16 @@ void MainWindow::initUI(void)
 	});
 	QObject::connect(this->__searchbar, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));
 
-	this->__menu_button = new QPushButton(this->__main_frame);
-	this->__menu_button->setIcon(QIcon(":/resources/points.png"));
-	this->__menu_button->setFixedSize(30, 30);
+	this->__menu_button = new RoundedButton(this->__main_frame);
+	this->__menu_button->setObjectName("PanelMenu");
+	this->__menu_button->setText(QStringLiteral("⋯"));
+	this->__menu_button->setToolTip(QObject::tr("Menu"));
+	this->__menu_button->setAccessibleName(QObject::tr("Menu"));
+	this->__menu_button->setFixedSize(36, 36);
 	this->__menu_button->setFlat(true);
 	QObject::connect(this->__menu_button, &QPushButton::clicked, [this](void) {
-		QMenu *menu = new QMenu();
-		QAction *about_me = new QAction(QObject::tr("About me"), this);
-		QObject::connect(about_me, &QAction::triggered, [this](void) {
-			QMessageBox::about(this, QObject::tr("About me"), "Powered by Jackie Liu <liuyun01@kylinos.cn>");
-		});
-
-		menu->addAction(about_me);
-
-		menu->exec(this->cursor().pos());
-		QList<QAction *> actions = menu->actions();
-		for(auto action : actions) {
-			delete action;
-		}
-		delete menu;
+		this->__tray_icon->contextMenu()->exec(this->__menu_button->mapToGlobal(
+			QPoint(0, this->__menu_button->height())));
 	});
 
 	this->__scroll_widget = new QListWidget(this->__main_frame);
@@ -377,29 +405,71 @@ void MainWindow::initUI(void)
 	this->__scroll_widget->setViewMode(QListView::ListMode);
 	this->__scroll_widget->setEditTriggers(QAbstractItemView::NoEditTriggers);
 	this->__scroll_widget->setFrameShape(QListWidget::NoFrame);
-	this->__scroll_widget->setSpacing(10);
+	this->__scroll_widget->setSpacing(8);
 	this->__scroll_widget->setWrapping(false);
 	this->__scroll_widget->setFocusPolicy(Qt::NoFocus);
+	this->__scroll_widget->viewport()->installEventFilter(this);
 	QScroller::grabGesture(this->__scroll_widget, QScroller::LeftMouseButtonGesture);
-	QObject::connect(this->__scroll_widget, &QListWidget::currentItemChanged, [this](void) {
+	QObject::connect(this->__scroll_widget, &QListWidget::currentItemChanged, this,
+		[this](QListWidgetItem *current, QListWidgetItem *previous) {
+		if (previous) {
+			auto *widget = qobject_cast<PasteItem *>(this->__scroll_widget->itemWidget(previous));
+			if (widget)
+				widget->setSelected(false);
+		}
+		if (current) {
+			auto *widget = qobject_cast<PasteItem *>(this->__scroll_widget->itemWidget(current));
+			if (widget)
+				widget->setSelected(true);
+		}
 		this->__scroll_widget->update();
 	});
 
+	this->__empty_state = new QLabel(this->__scroll_widget->viewport());
+	this->__empty_state->setObjectName("EmptyState");
+	this->__empty_state->setAlignment(Qt::AlignCenter);
+	this->__empty_state->setAttribute(Qt::WA_TransparentForMouseEvents);
+
+	QLabel *brandIcon = new QLabel(this->__main_frame);
+	brandIcon->setPixmap(QIcon(":/resources/pastes.svg").pixmap(QSize(30, 30), this->devicePixelRatioF()));
+	brandIcon->setFixedSize(30, 30);
+	QLabel *brandTitle = new QLabel(QObject::tr("Pastes"), this->__main_frame);
+	brandTitle->setObjectName("BrandTitle");
+	QLabel *historyTab = new RoundedLabel(QObject::tr("Clipboard"), RoundedRole::HistoryBadge, this->__main_frame);
+	historyTab->setObjectName("HistoryTab");
 	QHBoxLayout *hlayout = new QHBoxLayout();
+	hlayout->setSpacing(10);
+	hlayout->addWidget(brandIcon);
+	hlayout->addWidget(brandTitle);
+	hlayout->addSpacing(14);
+	hlayout->addWidget(historyTab);
 	hlayout->addStretch();
 	hlayout->addWidget(this->__searchbar);
-	hlayout->addStretch();
 	hlayout->addWidget(this->__menu_button);
 
+	this->__history_count = new QLabel(this->__main_frame);
+	this->__history_count->setObjectName("HistoryCount");
+	this->__keyboard_hint = new QLabel(this->__main_frame);
+	this->__keyboard_hint->setObjectName("KeyboardHint");
+	QHBoxLayout *footer = new QHBoxLayout();
+	footer->setContentsMargins(8, 0, 8, 0);
+	footer->addWidget(this->__history_count);
+	footer->addStretch();
+	footer->addWidget(this->__keyboard_hint);
+
 	QVBoxLayout *vlayout = new QVBoxLayout();
+	vlayout->setContentsMargins(24, 16, 24, 12);
+	vlayout->setSpacing(10);
 	vlayout->addLayout(hlayout);
-	vlayout->addWidget(this->__scroll_widget);
+	vlayout->addWidget(this->__scroll_widget, 1);
+	vlayout->addLayout(footer);
 
 	this->__main_frame->setLayout(vlayout);
 	/* need this for resize this->__scroll_widget size */
 	this->__main_frame->show();
 
 	this->setupTrayIcon();
+	this->__keyboard_hint->setText(QStringLiteral("Enter"));
 
 	/* load data from database */
 	this->reloadData();
@@ -516,6 +586,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 
 	this->__scroll_widget->setCurrentRow(0);
 	this->resetItemTabOrder();
+	this->updateHistoryStatus();
 	this->updateTrayTooltip();
 
 	/* Need create window init time, it's speed up for show */
@@ -525,6 +596,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 
 void MainWindow::applyTheme(const QString &name)
 {
+	qApp->setProperty("pastesDark", name != "light");
 	QString file = (name == "light") ? ":/resources/theme-light.qss"
 					 : ":/resources/theme-dark.qss";
 
@@ -552,9 +624,9 @@ PasteItem *MainWindow::insertItemWidget(bool back)
 		this->hide_window();
 	});
 
-	QRect rect = QApplication::primaryScreen()->geometry();
 	/* resize item, It's use for pasteitem frame */
-	item->setSizeHint(QSize(rect.width()/6, 1));
+	item->setSizeHint(QSize(qBound(210, this->width()/6, 280),
+				    qMax(110, this->height()-124)));
 
 	if (back) {
 		this->__scroll_widget->addItem(item);
@@ -563,6 +635,7 @@ PasteItem *MainWindow::insertItemWidget(bool back)
 		this->__scroll_widget->setCurrentRow(0);
 	}
 	this->__scroll_widget->setItemWidget(item, widget);
+	widget->setSelected(item->isSelected());
 
 	return widget;
 }
@@ -683,6 +756,7 @@ void MainWindow::clipboard_later(void)
 	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
 	this->__db.insertPasteItem(itemData);
 	this->resetItemTabOrder();
+	this->updateHistoryStatus();
 	this->updateTrayTooltip();
 }
 

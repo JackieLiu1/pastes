@@ -7,6 +7,7 @@
 #include <QStackedWidget>
 #include <QPainter>
 #include <QStyleOption>
+#include "roundedwidgets.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -27,7 +28,7 @@ QPixmap pixmapFromHICON(HICON icon);
 QPixmap pixmapFromShellImageList(int iImageList, const SHFILEINFO &info);
 #endif
 
-class TextFrame : public QLabel
+class TextFrame : public RoundedLabel
 {
 public:
 	TextFrame(QWidget *parent = nullptr);

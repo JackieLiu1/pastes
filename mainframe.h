@@ -1,9 +1,9 @@
 #ifndef MAINFRAME_H
 #define MAINFRAME_H
 
-#include <QWidget>
+#include "roundedwidgets.h"
 
-class MainFrame : public QWidget
+class MainFrame : public RoundedWidget
 {
 	Q_OBJECT
 

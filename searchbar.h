@@ -6,19 +6,21 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QAction>
-#include <QPropertyAnimation>
+#include "roundedwidgets.h"
 
 class LineEdit : public QLineEdit
 {
 	Q_OBJECT
 public:
 	LineEdit(QWidget *parent = nullptr, int parent_width = 0, int parent_height = 0);
-	void updateIcon(const QString &);
+	void updateIcon(void);
 
 protected:
 	void focusInEvent(QFocusEvent *event);
 	void focusOutEvent(QFocusEvent *event);
 	void hideEvent(QHideEvent *event);
+	void changeEvent(QEvent *event);
+	void paintEvent(QPaintEvent *event);
 	bool event(QEvent * event);
 
 Q_SIGNALS:
@@ -29,8 +31,8 @@ Q_SIGNALS:
 	void moveFocusPrevNext(bool);
 
 private:
-	QPropertyAnimation	*m_zoom_animation;
 	QAction			*m_searchAction;
+	RoundedSurface		m_surface;
 };
 
 class SearchBar : public QWidget

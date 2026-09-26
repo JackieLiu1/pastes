@@ -18,15 +18,15 @@
 
 #include "pasteitemcontext.h"
 
-TextFrame::TextFrame(QWidget *parent) : QLabel(parent),
-	m_mask_label(new QLabel(this))
+TextFrame::TextFrame(QWidget *parent) : RoundedLabel(RoundedRole::Content, parent),
+	m_mask_label(new RoundedLabel(RoundedRole::Footer, this))
 {
 	this->setObjectName("ContextTextFrame");
 	this->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 	this->setWordWrap(true);
 
-	this->m_mask_label->setAlignment(Qt::AlignCenter);
-	this->m_mask_label->setContentsMargins(0, 3, 0, 3);
+	this->m_mask_label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+	this->m_mask_label->setContentsMargins(14, 3, 38, 3);
 }
 
 void TextFrame::setMaskFrameText(QString s)
@@ -37,11 +37,11 @@ void TextFrame::setMaskFrameText(QString s)
 
 void TextFrame::setBackgroundColor(QString colorName)
 {
-	/* color swatch card: round the bottom corners to match the card frame
-	 * (the top corners sit under the banner) */
-	this->setStyleSheet(QString("background-color: %1;"
-				    "border-bottom-right-radius: 12px;"
-				    "border-bottom-left-radius: 12px;").arg(colorName));
+	const QColor color(colorName);
+	this->setProperty("swatchColor", color);
+	this->update();
+	this->m_mask_label->setStyleSheet(qGray(color.rgb()) < 145 ?
+		"color: #FFFFFF; background: transparent;" : "color: #24372D; background: transparent;");
 }
 
 void TextFrame::resizeEvent(QResizeEvent *event)

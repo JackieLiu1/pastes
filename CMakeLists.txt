@@ -20,6 +20,7 @@ add_subdirectory(3rd/SingleApplication)
 set(PASTES_SOURCES
     main.cpp
     mainframe.cpp mainframe.h
+    roundedwidgets.cpp roundedwidgets.h
     mainwindow.cpp mainwindow.h
     database.cpp database.h
     pasteitem.cpp pasteitem.h

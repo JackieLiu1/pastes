@@ -1,4 +1,5 @@
 #include "pasteitembarnner.h"
+#include "roundedwidgets.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -8,96 +9,34 @@
 
 Barnner::Barnner(QWidget *parent) : QWidget(parent),
 	m_icon(new QLabel(this)),
-	m_text(new QLabel(this)),
+	m_text(new RoundedLabel(RoundedRole::TypeBadge, this)),
 	m_time(new QLabel(this))
 {
 	this->setObjectName("Barnner");
 	this->setAttribute(Qt::WA_StyledBackground, true);
 
 	this->m_icon->setScaledContents(false);
-	this->m_text->setStyleSheet(this->m_text->styleSheet()+"font-size: 15px; font-weight: 600;");
-	this->m_time->setStyleSheet(this->m_time->styleSheet()+"font-size: 11px; color: rgba(255, 255, 255, 0.92);");
-
-	QVBoxLayout *vboxlayout = new QVBoxLayout();
-	vboxlayout->setSpacing(3);
-	vboxlayout->addStretch();
-	vboxlayout->setContentsMargins(20, 0, 0, 0);
-	vboxlayout->addWidget(this->m_text);
-	vboxlayout->addWidget(this->m_time);
-	vboxlayout->addStretch();
+	this->m_text->setObjectName("CardType");
+	this->m_time->setObjectName("CardTime");
+	this->m_icon->setFixedSize(24, 24);
+	this->m_icon->setAlignment(Qt::AlignCenter);
 
 	QHBoxLayout *hboxlayout = new QHBoxLayout();
-	hboxlayout->addLayout(vboxlayout);
-	hboxlayout->addStretch();
 	hboxlayout->addWidget(this->m_icon);
-	hboxlayout->setSpacing(0);
-	hboxlayout->setContentsMargins(0, 0, 0, 0);
+	hboxlayout->addWidget(this->m_text);
+	hboxlayout->addStretch();
+	hboxlayout->addWidget(this->m_time);
+	hboxlayout->setSpacing(6);
+	hboxlayout->setContentsMargins(12, 6, 12, 4);
 	this->setLayout(hboxlayout);
 }
 
-void Barnner::setBackground(QRgb rgb)
+void Barnner::setIcon(QPixmap &pixmap)
 {
-	/* setStyleSheet() reparses the sheet and repaints: skip no-op updates,
-	 * resizeEvent used to call this for every event. */
-	if (m_has_background && rgb == m_background)
-		return;
-
-	m_background = rgb;
-	m_has_background = true;
-	/* translucent tint: the card surface shows through, and the white
-	 * title text stays readable on any source color */
-	QString s = QString("background-color: rgba(%1, %2, %3, 90);")
-				.arg(qRed(rgb))
-				.arg(qGreen(rgb))
-				.arg(qBlue(rgb));
-	this->setStyleSheet(s + "border-top-left-radius: 12px; border-top-right-radius: 12px;");
+	m_pixmap = pixmap;
+	m_icon->setVisible(!m_pixmap.isNull());
+	m_icon->setPixmap(m_pixmap.scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
-
-QRgb Barnner::averageColor(QPixmap *pixmap)
-{
-	float r = 0, g = 0, b = 0;
-	QColor color;
-
-	if (!pixmap || pixmap->isNull())
-		return qRgb(60, 62, 68);
-
-	QImage image = pixmap->toImage();
-	for (int i = 0; i < image.width(); i++) {
-		for (int j = 0; j < image.height(); j++) {
-			color = QColor(image.pixel(i, j));
-			r += color.red();
-			g += color.green();
-			b += color.blue();
-		}
-	}
-
-	int count = image.width() * image.height();
-	r /= count;
-	g /= count;
-	b /= count;
-
-	/* Darken the average so the white title text stays readable whatever
-	 * the source color (a white icon must not produce a white banner) */
-	return qRgb((int)(r * 0.45 + 8), (int)(g * 0.45 + 8), (int)(b * 0.45 + 12));
-}
-
-void Barnner::resizeEvent(QResizeEvent *event)
-{
-	QSize size = event->size();
-
-	if (!this->m_pixmap.isNull()) {
-		m_icon->setFixedHeight(size.height());
-		m_icon->setFixedWidth(size.height()*0.8);
-		QPixmap mp = this->m_pixmap.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-		m_icon->setAlignment(Qt::AlignCenter);
-
-		this->setBackground(m_avg_color);
-		this->m_icon->setPixmap(mp);
-	}
-
-	QWidget::resizeEvent(event);
-}
-
 void Barnner::showEvent(QShowEvent *event)
 {
 	if (!this->m_datetime.isNull()) {

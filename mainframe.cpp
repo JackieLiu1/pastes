@@ -3,7 +3,7 @@
 
 #include "mainframe.h"
 
-MainFrame::MainFrame(QWidget *parent) : QWidget(parent)
+MainFrame::MainFrame(QWidget *parent) : RoundedWidget(RoundedRole::Panel, parent)
 {
 	this->setObjectName("MainFrame");
 	this->setAttribute(Qt::WA_StyledBackground);

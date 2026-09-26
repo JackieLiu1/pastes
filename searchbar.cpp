@@ -3,53 +3,66 @@
 #include <QHBoxLayout>
 #include <QResizeEvent>
 #include <QApplication>
-#include <QGraphicsDropShadowEffect>
+#include <QPainter>
 #include <QDebug>
 
 LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLineEdit(parent),
-	m_zoom_animation(new QPropertyAnimation(this, "minimumWidth")),
 	m_searchAction(new QAction(this))
 {
 	this->setFocusPolicy(Qt::ClickFocus);
 	this->setContextMenuPolicy(Qt::NoContextMenu);
 	this->setFixedHeight(parent_height);
-	this->setMaximumWidth(parent_width-parent_height*1.2);
-	this->setMinimumWidth(parent_width/2);
+	this->setFixedWidth(parent_width);
+	this->setFrame(false);
 
-	m_zoom_animation->setDuration(100);
-	m_zoom_animation->setStartValue(parent_width/2);
-	m_zoom_animation->setEndValue(parent_width-parent_height*1.2);
-	QObject::connect(this->m_zoom_animation, &QAbstractAnimation::finished, [parent](void){
-		parent->update();
-		QWidget *focusWidget = QApplication::focusWidget();
-		if (focusWidget)
-			focusWidget->update();
-	});
-
-	m_searchAction->setIcon(QIcon(":/resources/search.png"));
+	this->updateIcon();
 	this->addAction(m_searchAction, QLineEdit::TrailingPosition);
 	QObject::connect(m_searchAction, &QAction::triggered, [this]() {
 		this->setText("");
 	});
 }
 
-void LineEdit::updateIcon(const QString &url)
+void LineEdit::updateIcon(void)
 {
-	this->m_searchAction->setIcon(QIcon(url));
+	const qreal ratio = this->devicePixelRatioF();
+	QPixmap pixmap(qRound(18*ratio), qRound(18*ratio));
+	pixmap.setDevicePixelRatio(ratio);
+	pixmap.fill(Qt::transparent);
+	QPainter painter(&pixmap);
+	painter.setRenderHint(QPainter::Antialiasing);
+	painter.setPen(QPen(this->palette().color(QPalette::Text), 1.4, Qt::SolidLine, Qt::RoundCap));
+	if (this->text().isEmpty()) {
+		painter.drawEllipse(QRectF(3, 3, 8, 8));
+		painter.drawLine(QPointF(10, 10), QPointF(15, 15));
+	} else {
+		painter.drawLine(QPointF(5, 5), QPointF(13, 13));
+		painter.drawLine(QPointF(5, 13), QPointF(13, 5));
+	}
+	painter.end();
+	this->m_searchAction->setIcon(QIcon(pixmap));
+}
+
+void LineEdit::changeEvent(QEvent *event)
+{
+	QLineEdit::changeEvent(event);
+	if (event->type() == QEvent::PaletteChange)
+		this->updateIcon();
+}
+
+void LineEdit::paintEvent(QPaintEvent *event)
+{
+	{ QPainter painter(this); m_surface.paint(this, RoundedRole::Search, painter); }
+	QLineEdit::paintEvent(event);
 }
 
 void LineEdit::focusInEvent(QFocusEvent *event)
 {
-	m_zoom_animation->setDirection(QAbstractAnimation::Forward);
-	m_zoom_animation->start();
 	emit this->focusIn();
 	QLineEdit::focusInEvent(event);
 }
 
 void LineEdit::focusOutEvent(QFocusEvent *event)
 {
-	m_zoom_animation->setDirection(QAbstractAnimation::Backward);
-	m_zoom_animation->start();
 	emit this->focusOut();
 	QLineEdit::focusOutEvent(event);
 }
@@ -91,25 +104,15 @@ SearchBar::SearchBar(QWidget *parent, int width, int height) : QWidget(parent)
 	this->setObjectName("SearchBar");
 	this->setFixedSize(width, height);
 
-	QGraphicsDropShadowEffect *effect = new QGraphicsDropShadowEffect(this);
-	effect->setOffset(0, 0);
-	effect->setColor(QColor(0, 0, 0, 90));
-	effect->setBlurRadius(5);
-	this->setGraphicsEffect(effect);
-
 	this->m_search_edit = new LineEdit(this, width, height);
-	m_search_edit->setPlaceholderText(QObject::tr("Search"));
-	m_search_edit->setTextMargins(10, 0, 0, 0);
+	m_search_edit->setPlaceholderText(QObject::tr("Type to search"));
+	m_search_edit->setTextMargins(14, 0, 0, 0);
 
 	QObject::connect(m_search_edit, &LineEdit::hideWindow, [this](void) {
 		emit this->hideWindow();
 	});
 	QObject::connect(m_search_edit, &LineEdit::textChanged, [this](const QString &text) {
-		if (text.isEmpty()) {
-			this->m_search_edit->updateIcon(":/resources/search.png");
-		} else {
-			this->m_search_edit->updateIcon(":/resources/search_clear.png");
-		}
+		this->m_search_edit->updateIcon();
 		emit this->textChanged(text);
 	});
 	QObject::connect(m_search_edit, &LineEdit::selectItem, [this](void) {

@@ -53,6 +53,7 @@ public:
 	void setIcon(QPixmap);
 	void setTime(QDateTime &);
 	void copyData(void);
+	void setSelected(bool selected);
 
 	const QString &text(void)
 	{
@@ -70,6 +71,7 @@ protected:
 	void keyPressEvent(QKeyEvent *event);
 
 private:
+	void setCardKind(const char *kind);
 	QWidget				*m_frame;
 	QGraphicsDropShadowEffect	*m_frame_effect;
 
