@@ -23,6 +23,8 @@
 #include <QSettings>
 #include <QKeyEvent>
 #include <QResizeEvent>
+#include <QDialog>
+#include <QTextEdit>
 
 #include "mainwindow.h"
 #include "pasteitem.h"
@@ -217,7 +219,8 @@ MainWindow::MainWindow(QWidget *parent)
 bool MainWindow::event(QEvent *e)
 {
 	if (e->type() == QEvent::ActivationChange) {
-		if (QApplication::activeWindow() != this)
+		QWidget *active = QApplication::activeWindow();
+		if (active != this && !(active && this->isAncestorOf(active)))
 			this->hide_window();
 	}
 
@@ -423,6 +426,40 @@ void MainWindow::pasteNumberedItem(int number, bool plainText)
 	}
 }
 
+void MainWindow::previewCurrentItem(void)
+{
+	QListWidgetItem *item = this->__scroll_widget->currentItem();
+	if (!item)
+		return;
+	ItemData *data = reinterpret_cast<ItemData *>(item->data(Qt::UserRole).value<uint64_t>());
+	if (!data)
+		return;
+	QDialog dialog(this);
+	dialog.setWindowTitle(QObject::tr("Preview"));
+	dialog.resize(700, 480);
+	QVBoxLayout *layout = new QVBoxLayout(&dialog);
+	if (data->mimeData->hasImage()) {
+		QLabel *image = new QLabel(&dialog);
+		image->setAlignment(Qt::AlignCenter);
+		image->setPixmap(QPixmap::fromImage(qvariant_cast<QImage>(data->mimeData->imageData()))
+					.scaled(660, 440, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+		layout->addWidget(image);
+	} else {
+		QTextEdit *text = new QTextEdit(&dialog);
+		text->setReadOnly(true);
+		if (data->mimeData->hasUrls()) {
+			QStringList urls;
+			for (const QUrl &url : data->mimeData->urls())
+				urls.append(url.toString());
+			text->setPlainText(urls.join('\n'));
+		} else {
+			text->setPlainText(data->mimeData->text());
+		}
+		layout->addWidget(text);
+	}
+	dialog.exec();
+}
+
 void MainWindow::initUI(void)
 {
 	this->__searchbar = new SearchBar(this->__main_frame,
@@ -576,7 +613,7 @@ void MainWindow::initUI(void)
 	this->__main_frame->show();
 
 	this->setupTrayIcon();
-	this->__keyboard_hint->setText(QStringLiteral("← → · Enter"));
+	this->__keyboard_hint->setText(QObject::tr("← → Browse   ·   Enter Paste   ·   Space Preview"));
 
 	/* load data from database */
 	this->reloadData();
@@ -737,6 +774,10 @@ PasteItem *MainWindow::insertItemWidget(bool back)
 	});
 	QObject::connect(widget, &PasteItem::copied, this, [this](void) {
 		this->pasteToPreviousWindow();
+	});
+	QObject::connect(widget, &PasteItem::previewRequested, this, [this, widget](void) {
+		this->__scroll_widget->setCurrentItem(widget->widgetItem());
+		this->previewCurrentItem();
 	});
 
 	/* resize item, It's use for pasteitem frame */

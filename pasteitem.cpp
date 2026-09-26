@@ -187,6 +187,9 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 	case Qt::Key_Right:
 		emit this->moveFocusPrevNext(false);
 		return;
+	case Qt::Key_Space:
+		emit this->previewRequested();
+		return;
 	}
 
 	QWidget::keyPressEvent(event);

@@ -93,6 +93,7 @@ Q_SIGNALS:
 	void copied(void);
 	void clipboardUpdated(void);
 	void moveFocusPrevNext(bool prev);
+	void previewRequested(void);
 };
 
 #endif // PASTEITEM_H

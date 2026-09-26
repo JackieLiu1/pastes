@@ -125,6 +125,10 @@
         <translation>代码</translation>
     </message>
     <message>
+        <source>Preview</source>
+        <translation>预览</translation>
+    </message>
+    <message>
         <source>Pastes</source>
         <translation>Pastes</translation>
     </message>
@@ -151,6 +155,10 @@
     <message>
         <source>No matching items</source>
         <translation>没有找到匹配的内容</translation>
+    </message>
+    <message>
+        <source>← → Browse   ·   Enter Paste   ·   Space Preview</source>
+        <translation>← → 浏览   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
         <source>Ctrl+%1 to paste</source>
