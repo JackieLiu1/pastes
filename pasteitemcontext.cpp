@@ -103,44 +103,10 @@ FileFrame::~FileFrame()
 }
 
 #ifdef Q_OS_WIN
-/* Replacement for QtWinExtras' QtWin::fromHICON() (the module was removed
- * in Qt6): reads the icon's color bitmap into an ARGB32 QImage. */
+/* Qt6's native conversion also handles legacy masks and icons without alpha. */
 QPixmap pixmapFromHICON(HICON icon)
 {
-	QPixmap pixmap;
-	ICONINFO iconInfo;
-
-	if (!icon || !GetIconInfo(icon, &iconInfo))
-		return pixmap;
-
-	BITMAP bm;
-	if (iconInfo.hbmColor &&
-	    GetObject(iconInfo.hbmColor, sizeof(bm), &bm) &&
-	    bm.bmWidth > 0 && bm.bmHeight > 0) {
-		QImage image(bm.bmWidth, bm.bmHeight, QImage::Format_ARGB32);
-
-		BITMAPINFO bmi;
-		ZeroMemory(&bmi, sizeof(bmi));
-		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-		bmi.bmiHeader.biWidth = bm.bmWidth;
-		bmi.bmiHeader.biHeight = -bm.bmHeight; /* top-down rows */
-		bmi.bmiHeader.biPlanes = 1;
-		bmi.bmiHeader.biBitCount = 32;
-		bmi.bmiHeader.biCompression = BI_RGB;
-
-		HDC hdc = GetDC(nullptr);
-		if (GetDIBits(hdc, iconInfo.hbmColor, 0, bm.bmHeight,
-			      image.bits(), &bmi, DIB_RGB_COLORS))
-			pixmap = QPixmap::fromImage(image);
-		ReleaseDC(nullptr, hdc);
-	}
-
-	if (iconInfo.hbmColor)
-		DeleteObject(iconInfo.hbmColor);
-	if (iconInfo.hbmMask)
-		DeleteObject(iconInfo.hbmMask);
-
-	return pixmap;
+	return icon ? QPixmap::fromImage(QImage::fromHICON(icon)) : QPixmap();
 }
 
 QPixmap pixmapFromShellImageList(int iImageList, const SHFILEINFO &info)
@@ -158,6 +124,7 @@ QPixmap pixmapFromShellImageList(int iImageList, const SHFILEINFO &info)
 		result = pixmapFromHICON(hIcon);
 		DestroyIcon(hIcon);
 	}
+	imageList->Release();
 
 	return result;
 }
@@ -215,6 +182,8 @@ QIcon FileFrame::getIcon(const QString &uri)
 
 			const QPixmap extraLarge = pixmapFromShellImageList(0x4, info);
 			icon.addPixmap(extraLarge);
+			if (info.hIcon)
+				DestroyIcon(info.hIcon);
 
 			return icon;
 		}
