@@ -279,14 +279,14 @@ void FileFrame::resizeEvent(QResizeEvent *event)
 		int basename_size = font.horizontalAdvance(basename);
 		if (basename_size > this->width() - 20) {
 			basename = font.elidedText(basename, Qt::ElideLeft, this->width() - 20);
-			this->setMaskFrameText("<font color=black>" + basename + "</font>");
+			this->setMaskFrameText("<span>" + basename.toHtmlEscaped() + "</span>");
 		} else {
 			int dirname_size = font.horizontalAdvance(dirname);
 			if (dirname_size > this->width() - 20 - basename_size) {
 				 dirname = font.elidedText(dirname, Qt::ElideLeft, this->width() - 20 - basename_size);
 			}
 
-			this->setMaskFrameText(dirname + "<font color=black>" + basename + "</font>");
+			this->setMaskFrameText("<span>" + (dirname + basename).toHtmlEscaped() + "</span>");
 		}
 	}
 
