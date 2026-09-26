@@ -62,7 +62,7 @@ private:
 	void undoDeletion(void);
 	void updateUndoState(void);
 	bool handlePointerEvent(QObject *object, QEvent *event);
-	void resetPointerGesture(bool cancelSwipe = true);
+	void resetPointerGesture(bool cancelSwipe = true, bool cancelReflow = true);
 	PasteItem *currentPasteItem(void);
 	void pasteToPreviousWindow(void);
 	QPixmap getClipboardOwnerIcon(void);
@@ -112,6 +112,7 @@ private:
 		QByteArray md5;
 		QDateTime time;
 		int row;
+		quint64 dismissalId = 0;
 	};
 	std::vector<DeletedEntry>		__deleted_items;
 	QTimer				*__undo_timer = nullptr;

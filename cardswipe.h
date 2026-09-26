@@ -29,6 +29,8 @@ public:
 	void setDismissal(qreal progress);
 	bool ready(void) const { return m_offset >= m_threshold; }
 	void release(bool remove);
+	bool restore(PasteItem *card, quint64 dismissalId = 0);
+	quint64 dismissalId(PasteItem *card) const;
 	void cancel(void);
 	PasteItem *sourceCard(void) const;
 
@@ -36,7 +38,7 @@ protected:
 	void paintEvent(QPaintEvent *event) override;
 
 private:
-	void prepareParticles(void);
+	void prepareParticles(bool reuse = false);
 	void paintDismissal(QPainter &painter);
 	struct Particle {
 		QPointF origin;
@@ -46,6 +48,7 @@ private:
 	};
 	std::array<Particle, 36> m_particles;
 	QPointer<PasteItem> m_card;
+	QPointer<PasteItem> m_departing_card;
 	QPixmap m_snapshot;
 	QRectF m_origin;
 	QPropertyAnimation *m_animation;
@@ -54,9 +57,12 @@ private:
 	qreal m_threshold = 80;
 	qreal m_release_offset = 0;
 	qreal m_dismissal = 0;
+	qreal m_restore_start = 1;
 	QPointF m_line_center;
 	qreal m_line_width = 0;
 	bool m_removing = false;
+	bool m_restoring = false;
+	quint64 m_dismissal_id = 0;
 };
 
 #endif

@@ -310,7 +310,7 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event)
 	return QMainWindow::eventFilter(object, event);
 }
 
-void MainWindow::resetPointerGesture(bool cancelSwipe)
+void MainWindow::resetPointerGesture(bool cancelSwipe, bool cancelReflow)
 {
 	if (this->__pressed_item)
 		this->__pressed_item->setPressed(false);
@@ -319,7 +319,7 @@ void MainWindow::resetPointerGesture(bool cancelSwipe)
 	this->__mouse_moved = false;
 	this->__pointer_gesture = PointerGesture::Pending;
 	if (cancelSwipe && this->__card_swipe) this->__card_swipe->cancel();
-	if (this->__card_reflow) this->__card_reflow->cancel();
+	if (cancelReflow && this->__card_reflow) this->__card_reflow->cancel();
 	if (QWidget::mouseGrabber() == this->__scroll_widget->viewport())
 		this->__scroll_widget->viewport()->releaseMouse();
 	this->__scroll_widget->viewport()->unsetCursor();
@@ -561,6 +561,7 @@ void MainWindow::pasteToPreviousWindow(void)
 
 void MainWindow::move_to_prev_next_focus_widget(bool prev)
 {
+	if (this->__card_swipe->sourceCard()) this->__card_swipe->cancel();
 	this->__card_reflow->cancel();
 	const int count = this->__scroll_widget->count();
 	if (count == 0)
@@ -682,6 +683,8 @@ void MainWindow::deleteCurrentItem(void)
 	removed.md5 = data->md5;
 	removed.time = data->time;
 	removed.row = row;
+	removed.dismissalId = this->__card_swipe->dismissalId(
+		qobject_cast<PasteItem *>(this->__scroll_widget->itemWidget(item)));
 	if (this->__deleted_items.size() == 20)
 		this->__deleted_items.erase(this->__deleted_items.begin());
 	this->__deleted_items.push_back(std::move(removed));
@@ -730,10 +733,14 @@ void MainWindow::updateUndoState(void)
 void MainWindow::undoDeletion(void)
 {
 	if (this->__deleted_items.empty()) return;
-	this->resetPointerGesture();
+	this->resetPointerGesture(false, false);
+	/* Finish an older return before recording neighbors, but keep the
+	 * outgoing dismissal alive so immediate undo can reverse its phase. */
+	if (this->__card_swipe->sourceCard()) this->__card_swipe->cancel();
 	DeletedEntry removed = std::move(this->__deleted_items.back());
 	this->__deleted_items.pop_back();
 	PasteItem *restored = nullptr;
+	bool inserted = false;
 	/* A fresh copy wins over the older snapshot if that content exists again. */
 	for (int i = 0; i < this->__scroll_widget->count(); ++i) {
 		QListWidgetItem *item = this->__scroll_widget->item(i);
@@ -744,6 +751,7 @@ void MainWindow::undoDeletion(void)
 		}
 	}
 	if (!restored) {
+		this->__card_reflow->prepare(this->__scroll_widget, nullptr);
 		auto *data = new ItemData;
 		data->mimeData = removed.mime.release();
 		data->icon = removed.icon;
@@ -762,6 +770,7 @@ void MainWindow::undoDeletion(void)
 			--row;
 		}
 		restored = this->insertItemWidget(true, row);
+		inserted = true;
 		const QMimeData *mime = data->mimeData;
 		if (mime->hasUrls()) {
 			QList<QUrl> urls = mime->urls();
@@ -790,6 +799,18 @@ void MainWindow::undoDeletion(void)
 	this->updateQuickPasteNumbers();
 	this->updateTrayTooltip();
 	this->updateUndoState();
+	this->__main_frame->layout()->activate();
+	if (inserted) {
+		this->__scroll_widget->doItemsLayout();
+		this->__card_reflow->animate();
+		if (!restored->widgetItem()->isHidden() && this->isVisible())
+			this->__card_swipe->restore(restored, removed.dismissalId);
+		else this->__card_swipe->cancel();
+	} else {
+		/* Re-copying already restored the content; do not replay or duplicate it. */
+		this->__card_reflow->cancel();
+		this->__card_swipe->cancel();
+	}
 }
 
 void MainWindow::initUI(void)

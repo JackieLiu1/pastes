@@ -77,7 +77,9 @@ void CardSwipeOverlay::release(bool remove)
 	/* Deletion commits at mouse release. The outgoing snapshot is purely
 	 * visual, so later input or clipboard updates cannot cancel the deletion. */
 	if (remove) {
+		m_departing_card = m_card;
 		m_card.clear();
+		++m_dismissal_id;
 		this->prepareParticles();
 		m_dismiss_animation->setDuration(700);
 		m_dismiss_animation->setEasingCurve(QEasingCurve::Linear);
@@ -93,16 +95,56 @@ void CardSwipeOverlay::release(bool remove)
 	m_animation->start();
 }
 
+quint64 CardSwipeOverlay::dismissalId(PasteItem *card) const
+{
+	return card && m_departing_card == card && m_removing && !m_restoring ? m_dismissal_id : 0;
+}
+
+bool CardSwipeOverlay::restore(PasteItem *card, quint64 dismissalId)
+{
+	/* An immediate undo reverses the outgoing visual at its current phase.
+	 * Later undo uses the same renderer, with a shorter trip above the slot. */
+	const bool reverse = dismissalId && dismissalId == m_dismissal_id &&
+		m_removing && !m_restoring && !m_snapshot.isNull();
+	const qreal progress = reverse ? m_dismissal : 1;
+	const qreal lift = reverse ? m_release_offset : qBound(qreal(60), card ? card->height()*0.32 : 0, qreal(110));
+	if (!this->begin(card)) return false;
+	m_restoring = true;
+	m_release_offset = lift;
+	if (reverse && progress < 0.04) {
+		/* The card is still facing forward; just bring it back down. */
+		m_offset = lift;
+		m_animation->setDuration(220);
+		m_animation->setEasingCurve(QEasingCurve::OutCubic);
+		m_animation->setStartValue(lift);
+		m_animation->setEndValue(qreal(0));
+		m_animation->start();
+		return true;
+	}
+	m_removing = true;
+	m_restore_start = progress;
+	m_dismissal = progress;
+	this->prepareParticles(reverse);
+	m_dismiss_animation->setDuration(qMax(180, qRound(660*progress)));
+	m_dismiss_animation->setEasingCurve(QEasingCurve::Linear);
+	m_dismiss_animation->setStartValue(progress);
+	m_dismiss_animation->setEndValue(qreal(0));
+	m_dismiss_animation->start();
+	return true;
+}
+
 void CardSwipeOverlay::cancel(void)
 {
 	m_animation->stop();
 	m_dismiss_animation->stop();
 	if (m_card) m_card->endSwipe();
 	m_card.clear();
+	m_departing_card.clear();
 	m_snapshot = QPixmap();
 	m_offset = 0;
 	m_dismissal = 0;
 	m_removing = false;
+	m_restoring = false;
 	hide();
 }
 
@@ -117,7 +159,7 @@ void CardSwipeOverlay::paintEvent(QPaintEvent *)
 		this->paintDismissal(painter);
 		return;
 	}
-	if (!m_removing) {
+	if (!m_restoring) {
 		const QRectF hint(m_origin.left()+16, m_origin.bottom()-50, m_origin.width()-32, 32);
 		painter.setPen(Qt::NoPen);
 		painter.setBrush(QColor(dark ? "#392826" : "#F6E7DF"));
@@ -140,12 +182,13 @@ void CardSwipeOverlay::setDismissal(qreal progress)
 	update();
 }
 
-void CardSwipeOverlay::prepareParticles(void)
+void CardSwipeOverlay::prepareParticles(bool reuse)
 {
 	const qreal camera = qMax(qreal(550), m_origin.height()*2.5);
 	const qreal depth = 38+m_origin.height()*0.24;
 	m_line_center = QPointF(m_origin.center().x(), m_origin.top()-m_release_offset-36);
 	m_line_width = (m_origin.width()-8)*camera/(camera+depth);
+	if (reuse) return;
 	const bool dark = qApp->property("pastesDark").toBool();
 	const std::array<QColor, 3> colors = dark ? std::array<QColor, 3>{
 		QColor("#8EDCC4"), QColor("#F2C879"), QColor("#FFF4D8")} :
@@ -171,7 +214,10 @@ void CardSwipeOverlay::paintDismissal(QPainter &painter)
 	const qreal camera = qMax(qreal(550), m_origin.height()*2.5);
 	const qreal depth = (38+m_origin.height()*0.24)*fold;
 	const qreal angle = qDegreesToRadians(qMin(qreal(89.75), fold*90));
-	const QPointF hinge(m_origin.center().x(), m_origin.top()-m_release_offset-36*fold);
+	const qreal lift = m_restoring ? m_release_offset*
+		QEasingCurve(QEasingCurve::InOutCubic).valueForProgress(qBound(qreal(0),
+			progress/qMin(qreal(0.60), m_restore_start), qreal(1))) : m_release_offset;
+	const QPointF hinge(m_origin.center().x(), m_origin.top()-lift-36*fold);
 	if (progress < 0.60) {
 		/* Rotate the bottom edge away from the viewer around the top edge.
 		 * Perspective narrows the receding edge; its height converges to a line. */
