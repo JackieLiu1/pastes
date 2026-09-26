@@ -23,7 +23,7 @@ struct RoundedSurfaceStyle
 	bool operator==(const RoundedSurfaceStyle &other) const;
 };
 
-/* GUI-thread-owned cache. The surface render is rebuilt only for a changed size,
+/* GUI-thread-owned cache. The 2x render is rebuilt only for a changed size,
  * DPI or visual state; ordinary repaint/animation frames just blit it. */
 class RoundedSurface
 {

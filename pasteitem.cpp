@@ -33,7 +33,9 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	vboxlayout->addWidget(m_barnner);
 	vboxlayout->addWidget(m_context);
 	vboxlayout->setSpacing(0);
-	vboxlayout->setContentsMargins(1, 1, 1, 1);
+	/* Reserve the widest outline even when unselected: opaque content must
+	 * stay inside the 2 px selection border, without moving on selection. */
+	vboxlayout->setContentsMargins(2, 2, 2, 2);
 
 	m_frame->setLayout(vboxlayout);
 	m_frame->show();

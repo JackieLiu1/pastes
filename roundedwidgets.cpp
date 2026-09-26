@@ -111,7 +111,7 @@ void RoundedSurface::paint(QWidget *widget, RoundedRole role, QPainter &painter)
 	if (m_pixmap.isNull() || m_size != widget->size() || m_ratio != ratio || !(m_style == style)) {
 		m_size = widget->size(); m_ratio = ratio; m_style = style;
 		const QSize pixels(qCeil(m_size.width()*ratio), qCeil(m_size.height()*ratio));
-		QImage image(pixels, QImage::Format_ARGB32_Premultiplied);
+		QImage image(pixels*2, QImage::Format_ARGB32_Premultiplied);
 		image.fill(Qt::transparent);
 		QPainter render(&image);
 		render.setRenderHint(QPainter::Antialiasing);
@@ -153,7 +153,7 @@ void RoundedSurface::paint(QWidget *widget, RoundedRole role, QPainter &painter)
 		render.setBrush(fill);
 		render.setPen(style.borderWidth > 0 ? QPen(style.border, style.borderWidth) : QPen(Qt::NoPen));
 		render.drawPath(path); render.end();
-		m_pixmap = QPixmap::fromImage(image);
+		m_pixmap = QPixmap::fromImage(image.scaled(pixels, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
 		m_pixmap.setDevicePixelRatio(ratio);
 	}
 	painter.setRenderHint(QPainter::SmoothPixmapTransform);
