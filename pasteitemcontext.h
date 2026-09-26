@@ -51,16 +51,22 @@ public:
 	void setStorePixmap(QPixmap pixmap)
 	{
 		m_pixmap = pixmap;
-		/* force a rescale on the next resize */
+		/* force a rescale on the next paint/resize */
 		m_scaled_size = QSize();
+		m_scaled_pixmap = QPixmap();
+		this->update();
 	}
 
 private:
 	QPixmap		m_pixmap;
+	QPixmap		m_scaled_pixmap;
 	QSize		m_scaled_size;
+	qreal		m_scaled_ratio = 0;
+	void updatePreviewPixmap(void);
 
 protected:
 	void resizeEvent(QResizeEvent *event);
+	void paintEvent(QPaintEvent *event) override;
 };
 
 class FileFrame : public TextFrame

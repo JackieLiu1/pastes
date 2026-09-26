@@ -42,7 +42,7 @@ QListWidget::item, QListWidget::item:hover, QListWidget::item:selected {
 }
 #ContextPixmapFrame > QLabel {
 	background: transparent; border: 0;
-	color: #FFFFFF; font-size: 11px;
+	color: #9CAF9F; font-size: 11px;
 }
 #Barnner { background: transparent; }
 #Barnner > QLabel { background: transparent; }

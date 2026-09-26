@@ -60,16 +60,35 @@ PixmapFrame::PixmapFrame(QWidget *parent) : TextFrame(parent)
 
 void PixmapFrame::resizeEvent(QResizeEvent *event)
 {
-	/* Rescaling is expensive (SmoothTransformation): only do it when the
-	 * size actually changed, resize events often repeat the same size. */
-	if (!m_pixmap.isNull() && m_scaled_size != event->size()) {
-		m_scaled_size = event->size();
-		this->setPixmap(m_pixmap.scaled(event->size(),
-						Qt::KeepAspectRatio,
-						Qt::SmoothTransformation));
-	}
-
 	TextFrame::resizeEvent(event);
+	this->updatePreviewPixmap();
+}
+
+void PixmapFrame::updatePreviewPixmap(void)
+{
+	/* Reserve the footer: a solid information row must not cover the image.
+	 * Cache by usable size and DPI so repeated paints/resizes only blit. */
+	const QSize available(qMax(1, this->width()-12), qMax(1, this->height()-LABEL_HEIGHT-12));
+	const qreal ratio = this->devicePixelRatioF();
+	if (!m_pixmap.isNull() && (m_scaled_size != available || m_scaled_ratio != ratio)) {
+		m_scaled_size = available;
+		m_scaled_ratio = ratio;
+		m_scaled_pixmap = m_pixmap.scaled(QSize(qRound(available.width()*ratio), qRound(available.height()*ratio)),
+			Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		m_scaled_pixmap.setDevicePixelRatio(ratio);
+	}
+}
+
+void PixmapFrame::paintEvent(QPaintEvent *)
+{
+	this->updatePreviewPixmap();
+	if (m_scaled_pixmap.isNull()) return;
+	const QRectF preview = QRectF(this->rect()).adjusted(6, 6, -6, -LABEL_HEIGHT-6);
+	if (preview.isEmpty()) return;
+	const QSizeF size = QSizeF(m_scaled_pixmap.size())/m_scaled_pixmap.devicePixelRatioF();
+	QPainter painter(this);
+	painter.setClipRect(preview);
+	painter.drawPixmap(preview.center()-QPointF(size.width()/2, size.height()/2), m_scaled_pixmap);
 }
 
 FileFrame::FileFrame(QWidget *parent) : TextFrame(parent)

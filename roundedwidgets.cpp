@@ -89,8 +89,7 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 		if (swatch.isValid()) {
 			style.fill = qGray(swatch.rgb()) < 145 ? QColor(0, 0, 0, 20) : QColor(255, 255, 255, 35);
 		} else if (content->objectName() == "ContextPixmapFrame") {
-			style.gradient = true;
-			style.fill = QColor(0, 0, 0, 180);
+			style.fill = QColor(dark ? "#293C39" : "#F0F5F1");
 		} else {
 			style.gradient = true;
 			style.fill = QColor(dark ? "#293930" : "#FFFDF8");
