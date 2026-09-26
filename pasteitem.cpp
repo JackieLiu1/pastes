@@ -8,6 +8,8 @@
 #include <QUrl>
 #include <QDebug>
 #include <QKeyEvent>
+#include <QMenu>
+#include <QContextMenuEvent>
 #include <QStyle>
 
 PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
@@ -193,9 +195,39 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 	case Qt::Key_Delete:
 		emit this->deleteRequested();
 		return;
+	case Qt::Key_C:
+		if (event->modifiers() & Qt::ControlModifier) {
+			this->copyData(false, false);
+			return;
+		}
+		break;
 	}
 
 	QWidget::keyPressEvent(event);
+}
+
+void PasteItem::contextMenuEvent(QContextMenuEvent *event)
+{
+	QMenu menu(this);
+	QAction *pasteAction = menu.addAction(QObject::tr("Paste"));
+	QAction *plainAction = menu.addAction(QObject::tr("Paste as Plain Text"));
+	ItemData *data = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
+	plainAction->setEnabled(data && data->mimeData->hasText());
+	QAction *copyAction = menu.addAction(QObject::tr("Copy to Clipboard"));
+	menu.addSeparator();
+	QAction *previewAction = menu.addAction(QObject::tr("Preview"));
+	QAction *deleteAction = menu.addAction(QObject::tr("Delete"));
+	QAction *chosen = menu.exec(event->globalPos());
+	if (chosen == pasteAction)
+		this->copyData();
+	else if (chosen == plainAction)
+		this->copyData(true);
+	else if (chosen == copyAction)
+		this->copyData(false, false);
+	else if (chosen == previewAction)
+		emit this->previewRequested();
+	else if (chosen == deleteAction)
+		emit this->deleteRequested();
 }
 
 #ifdef Q_OS_LINUX
@@ -232,12 +264,13 @@ static void SendKey(Display * disp, KeySym keysym, KeySym modsym)
 }
 #endif
 
-void PasteItem::copyData(bool plainText)
+void PasteItem::copyData(bool plainText, bool paste)
 {
 	ItemData *itemData = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
 	if (!itemData || (plainText && !itemData->mimeData->hasText()))
 		return;
-	emit this->hideWindow();
+	if (paste)
+		emit this->hideWindow();
 
 	QClipboard *clipboard = QApplication::clipboard();
 
@@ -253,13 +286,14 @@ void PasteItem::copyData(bool plainText)
 		clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Selection);
 #endif
 	emit this->clipboardUpdated();
-	emit this->copied();
+	if (paste)
+		emit this->copied();
 	if (itemData->mimeData->hasUrls())
 		return;
 
 #ifdef Q_OS_LINUX
 	/* Send keypress event 'Ctrl +v' for direct paste */
-	QTimer::singleShot(1000, [](void) {
+	if (paste) QTimer::singleShot(1000, [](void) {
 		Display *disp = XOpenDisplay(nullptr);
 		SendKey(disp, XK_Insert, XK_Shift_L);
 		XCloseDisplay(disp);

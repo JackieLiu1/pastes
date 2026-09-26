@@ -52,7 +52,7 @@ public:
 	bool setUrls(QList<QUrl> &);
 	void setIcon(QPixmap);
 	void setTime(QDateTime &);
-	void copyData(bool plainText = false);
+	void copyData(bool plainText = false, bool paste = true);
 	void setQuickPasteNumber(int number);
 	void setSelected(bool selected);
 
@@ -71,6 +71,7 @@ protected:
 	void resizeEvent(QResizeEvent *event);
 	void mouseDoubleClickEvent(QMouseEvent *event);
 	void keyPressEvent(QKeyEvent *event);
+	void contextMenuEvent(QContextMenuEvent *event);
 
 private:
 	void setCardKind(const char *kind);

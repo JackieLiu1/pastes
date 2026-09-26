@@ -125,8 +125,24 @@
         <translation>代码</translation>
     </message>
     <message>
+        <source>Paste</source>
+        <translation>粘贴</translation>
+    </message>
+    <message>
+        <source>Paste as Plain Text</source>
+        <translation>粘贴为纯文本</translation>
+    </message>
+    <message>
+        <source>Copy to Clipboard</source>
+        <translation>复制到剪贴板</translation>
+    </message>
+    <message>
         <source>Preview</source>
         <translation>预览</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删除</translation>
     </message>
     <message>
         <source>Pastes</source>
