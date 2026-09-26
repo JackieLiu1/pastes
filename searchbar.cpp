@@ -80,10 +80,14 @@ bool LineEdit::event(QEvent *event)
 			emit this->hideWindow();
 			return true;
 		case Qt::Key_Tab:
-			emit this->moveFocusPrevNext(false);
+			emit this->moveFocusPrevNext(ke->modifiers().testFlag(Qt::ShiftModifier));
 			return true;
 		case Qt::Key_Backtab:
 			emit this->moveFocusPrevNext(true);
+			return true;
+		case Qt::Key_Right:
+		case Qt::Key_Down:
+			emit this->moveFocusPrevNext(false);
 			return true;
 		}
 	}

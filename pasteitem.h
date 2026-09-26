@@ -66,6 +66,7 @@ public:
 	}
 
 protected:
+	bool event(QEvent *event);
 	void resizeEvent(QResizeEvent *event);
 	void mouseDoubleClickEvent(QMouseEvent *event);
 	void keyPressEvent(QKeyEvent *event);
@@ -87,6 +88,7 @@ private:
 
 Q_SIGNALS:
 	void hideWindow(void);
+	void moveFocusPrevNext(bool prev);
 };
 
 #endif // PASTEITEM_H

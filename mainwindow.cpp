@@ -181,6 +181,7 @@ MainWindow::MainWindow(QWidget *parent)
 		else
 			this->hide_window();
 	});
+	QApplication::instance()->installEventFilter(this);
 
 	QShortcut *shortcut_search = new QShortcut(this);
 	shortcut_search->setKey(QKeySequence("Ctrl+f"));
@@ -207,8 +208,29 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event)
 	if (this->__scroll_widget && object == this->__scroll_widget->viewport() &&
 	    event->type() == QEvent::Resize && this->__empty_state)
 		this->__empty_state->setGeometry(QRect(QPoint(0, 0), static_cast<QResizeEvent *>(event)->size()));
+	if (event->type() == QEvent::KeyPress && this->isVisible() &&
+	    QApplication::activeWindow() == this) {
+		LineEdit *lineedit = this->__searchbar->findChild<LineEdit *>("", Qt::FindDirectChildrenOnly);
+		if (object != lineedit) {
+			QKeyEvent *key = static_cast<QKeyEvent *>(event);
+			if (key->key() == Qt::Key_Space)
+				return QMainWindow::eventFilter(object, event);
+			if (key->key() == Qt::Key_Backspace && !lineedit->text().isEmpty()) {
+				lineedit->setFocus();
+				lineedit->backspace();
+				return true;
+			}
+			if (!(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)) &&
+			    !key->text().isEmpty() && key->text().at(0).isPrint()) {
+				lineedit->setFocus();
+				lineedit->insert(key->text());
+				return true;
+			}
+		}
+	}
 	return QMainWindow::eventFilter(object, event);
 }
+
 void MainWindow::showEvent(QShowEvent *event)
 {
 	QListWidgetItem *item = this->__scroll_widget->currentItem();
@@ -265,10 +287,10 @@ void MainWindow::move_to_prev_next_focus_widget(bool prev)
 	if (count == 0)
 		return;
 
-	int row = -1;
-	const QList<QListWidgetItem *> selected = this->__scroll_widget->selectedItems();
-	if (!selected.isEmpty())
-		row = this->__scroll_widget->row(selected.first());
+	int row = this->__scroll_widget->currentRow();
+	if (row < 0)
+		row = prev ? 0 : -1;
+	const bool fromSearch = this->__searchbar->findChild<LineEdit *>("", Qt::FindDirectChildrenOnly)->hasFocus();
 
 	/* Bounded by the item count: if every item is hidden (search filtered
 	 * everything out) this gives up instead of looping forever. */
@@ -278,7 +300,7 @@ void MainWindow::move_to_prev_next_focus_widget(bool prev)
 			/* Get prev focus widget and isn't hidden */
 			if (--row < 0)
 				row = count - 1;
-		} else {
+		} else if (i > 0 || !fromSearch || row < 0) {
 			/* Get next focus widget and isn't hidden */
 			if (++row > count - 1)
 				row = 0;
@@ -286,21 +308,24 @@ void MainWindow::move_to_prev_next_focus_widget(bool prev)
 
 		QListWidgetItem *item = this->__scroll_widget->item(row);
 		widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
-		if (widget && !widget->isHidden())
+		if (widget && !item->isHidden())
 			break;
 	}
 
-	if (widget && !widget->isHidden())
+	if (widget && !this->__scroll_widget->item(row)->isHidden()) {
+		this->__scroll_widget->setCurrentRow(row);
+		this->__scroll_widget->scrollToItem(this->__scroll_widget->item(row));
 		widget->setFocus();
+	}
 }
 
 PasteItem *MainWindow::currentPasteItem(void)
 {
-	const QList<QListWidgetItem *> selected = this->__scroll_widget->selectedItems();
-	if (selected.isEmpty())
+	QListWidgetItem *item = this->__scroll_widget->currentItem();
+	if (!item || item->isHidden())
 		return nullptr;
 
-	return reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(selected.first()));
+	return reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
 }
 
 void MainWindow::updateHistoryStatus(void)
@@ -335,6 +360,8 @@ void MainWindow::initUI(void)
 		this->hide_window();
 	});
 	QObject::connect(this->__searchbar, &SearchBar::textChanged, [this](const QString &text) {
+		LineEdit *lineedit = this->__searchbar->findChild<LineEdit *>("", Qt::FindDirectChildrenOnly);
+		const bool keepSearchFocus = lineedit->hasFocus();
 		int temp_current_item_row = -1;
 		int show_row_count = 0;
 
@@ -360,7 +387,7 @@ void MainWindow::initUI(void)
 
 		/* That is the first showing item */
 		if (temp_current_item_row != -1) {
-			this->__scroll_widget->item(temp_current_item_row)->setSelected(true);
+			this->__scroll_widget->setCurrentRow(temp_current_item_row);
 			this->__scroll_widget->scrollToItem(this->__scroll_widget->item(temp_current_item_row));
 		}
 
@@ -368,12 +395,16 @@ void MainWindow::initUI(void)
 			/* restore current row in search before. The stored item may
 			 * already have been removed by the dedup logic meanwhile. */
 			if (this->__current_item) {
-				this->__current_item->setSelected(true);
+				this->__scroll_widget->setCurrentItem(this->__current_item);
 				this->__scroll_widget->scrollToItem(this->__current_item);
 			}
 			this->__current_item = nullptr;
 		}
 		this->updateHistoryStatus();
+		/* Updating the list's current index can focus its item widget. Keep
+		 * typing in search until the user explicitly navigates to a card. */
+		if (keepSearchFocus)
+			lineedit->setFocus();
 	});
 	QObject::connect(this->__searchbar, &SearchBar::selectItem, [this](void) {
 		PasteItem *widget = this->currentPasteItem();
@@ -469,7 +500,7 @@ void MainWindow::initUI(void)
 	this->__main_frame->show();
 
 	this->setupTrayIcon();
-	this->__keyboard_hint->setText(QStringLiteral("Enter"));
+	this->__keyboard_hint->setText(QStringLiteral("← → · Enter"));
 
 	/* load data from database */
 	this->reloadData();
@@ -623,6 +654,8 @@ PasteItem *MainWindow::insertItemWidget(bool back)
 	QObject::connect(widget, &PasteItem::hideWindow, [this](void) {
 		this->hide_window();
 	});
+	QObject::connect(widget, &PasteItem::moveFocusPrevNext,
+			 this, &MainWindow::move_to_prev_next_focus_widget);
 
 	/* resize item, It's use for pasteitem frame */
 	item->setSizeHint(QSize(qBound(210, this->width()/6, 280),

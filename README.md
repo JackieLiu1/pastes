@@ -10,4 +10,6 @@ Pastes is a cross-platform clipboard manager with modern UI design and lowest le
 
 Pastes can hold the clipboard history within 7 days. You can add it to your system global clipboard by double-clicking or pressing `Enter`. What’s more surprising is that if the focused window can receive clipboard data, Then he will copy the data directly to the focus window.
 
+Use `Tab` / `Shift+Tab` or the left/right arrow keys to cycle through visible cards. Press `Ctrl+F` to focus search, or start typing to search directly. `Tab` from search returns to the selected result.
+
 ![img](./pastes-view.gif)

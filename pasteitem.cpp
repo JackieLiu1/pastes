@@ -134,6 +134,19 @@ void PasteItem::resizeEvent(QResizeEvent *event)
 	QWidget::resizeEvent(event);
 }
 
+bool PasteItem::event(QEvent *event)
+{
+	if (event->type() == QEvent::KeyPress) {
+		QKeyEvent *key = static_cast<QKeyEvent *>(event);
+		if (key->key() == Qt::Key_Tab || key->key() == Qt::Key_Backtab) {
+			emit this->moveFocusPrevNext(key->key() == Qt::Key_Backtab ||
+						     key->modifiers().testFlag(Qt::ShiftModifier));
+			return true;
+		}
+	}
+	return QWidget::event(event);
+}
+
 void PasteItem::mouseDoubleClickEvent(QMouseEvent *event)
 {
 	this->copyData();
@@ -150,6 +163,12 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 		return;
 	case Qt::Key_Escape:
 		emit this->hideWindow();
+		return;
+	case Qt::Key_Left:
+		emit this->moveFocusPrevNext(true);
+		return;
+	case Qt::Key_Right:
+		emit this->moveFocusPrevNext(false);
 		return;
 	}
 
