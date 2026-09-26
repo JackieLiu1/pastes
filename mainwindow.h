@@ -27,6 +27,7 @@ class QLabel;
 class QAction;
 class QShortcut;
 class CardSwipeOverlay;
+class CardReflowOverlay;
 #ifdef Q_OS_WIN
 class ClipboardSource;
 #endif
@@ -104,6 +105,7 @@ private:
 	enum class PointerGesture { Pending, Browse, Dismiss, Cancelled };
 	PointerGesture			__pointer_gesture = PointerGesture::Pending;
 	CardSwipeOverlay		*__card_swipe = nullptr;
+	CardReflowOverlay		*__card_reflow = nullptr;
 	struct DeletedEntry {
 		std::unique_ptr<QMimeData> mime;
 		QImage icon;

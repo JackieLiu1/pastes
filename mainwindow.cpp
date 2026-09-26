@@ -34,6 +34,7 @@
 #include "pasteitem.h"
 #include "previewdialog.h"
 #include "cardswipe.h"
+#include "cardreflow.h"
 
 /* History older than this is dropped on startup and on every clipboard update */
 static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
@@ -318,6 +319,7 @@ void MainWindow::resetPointerGesture(bool cancelSwipe)
 	this->__mouse_moved = false;
 	this->__pointer_gesture = PointerGesture::Pending;
 	if (cancelSwipe && this->__card_swipe) this->__card_swipe->cancel();
+	if (this->__card_reflow) this->__card_reflow->cancel();
 	if (QWidget::mouseGrabber() == this->__scroll_widget->viewport())
 		this->__scroll_widget->viewport()->releaseMouse();
 	this->__scroll_widget->viewport()->unsetCursor();
@@ -559,6 +561,7 @@ void MainWindow::pasteToPreviousWindow(void)
 
 void MainWindow::move_to_prev_next_focus_widget(bool prev)
 {
+	this->__card_reflow->cancel();
 	const int count = this->__scroll_widget->count();
 	if (count == 0)
 		return;
@@ -689,6 +692,7 @@ void MainWindow::deleteCurrentItem(void)
 	QWidget *widget = this->__scroll_widget->itemWidget(item);
 	if (this->__pressed_item == widget || this->__card_swipe->sourceCard() == widget)
 		this->resetPointerGesture();
+	this->__card_reflow->prepare(this->__scroll_widget, widget);
 	this->__scroll_widget->removeItemWidget(item);
 	delete item;
 	if (widget) {
@@ -710,6 +714,8 @@ void MainWindow::deleteCurrentItem(void)
 	this->updateQuickPasteNumbers();
 	this->updateTrayTooltip();
 	this->updateUndoState();
+	this->__main_frame->layout()->activate();
+	this->__card_reflow->animate();
 }
 
 void MainWindow::updateUndoState(void)
@@ -920,6 +926,7 @@ void MainWindow::initUI(void)
 	/* Keep animation outside the panel's shadow effect: moving a snapshot
 	 * must not invalidate and blur the entire history panel every frame. */
 	this->__card_swipe = new CardSwipeOverlay(this);
+	this->__card_reflow = new CardReflowOverlay(this);
 	this->__history_count = new QLabel(this->__main_frame);
 	this->__history_count->setObjectName("HistoryCount");
 	this->__keyboard_hint = new QLabel(this->__main_frame);

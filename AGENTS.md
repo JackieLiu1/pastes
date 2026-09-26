@@ -49,6 +49,7 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
 - `ClipboardSource`（clipboardsource_win.cpp）— Windows 来源图标捕获；异步结果用请求编号匹配仍存在的条目，迟到图标经 Database 更新。
 - `PasteItem`（pasteitem.cpp）— 列表条目 widget；`copyData()` 复制回剪贴板。
 - `CardSwipeOverlay`（cardswipe.cpp）— GUI 线程缓存卡片快照，向上拖动与翻出/回弹动画；删除在松手时提交，动画不持有剪贴板数据。
+- `CardReflowOverlay`（cardreflow.cpp）— 删除前记录相邻卡片位置，实际列表更新后用缓存快照平移补位；取消动画恢复真实卡片，连续删除接续当前视觉位置。
 - `StackedWidget`/`TextFrame`/`PixmapFrame`/`FileFrame`（pasteitemcontext.cpp）— 条目内容渲染。
 - `GlobalShortcut`/`ShortcutPrivate`（shortcut*.cpp）— 全局唤出快捷键，
   平台实现分文件（shortcut_win.cpp / shortcut_x11.cpp）。

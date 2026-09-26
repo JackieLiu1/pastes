@@ -16,6 +16,6 @@ Press `Space` to open a themed preview with selectable text and an image that fi
 
 Click a card to select it, double-click to paste, and drag horizontally to browse. Drag a card upward until “Release to remove” appears, then let go to remove it. This requires about two thirds of its height (140–200 logical pixels). Dragging back or releasing below the threshold returns the card. The whole card follows your pointer beyond the panel, then rotates outward and flies upward on removal. Small movements remain clicks. The wheel and touchpad also scroll through cards.
 
-Cards keep their source, type and time visible. Press `Space` to preview. `Delete` and the context menu remove an entry from history, leaving original files intact. For eight seconds after deletion, click Undo or press `Ctrl+Z` to restore recent deletions one by one.
+Cards keep their source, type and time visible. Press `Space` to preview. `Delete` and the context menu remove an entry from history, leaving original files intact. Neighboring cards slide into the gap after removal. For eight seconds after deletion, click Undo or press `Ctrl+Z` to restore recent deletions one by one.
 
 ![img](./pastes-view.gif)
