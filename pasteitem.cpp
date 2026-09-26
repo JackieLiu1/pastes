@@ -190,6 +190,9 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 	case Qt::Key_Space:
 		emit this->previewRequested();
 		return;
+	case Qt::Key_Delete:
+		emit this->deleteRequested();
+		return;
 	}
 
 	QWidget::keyPressEvent(event);

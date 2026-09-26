@@ -460,6 +460,30 @@ void MainWindow::previewCurrentItem(void)
 	dialog.exec();
 }
 
+void MainWindow::deleteCurrentItem(void)
+{
+	QListWidgetItem *item = this->__scroll_widget->currentItem();
+	if (!item)
+		return;
+	ItemData *data = reinterpret_cast<ItemData *>(item->data(Qt::UserRole).value<uint64_t>());
+	if (!data)
+		return;
+	const int row = this->__scroll_widget->row(item);
+	if (this->__current_item == item)
+		this->__current_item = nullptr;
+	item->setData(Qt::UserRole, QVariant());
+	QWidget *widget = this->__scroll_widget->itemWidget(item);
+	this->__scroll_widget->removeItemWidget(item);
+	delete item;
+	if (widget)
+		widget->deleteLater();
+	this->__db.deletePasteItem(data);
+	if (this->__scroll_widget->count() > 0)
+		this->__scroll_widget->setCurrentRow(qMin(row, this->__scroll_widget->count()-1));
+	this->updateQuickPasteNumbers();
+	this->updateTrayTooltip();
+}
+
 void MainWindow::initUI(void)
 {
 	this->__searchbar = new SearchBar(this->__main_frame,
@@ -778,6 +802,10 @@ PasteItem *MainWindow::insertItemWidget(bool back)
 	QObject::connect(widget, &PasteItem::previewRequested, this, [this, widget](void) {
 		this->__scroll_widget->setCurrentItem(widget->widgetItem());
 		this->previewCurrentItem();
+	});
+	QObject::connect(widget, &PasteItem::deleteRequested, this, [this, widget](void) {
+		this->__scroll_widget->setCurrentItem(widget->widgetItem());
+		this->deleteCurrentItem();
 	});
 
 	/* resize item, It's use for pasteitem frame */

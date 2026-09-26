@@ -47,6 +47,7 @@ private:
 	void updateQuickPasteNumbers(void);
 	void pasteNumberedItem(int number, bool plainText);
 	void previewCurrentItem(void);
+	void deleteCurrentItem(void);
 	PasteItem *currentPasteItem(void);
 	void pasteToPreviousWindow(void);
 	QPixmap getClipboardOwnerIcon(void);
