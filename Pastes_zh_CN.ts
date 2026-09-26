@@ -8,8 +8,8 @@
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <source>%1 Open   ·   ← → Browse   ·   Enter Paste   ·   Space Preview</source>
-        <translation>%1 打开   ·   ← → 浏览   ·   Enter 粘贴   ·   Space 预览</translation>
+        <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
+        <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
         <source>Show (%1)</source>
@@ -235,6 +235,14 @@
     <message>
         <source>Undo deletion (Ctrl+Z)</source>
         <translation>撤销删除（Ctrl+Z）</translation>
+    </message>
+    <message>
+        <source>Drag up to remove</source>
+        <translation>继续上滑以删除</translation>
+    </message>
+    <message>
+        <source>Release to remove</source>
+        <translation>松开即可删除</translation>
     </message>
 </context>
 </TS>

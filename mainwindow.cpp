@@ -33,6 +33,7 @@
 #include "mainwindow.h"
 #include "pasteitem.h"
 #include "previewdialog.h"
+#include "cardswipe.h"
 
 /* History older than this is dropped on startup and on every clipboard update */
 static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
@@ -275,6 +276,11 @@ bool MainWindow::event(QEvent *e)
 
 bool MainWindow::eventFilter(QObject *object, QEvent *event)
 {
+	if (this->__scroll_widget && object == this->__scroll_widget->viewport() &&
+	    event->type() == QEvent::UngrabMouse && this->__mouse_down) {
+		this->resetPointerGesture();
+		this->__last_clicked_item.clear();
+	}
 	if (this->__scroll_widget && this->isVisible() && this->handlePointerEvent(object, event))
 		return true;
 	if (this->__scroll_widget && object == this->__scroll_widget->viewport() &&
@@ -303,14 +309,15 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event)
 	return QMainWindow::eventFilter(object, event);
 }
 
-void MainWindow::resetPointerGesture(void)
+void MainWindow::resetPointerGesture(bool cancelSwipe)
 {
 	if (this->__pressed_item)
 		this->__pressed_item->setPressed(false);
 	this->__pressed_item.clear();
 	this->__mouse_down = false;
 	this->__mouse_moved = false;
-	this->__mouse_dragging = false;
+	this->__pointer_gesture = PointerGesture::Pending;
+	if (cancelSwipe && this->__card_swipe) this->__card_swipe->cancel();
 	if (QWidget::mouseGrabber() == this->__scroll_widget->viewport())
 		this->__scroll_widget->viewport()->releaseMouse();
 	this->__scroll_widget->viewport()->unsetCursor();
@@ -336,6 +343,8 @@ bool MainWindow::handlePointerEvent(QObject *object, QEvent *event)
 		if ((card = qobject_cast<PasteItem *>(widget))) break;
 	}
 	if (type == QEvent::Wheel) {
+		this->resetPointerGesture();
+		this->__last_clicked_item.clear();
 		QWheelEvent *wheel = static_cast<QWheelEvent *>(event);
 		const QPoint pixels = wheel->pixelDelta();
 		const QPoint angle = wheel->angleDelta();
@@ -347,6 +356,7 @@ bool MainWindow::handlePointerEvent(QObject *object, QEvent *event)
 		return true;
 	}
 	if (type == QEvent::ContextMenu) {
+		this->resetPointerGesture();
 		if (card) {
 			this->__scroll_widget->setCurrentItem(card->widgetItem());
 			card->setFocus(Qt::MouseFocusReason);
@@ -357,6 +367,7 @@ bool MainWindow::handlePointerEvent(QObject *object, QEvent *event)
 	if (button && !this->__mouse_down) return false;
 	if (type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick) {
 		if (mouse->button() != Qt::LeftButton) {
+			this->resetPointerGesture();
 			if (card && mouse->button() == Qt::RightButton) {
 				this->__scroll_widget->setCurrentItem(card->widgetItem());
 				card->setFocus(Qt::MouseFocusReason);
@@ -389,17 +400,45 @@ bool MainWindow::handlePointerEvent(QObject *object, QEvent *event)
 			this->__last_clicked_item.clear();
 			if (this->__pressed_item) this->__pressed_item->setPressed(false);
 		}
-		if (!this->__mouse_dragging && qAbs(delta.x()) >= QApplication::startDragDistance() &&
-		    qAbs(delta.x()) >= qAbs(delta.y())) {
-			this->__mouse_dragging = true;
-			viewport->grabMouse(Qt::ClosedHandCursor);
+		/* Lock direction once the initial movement is clear. A horizontal
+		 * browse cannot turn into deletion when the pointer later moves up. */
+		if (this->__pointer_gesture == PointerGesture::Pending && this->__mouse_moved) {
+			if (qAbs(delta.x()) > qAbs(delta.y())*1.2) {
+				this->__pointer_gesture = PointerGesture::Browse;
+				viewport->grabMouse(Qt::ClosedHandCursor);
+			} else if (-delta.y() > qAbs(delta.x())*1.2 && this->__pressed_item) {
+				this->__scroll_widget->setCurrentItem(this->__pressed_item->widgetItem());
+				this->__pressed_item->setFocus(Qt::MouseFocusReason);
+				if (this->__card_swipe->begin(this->__pressed_item)) {
+					this->__pointer_gesture = PointerGesture::Dismiss;
+					viewport->grabMouse(Qt::ClosedHandCursor);
+				}
+			} else if (delta.y() > qAbs(delta.x())*1.2) {
+				this->__pointer_gesture = PointerGesture::Cancelled;
+			}
 		}
-		if (this->__mouse_dragging)
+		if (this->__pointer_gesture == PointerGesture::Browse)
 			this->__scroll_widget->horizontalScrollBar()->setValue(this->__mouse_scroll_start-delta.x());
+		else if (this->__pointer_gesture == PointerGesture::Dismiss)
+			this->__card_swipe->setOffset(-delta.y());
 		return true;
 	}
 	if (type == QEvent::MouseButtonRelease && mouse->button() == Qt::LeftButton) {
 		QPointer<PasteItem> pressed = this->__pressed_item;
+		if (this->__mouse_down && this->__pointer_gesture == PointerGesture::Dismiss && pressed) {
+			/* The release position wins even if its final movement produced no
+			 * MouseMove. Dragging back below the threshold always cancels. */
+			this->__card_swipe->setOffset(this->__mouse_press.y()-mouse->globalPosition().y());
+			const bool remove = this->__card_swipe->ready();
+			this->resetPointerGesture(false);
+			this->__last_clicked_item.clear();
+			this->__card_swipe->release(remove);
+			if (remove) {
+				this->__scroll_widget->setCurrentItem(pressed->widgetItem());
+				this->deleteCurrentItem();
+			}
+			return true;
+		}
 		const bool click = this->__mouse_down && !this->__mouse_moved && pressed &&
 			(mouse->globalPosition().toPoint()-this->__mouse_press).manhattanLength() < QApplication::startDragDistance() &&
 			pressed->rect().contains(pressed->mapFromGlobal(mouse->globalPosition().toPoint()));
@@ -442,6 +481,7 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 	QMainWindow::resizeEvent(event);
 	if (!this->__scroll_widget)
 		return;
+	this->resetPointerGesture();
 	const int cardWidth = qBound(210, this->width()/6, 280);
 	const int cardHeight = qMax(110, this->height()-136);
 	for (int i = 0; i < this->__scroll_widget->count(); ++i)
@@ -475,6 +515,7 @@ void MainWindow::show_window(void)
 
 void MainWindow::hide_window(void)
 {
+	if (this->__scroll_widget) this->resetPointerGesture();
 	if (this->__hide_state)
 		return;
 
@@ -603,6 +644,7 @@ void MainWindow::pasteNumberedItem(int number, bool plainText)
 
 void MainWindow::previewCurrentItem(void)
 {
+	this->resetPointerGesture();
 	QListWidgetItem *item = this->__scroll_widget->currentItem();
 	if (!item)
 		return;
@@ -645,7 +687,8 @@ void MainWindow::deleteCurrentItem(void)
 		this->__current_item = nullptr;
 	item->setData(Qt::UserRole, QVariant());
 	QWidget *widget = this->__scroll_widget->itemWidget(item);
-	if (this->__pressed_item == widget) this->resetPointerGesture();
+	if (this->__pressed_item == widget || this->__card_swipe->sourceCard() == widget)
+		this->resetPointerGesture();
 	this->__scroll_widget->removeItemWidget(item);
 	delete item;
 	if (widget) {
@@ -681,6 +724,7 @@ void MainWindow::updateUndoState(void)
 void MainWindow::undoDeletion(void)
 {
 	if (this->__deleted_items.empty()) return;
+	this->resetPointerGesture();
 	DeletedEntry removed = std::move(this->__deleted_items.back());
 	this->__deleted_items.pop_back();
 	PasteItem *restored = nullptr;
@@ -750,6 +794,7 @@ void MainWindow::initUI(void)
 		this->hide_window();
 	});
 	QObject::connect(this->__searchbar, &SearchBar::textChanged, [this](const QString &text) {
+		this->resetPointerGesture();
 		LineEdit *lineedit = this->__searchbar->findChild<LineEdit *>("", Qt::FindDirectChildrenOnly);
 		const bool keepSearchFocus = lineedit->hasFocus();
 		int temp_current_item_row = -1;
@@ -872,6 +917,9 @@ void MainWindow::initUI(void)
 	hlayout->addWidget(this->__searchbar);
 	hlayout->addWidget(this->__menu_button);
 
+	/* Keep animation outside the panel's shadow effect: moving a snapshot
+	 * must not invalidate and blur the entire history panel every frame. */
+	this->__card_swipe = new CardSwipeOverlay(this);
 	this->__history_count = new QLabel(this->__main_frame);
 	this->__history_count->setObjectName("HistoryCount");
 	this->__keyboard_hint = new QLabel(this->__main_frame);
@@ -991,7 +1039,7 @@ void MainWindow::updateTrayTooltip(void)
 void MainWindow::updateShortcutHint(void)
 {
 	if (this->__keyboard_hint)
-		this->__keyboard_hint->setText(QObject::tr("%1 Open   ·   ← → Browse   ·   Enter Paste   ·   Space Preview")
+		this->__keyboard_hint->setText(QObject::tr("%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview")
 			.arg(this->__primary_shortcut));
 	if (this->__show_action)
 		this->__show_action->setText(QObject::tr("Show (%1)").arg(this->__primary_shortcut));
@@ -1060,6 +1108,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 
 void MainWindow::applyTheme(const QString &name)
 {
+	if (this->__scroll_widget) this->resetPointerGesture();
 	qApp->setProperty("pastesDark", name != "light");
 	QString file = (name == "light") ? ":/resources/theme-light.qss"
 					 : ":/resources/theme-dark.qss";

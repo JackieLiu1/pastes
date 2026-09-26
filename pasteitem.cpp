@@ -11,6 +11,7 @@
 #include <QMenu>
 #include <QContextMenuEvent>
 #include <QStyle>
+#include <QtMath>
 
 PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	m_frame(new RoundedWidget(RoundedRole::Card, this)),
@@ -83,6 +84,28 @@ void PasteItem::setPressed(bool pressed)
 	if (m_frame->property("pressed").toBool() == pressed) return;
 	m_frame->setProperty("pressed", pressed);
 	m_frame->update();
+}
+
+QPixmap PasteItem::beginSwipe(void)
+{
+	const qreal ratio = this->devicePixelRatioF();
+	QPixmap snapshot(qCeil(this->width()*ratio), qCeil(this->height()*ratio));
+	snapshot.setDevicePixelRatio(ratio);
+	snapshot.fill(Qt::transparent);
+	/* Render just the card, without inheriting the viewport background or
+ * capturing an effect recursively. Keep the existing shadow for return. */
+	m_frame_effect->setEnabled(false);
+	QPainter painter(&snapshot);
+	m_frame->render(&painter, m_frame->pos(), QRegion(), QWidget::DrawChildren);
+	painter.end();
+	m_frame_effect->setEnabled(true);
+	m_frame->hide();
+	return snapshot;
+}
+
+void PasteItem::endSwipe(void)
+{
+	m_frame->show();
 }
 
 void PasteItem::setImage(QImage &image)

@@ -22,6 +22,7 @@ set(PASTES_SOURCES
     mainframe.cpp mainframe.h
     roundedwidgets.cpp roundedwidgets.h
     previewdialog.cpp previewdialog.h
+    cardswipe.cpp cardswipe.h
     mainwindow.cpp mainwindow.h
     database.cpp database.h
     pasteitem.cpp pasteitem.h

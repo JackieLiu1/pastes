@@ -56,6 +56,8 @@ public:
 	void setQuickPasteNumber(int number);
 	void setSelected(bool selected);
 	void setPressed(bool pressed);
+	QPixmap beginSwipe(void);
+	void endSwipe(void);
 
 	const QString &text(void)
 	{
