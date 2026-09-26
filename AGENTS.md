@@ -4,7 +4,7 @@
 
 ## 项目概览
 
-Pastes 是一个跨平台剪贴板管理器：双击 `Ctrl` 唤出，保留最近 7 天的剪贴板历史，
+Pastes 是一个跨平台剪贴板管理器：Windows 用 `Win+V`、Linux 用 `Ctrl+Shift+V` 或点击托盘唤出，保留最近 7 天的剪贴板历史，
 双击条目或按 `Enter` 复制回剪贴板（Linux 下还会直接注入焦点窗口）。
 
 - 语言/框架：C++17 + Qt6（Core / Gui / Widgets / Sql）
@@ -47,7 +47,7 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
 - `Database` + `Database::Worker`（database.cpp）— 数据库门面 + 工作线程。
 - `PasteItem`（pasteitem.cpp）— 列表条目 widget；`copyData()` 复制回剪贴板。
 - `StackedWidget`/`TextFrame`/`PixmapFrame`/`FileFrame`（pasteitemcontext.cpp）— 条目内容渲染。
-- `DoubleCtrlShortcut`/`ShortcutPrivate`（shortcut*.cpp）— 双击 Ctrl 检测，
+- `GlobalShortcut`/`ShortcutPrivate`（shortcut*.cpp）— 全局唤出快捷键，
   平台实现分文件（shortcut_win.cpp / shortcut_x11.cpp）。
 - `ItemData`（pasteitem.h）— 条目数据的内存表示（mimeData/icon(QImage)/md5/time）。
 

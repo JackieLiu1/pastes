@@ -4,11 +4,13 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/record.h>
 #include <X11/Xlibint.h>
+#include <X11/keysym.h>
 
 #include "shortcut.h"
 
 Display		*m_display;
 XRecordContext	m_context;
+static KeyCode m_paste_keycode;
 
 static void callback(XPointer ptr, XRecordInterceptData *data)
 {
@@ -16,9 +18,12 @@ static void callback(XPointer ptr, XRecordInterceptData *data)
 		xEvent *event = reinterpret_cast<xEvent*>(data->data);
 		switch (event->u.u.type) {
 		case KeyPress:
-			if (static_cast<unsigned char*>(data->data)[1] == 37  /* Left  Control */||
-			    static_cast<unsigned char*>(data->data)[1] == 105 /* Right Control */)
-				emit reinterpret_cast<ShortcutPrivate*>(ptr)->activated();
+			if (event->u.u.detail == m_paste_keycode &&
+			    (event->u.keyButtonPointer.state & (ControlMask | ShiftMask)) ==
+			    (ControlMask | ShiftMask)) {
+				emit reinterpret_cast<ShortcutPrivate*>(ptr)->pasteActivated();
+				break;
+			}
 			break;
 		default:
 			break;
@@ -30,7 +35,6 @@ static void callback(XPointer ptr, XRecordInterceptData *data)
 
 ShortcutPrivate::ShortcutPrivate(QObject *parent) : QThread(parent)
 {
-	this->start();
 }
 
 ShortcutPrivate::~ShortcutPrivate()
@@ -41,7 +45,9 @@ ShortcutPrivate::~ShortcutPrivate()
 
 void ShortcutPrivate::run(void)
 {
+	emit this->primaryShortcutChanged(QStringLiteral("Ctrl+Shift+V"));
 	Display *display = XOpenDisplay(nullptr);
+	m_paste_keycode = XKeysymToKeycode(display, XK_v);
 	XRecordClientSpec clients = XRecordAllClients;
 	XRecordRange *range = XRecordAllocRange();
 

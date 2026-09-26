@@ -4,6 +4,18 @@
 <context>
     <name>QObject</name>
     <message>
+        <source>%1 Open   ·   ← → Browse   ·   Enter Paste   ·   Space Preview</source>
+        <translation>%1 打开   ·   ← → 浏览   ·   Enter 粘贴   ·   Space 预览</translation>
+    </message>
+    <message>
+        <source>Show (%1)</source>
+        <translation>显示（%1）</translation>
+    </message>
+    <message>
+        <source>Tray icon</source>
+        <translation>托盘图标</translation>
+    </message>
+    <message>
         <location filename="pasteitem.cpp" line="39"/>
         <source>Image</source>
         <translation>图片</translation>

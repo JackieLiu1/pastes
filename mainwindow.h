@@ -40,6 +40,7 @@ private:
 	void initUI(void);
 	void setupTrayIcon(void);
 	void updateTrayTooltip(void);
+	void updateShortcutHint(void);
 	void applyTheme(const QString &name);
 	void reloadData(void);
 	PasteItem *insertItemWidget(bool);
@@ -64,7 +65,7 @@ private:
 	MainFrame			*__main_frame;
 	QGraphicsDropShadowEffect	*__main_frame_shadow;
 	QPropertyAnimation		*__hide_animation;
-	DoubleCtrlShortcut		*__shortcut;
+	GlobalShortcut			*__shortcut;
 	/* That is a workaround for hide window */
 	bool				__hide_state;
 	Database			__db;
@@ -79,9 +80,11 @@ private:
 	QPushButton			*__menu_button;
 	QListWidget			*__scroll_widget = nullptr;
 	quintptr			__paste_target = 0;
+	QString				__primary_shortcut;
 
 	/* system tray entry (bottom-right corner) */
 	QSystemTrayIcon			*__tray_icon = nullptr;
+	QAction				*__show_action = nullptr;
 
 	/* current theme: "dark" or "light" (persisted in QSettings) */
 	QString				__theme;

@@ -121,7 +121,7 @@ MainWindow::MainWindow(QWidget *parent)
 	  __main_frame(new MainFrame(this)),
 	  __main_frame_shadow(new QGraphicsDropShadowEffect(this)),
 	  __hide_animation(new QPropertyAnimation(this, "pos")),
-	  __shortcut(new DoubleCtrlShortcut(this)),
+	  __shortcut(new GlobalShortcut(this)),
 	  __hide_state(true),
 	  __current_item(nullptr)
 {
@@ -185,11 +185,21 @@ MainWindow::MainWindow(QWidget *parent)
 	this->__hide_animation->setEndValue(QPoint(rect.x(), rect.bottom()+1));
 	this->__hide_animation->setEasingCurve(QEasingCurve::OutQuad);
 
-	QObject::connect(this->__shortcut, &DoubleCtrlShortcut::activated, [this](void) {
-		if (!this->isVisible())
-			this->show_window();
-		else
+	QObject::connect(this->__shortcut, &GlobalShortcut::pasteActivated, [this](void) {
+		if (this->isVisible())
 			this->hide_window();
+		else
+			this->show_window();
+	});
+#ifdef Q_OS_WIN
+	this->__primary_shortcut = QStringLiteral("Win+V");
+#else
+	this->__primary_shortcut = QStringLiteral("Ctrl+Shift+V");
+#endif
+	QObject::connect(this->__shortcut, &GlobalShortcut::primaryShortcutChanged, this,
+		[this](const QString &shortcut) {
+		this->__primary_shortcut = shortcut;
+		this->updateShortcutHint();
 	});
 	QApplication::instance()->installEventFilter(this);
 
@@ -651,7 +661,7 @@ void MainWindow::initUI(void)
 	this->__main_frame->show();
 
 	this->setupTrayIcon();
-	this->__keyboard_hint->setText(QObject::tr("← → Browse   ·   Enter Paste   ·   Space Preview"));
+	this->updateShortcutHint();
 
 	/* load data from database */
 	this->reloadData();
@@ -661,11 +671,11 @@ void MainWindow::setupTrayIcon(void)
 {
 	QMenu *tray_menu = new QMenu(this);
 
-	QAction *show_action = new QAction(QObject::tr("Show"), this);
-	QObject::connect(show_action, &QAction::triggered, [this](void) {
+	this->__show_action = new QAction(this);
+	QObject::connect(this->__show_action, &QAction::triggered, [this](void) {
 		this->show_window();
 	});
-	tray_menu->addAction(show_action);
+	tray_menu->addAction(this->__show_action);
 
 	QAction *about_me = new QAction(QObject::tr("About me"), this);
 	QObject::connect(about_me, &QAction::triggered, [this](void) {
@@ -713,7 +723,18 @@ void MainWindow::updateTrayTooltip(void)
 	if (!this->__tray_icon)
 		return;
 
-	this->__tray_icon->setToolTip(QString("%1 ").arg(this->__scroll_widget->count()) + QObject::tr("records"));
+	this->__tray_icon->setToolTip(QString("Pastes · %1\n%2 ").arg(this->__primary_shortcut)
+		.arg(this->__scroll_widget->count()) + QObject::tr("records"));
+}
+
+void MainWindow::updateShortcutHint(void)
+{
+	if (this->__keyboard_hint)
+		this->__keyboard_hint->setText(QObject::tr("%1 Open   ·   ← → Browse   ·   Enter Paste   ·   Space Preview")
+			.arg(this->__primary_shortcut));
+	if (this->__show_action)
+		this->__show_action->setText(QObject::tr("Show (%1)").arg(this->__primary_shortcut));
+	this->updateTrayTooltip();
 }
 
 void MainWindow::reloadData()

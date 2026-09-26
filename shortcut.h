@@ -2,7 +2,6 @@
 #define SHORTCUT_H
 
 #include <QObject>
-#include <QTimer>
 
 #include <QThread>
 #include <atomic>
@@ -17,7 +16,8 @@ public:
 	void stop(void);
 
 Q_SIGNALS:
-	void activated(void);
+	void pasteActivated(void);
+	void primaryShortcutChanged(const QString &shortcut);
 
 protected:
 	void run(void);
@@ -28,23 +28,22 @@ protected:
 	std::atomic<quintptr>	m_thread_id{0};
 };
 
-class DoubleCtrlShortcut : public QObject
+class GlobalShortcut : public QObject
 {
 	Q_OBJECT
 
 public:
-	DoubleCtrlShortcut(QObject *parent = nullptr);
-	~DoubleCtrlShortcut();
+	GlobalShortcut(QObject *parent = nullptr);
+	~GlobalShortcut();
 
 signals:
-	void activated(void);
+	void pasteActivated(void);
+	void primaryShortcutChanged(const QString &shortcut);
 
 private:
 
 	ShortcutPrivate		*m_shortcut;
 
-	QTimer			*m_timer;
-	bool			m_isActive;
 };
 
 #endif // SHORTCUT_H

@@ -32,7 +32,7 @@ set(PASTES_SOURCES
 )
 
 if(WIN32)
-    list(APPEND PASTES_SOURCES shortcut_win.cpp)
+    list(APPEND PASTES_SOURCES shortcut_win.cpp shortcut_win_state.h)
 elseif(UNIX AND NOT APPLE)
     list(APPEND PASTES_SOURCES shortcut_x11.cpp)
 endif()
