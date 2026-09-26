@@ -81,7 +81,8 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
   逐字节拼接 QByteArray 做哈希（用 `QCryptographicHash::addData`）。
 - 平台代码集中在 `#ifdef Q_OS_WIN / Q_OS_LINUX` 块内；跨 Qt 版本的 API
   用 `QT_VERSION_CHECK` 守卫（参考 mainwindow.cpp 的 KWindowEffects）。
-- 中文注释/提交信息可用；面向用户的字符串必须走 `QObject::tr()`
+- 中文注释可用；提交信息必须遵循下方的英文提交规范。
+  面向用户的字符串必须走 `QObject::tr()`
   （新增源码记得加入 CMakeLists.txt 并 `lupdate` 更新 Pastes_zh_CN.ts）。
 
 ## 性能红线
@@ -94,8 +95,23 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
 ## 提交规范
 
 - **按功能一个一个提交**：一个提交只做一件事（修复/重构/构建/CI 分开），
-  先编译通过再提交，提交信息用中文、首行祈使句概述 + 正文讲清为什么。
-- 不要在一个提交里混入无关的格式化变动。
+  先编译通过再提交，不混入无关的格式化变动。
+- **所有提交信息必须使用英文**：标题、正文和 trailers 均不得使用中文。
+- 遵循 Linux 内核提交风格：标题使用 `subsystem: imperative summary`，
+  例如 `ui: animate neighboring cards after deletion`；使用祈使句概述具体改动，
+  不写 `This patch ...`，Git 提交标题不加邮件用的 `[PATCH]` 前缀。
+- **每行最多 80 个字符**，标题建议不超过 75 个字符，正文优先按 75 列换行；
+  不把“80 字符”理解为必须补齐到 80 列。标题后空一行，正文与 trailers 间也空一行。
+- 正文先交代问题及原因，再说明解决方式、行为影响和必要的验证结果；
+  不编造测试、评审或故障归因，不仅罗列改动文件。
+- **每个提交必须带 SOB**：末尾添加 `Signed-off-by: Real Name <email>`，
+  使用真实贡献者身份；本项目通常用 `git commit -s` 自动加入提交人的签署。
+  保留已有的有效贡献者签署，不重复添加同一人的 Signed-off-by。
+- 引用其他提交时使用至少 12 位提交 ID 并附标题；只有确认引入问题的提交后
+  才添加 `Fixes:`，不得编造 `Reviewed-by:`、`Tested-by:` 等 trailers。
+- 修改提交说明前确认提交尚未推送，保存旧 tip；重写后检查每个提交的文件树、
+  顺序、作者信息、行宽和 SOB，已推送历史的重写须获得明确授权。
+- 参考 [Linux kernel submitting patches](https://docs.kernel.org/process/submitting-patches.html)。
 
 ## 已知取舍
 
