@@ -264,6 +264,11 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::show_window(void)
 {
+#ifdef Q_OS_WIN
+	HWND target = GetForegroundWindow();
+	this->__paste_target = (target && target != reinterpret_cast<HWND>(this->winId()))
+				 ? reinterpret_cast<quintptr>(target) : 0;
+#endif
 	this->__hide_animation->setDirection(QAbstractAnimation::Backward);
 	this->__hide_animation->start();
 	this->__hide_state = false;
@@ -279,6 +284,37 @@ void MainWindow::hide_window(void)
 	this->__hide_animation->setDirection(QAbstractAnimation::Forward);
 	this->__hide_animation->start();
 	this->__hide_state = true;
+}
+
+void MainWindow::pasteToPreviousWindow(void)
+{
+#ifdef Q_OS_WIN
+	const HWND target = reinterpret_cast<HWND>(this->__paste_target);
+	if (!target || !IsWindow(target))
+		return;
+	DWORD owner = 0;
+	GetWindowThreadProcessId(target, &owner);
+	if (owner == GetCurrentProcessId())
+		return;
+	wchar_t className[64] = {};
+	GetClassNameW(target, className, 64);
+	if (lstrcmpW(className, L"Shell_TrayWnd") == 0 ||
+	    lstrcmpW(className, L"NotifyIconOverflowWindow") == 0)
+		return;
+	QTimer::singleShot(300, this, [target](void) {
+		if (!IsWindow(target) || !SetForegroundWindow(target) || GetForegroundWindow() != target)
+			return;
+		INPUT input[4] = {};
+		input[0].type = input[1].type = input[2].type = input[3].type = INPUT_KEYBOARD;
+		input[0].ki.wVk = VK_CONTROL;
+		input[1].ki.wVk = 'V';
+		input[2].ki.wVk = 'V';
+		input[2].ki.dwFlags = KEYEVENTF_KEYUP;
+		input[3].ki.wVk = VK_CONTROL;
+		input[3].ki.dwFlags = KEYEVENTF_KEYUP;
+		SendInput(4, input, sizeof(INPUT));
+	});
+#endif
 }
 
 void MainWindow::move_to_prev_next_focus_widget(bool prev)
@@ -656,6 +692,12 @@ PasteItem *MainWindow::insertItemWidget(bool back)
 	});
 	QObject::connect(widget, &PasteItem::moveFocusPrevNext,
 			 this, &MainWindow::move_to_prev_next_focus_widget);
+	QObject::connect(widget, &PasteItem::clipboardUpdated, this, [this](void) {
+		this->__clipboard_timer->stop();
+	});
+	QObject::connect(widget, &PasteItem::copied, this, [this](void) {
+		this->pasteToPreviousWindow();
+	});
 
 	/* resize item, It's use for pasteitem frame */
 	item->setSizeHint(QSize(qBound(210, this->width()/6, 280),

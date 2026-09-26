@@ -46,6 +46,7 @@ private:
 	void resetItemTabOrder(void);
 	void updateHistoryStatus(void);
 	PasteItem *currentPasteItem(void);
+	void pasteToPreviousWindow(void);
 	QPixmap getClipboardOwnerIcon(void);
 	void enabledGlassEffect(void);
 
@@ -74,6 +75,7 @@ private:
 	QLabel				*__empty_state = nullptr;
 	QPushButton			*__menu_button;
 	QListWidget			*__scroll_widget = nullptr;
+	quintptr			__paste_target = 0;
 
 	/* system tray entry (bottom-right corner) */
 	QSystemTrayIcon			*__tray_icon = nullptr;

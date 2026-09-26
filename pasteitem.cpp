@@ -211,16 +211,20 @@ static void SendKey(Display * disp, KeySym keysym, KeySym modsym)
 
 void PasteItem::copyData(void)
 {
+	ItemData *itemData = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
+	if (!itemData)
+		return;
 	emit this->hideWindow();
 
 	QClipboard *clipboard = QApplication::clipboard();
-	ItemData *itemData = (ItemData *)this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>();
 
 	clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Clipboard);
 
 #ifdef Q_OS_LINUX
 	clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Selection);
 #endif
+	emit this->clipboardUpdated();
+	emit this->copied();
 	if (itemData->mimeData->hasUrls())
 		return;
 

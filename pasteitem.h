@@ -88,6 +88,8 @@ private:
 
 Q_SIGNALS:
 	void hideWindow(void);
+	void copied(void);
+	void clipboardUpdated(void);
 	void moveFocusPrevNext(bool prev);
 };
 
