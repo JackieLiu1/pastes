@@ -16,6 +16,6 @@ Press `Space` to open a themed preview with selectable text and an image that fi
 
 Click a card to select it, double-click to paste, and drag horizontally to browse. Small movements remain clicks. The wheel and touchpad also scroll through cards.
 
-Hover over or select a card to reveal preview and delete buttons. `Delete` and the context menu remove an entry from history, leaving original files intact. For eight seconds after deletion, click Undo or press `Ctrl+Z` to restore recent deletions one by one.
+Cards keep their source, type and time visible. Press `Space` to preview. `Delete` and the context menu remove an entry from history, leaving original files intact. For eight seconds after deletion, click Undo or press `Ctrl+Z` to restore recent deletions one by one.
 
 ![img](./pastes-view.gif)
