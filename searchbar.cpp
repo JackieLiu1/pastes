@@ -74,7 +74,10 @@ bool LineEdit::event(QEvent *event)
 		switch (ke->key()) {
 		case Qt::Key_Return:
 		case Qt::Key_Enter:
-			emit this->selectItem();
+			if (ke->modifiers() & Qt::ShiftModifier)
+				emit this->selectPlainTextItem();
+			else
+				emit this->selectItem();
 			return true;
 		case Qt::Key_Escape:
 			emit this->hideWindow();
@@ -122,6 +125,8 @@ SearchBar::SearchBar(QWidget *parent, int width, int height) : QWidget(parent)
 	QObject::connect(m_search_edit, &LineEdit::selectItem, [this](void) {
 		emit this->selectItem();
 	});
+	QObject::connect(m_search_edit, &LineEdit::selectPlainTextItem, this,
+			 &SearchBar::selectPlainTextItem);
 	QObject::connect(m_search_edit, &LineEdit::moveFocusPrevNext, [this](bool prev) {
 		emit this->moveFocusPrevNext(prev);
 	});

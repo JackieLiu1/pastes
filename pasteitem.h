@@ -52,7 +52,7 @@ public:
 	bool setUrls(QList<QUrl> &);
 	void setIcon(QPixmap);
 	void setTime(QDateTime &);
-	void copyData(void);
+	void copyData(bool plainText = false);
 	void setSelected(bool selected);
 
 	const QString &text(void)

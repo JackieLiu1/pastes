@@ -28,6 +28,7 @@ Q_SIGNALS:
 	void focusOut(void);
 	void hideWindow(void);
 	void selectItem(void);
+	void selectPlainTextItem(void);
 	void moveFocusPrevNext(bool);
 
 private:
@@ -47,6 +48,7 @@ private:
 Q_SIGNALS:
 	void moveFocusPrevNext(bool);
 	void selectItem(void);
+	void selectPlainTextItem(void);
 	void hideWindow(void);
 	void textChanged(const QString &);
 };

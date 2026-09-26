@@ -17,7 +17,10 @@ bool MainFrame::event(QEvent *event)
 		switch (ke->key()) {
 		case Qt::Key_Return:
 		case Qt::Key_Enter:
-			emit this->selectItem();
+			if (ke->modifiers() & Qt::ShiftModifier)
+				emit this->selectPlainTextItem();
+			else
+				emit this->selectItem();
 			return true;
 		case Qt::Key_Escape:
 			emit this->hideWindow();

@@ -159,7 +159,7 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 	switch (event->key()) {
 	case Qt::Key_Return:
 	case Qt::Key_Enter:
-		this->copyData();
+		this->copyData(event->modifiers() & Qt::ShiftModifier);
 		return;
 	case Qt::Key_Escape:
 		emit this->hideWindow();
@@ -209,19 +209,25 @@ static void SendKey(Display * disp, KeySym keysym, KeySym modsym)
 }
 #endif
 
-void PasteItem::copyData(void)
+void PasteItem::copyData(bool plainText)
 {
 	ItemData *itemData = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
-	if (!itemData)
+	if (!itemData || (plainText && !itemData->mimeData->hasText()))
 		return;
 	emit this->hideWindow();
 
 	QClipboard *clipboard = QApplication::clipboard();
 
-	clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Clipboard);
+	if (plainText && itemData->mimeData->hasText())
+		clipboard->setText(itemData->mimeData->text(), QClipboard::Clipboard);
+	else
+		clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Clipboard);
 
 #ifdef Q_OS_LINUX
-	clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Selection);
+	if (plainText && itemData->mimeData->hasText())
+		clipboard->setText(itemData->mimeData->text(), QClipboard::Selection);
+	else
+		clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Selection);
 #endif
 	emit this->clipboardUpdated();
 	emit this->copied();

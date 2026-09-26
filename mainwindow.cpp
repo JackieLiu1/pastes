@@ -154,6 +154,11 @@ MainWindow::MainWindow(QWidget *parent)
 		this->__current_item = nullptr;
 		widget->copyData();
 	});
+	QObject::connect(this->__main_frame, &MainFrame::selectPlainTextItem, this, [this](void) {
+		PasteItem *widget = this->currentPasteItem();
+		if (widget)
+			widget->copyData(true);
+	});
 
 	this->__clipboard_timer = new QTimer(this);
 	this->__clipboard_timer->setSingleShot(true);
@@ -188,6 +193,12 @@ MainWindow::MainWindow(QWidget *parent)
 	QObject::connect(shortcut_search, &QShortcut::activated, [this](void) {
 		LineEdit *lineedit = this->__searchbar->findChild<LineEdit *>("", Qt::FindDirectChildrenOnly);
 		lineedit->setFocus();
+	});
+	QShortcut *plainSelected = new QShortcut(QKeySequence("Shift+Return"), this);
+	QObject::connect(plainSelected, &QShortcut::activated, this, [this](void) {
+		PasteItem *item = this->currentPasteItem();
+		if (item)
+			item->copyData(true);
 	});
 
 	this->initUI();
@@ -448,6 +459,11 @@ void MainWindow::initUI(void)
 			return;
 		this->__current_item = nullptr;
 		widget->copyData();
+	});
+	QObject::connect(this->__searchbar, &SearchBar::selectPlainTextItem, this, [this](void) {
+		PasteItem *widget = this->currentPasteItem();
+		if (widget)
+			widget->copyData(true);
 	});
 	QObject::connect(this->__searchbar, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));
 

@@ -16,6 +16,7 @@ protected:
 signals:
 	void moveFocusPrevNext(bool);
 	void selectItem(void);
+	void selectPlainTextItem(void);
 	void hideWindow(void);
 };
 
