@@ -194,6 +194,16 @@ MainWindow::MainWindow(QWidget *parent)
 		LineEdit *lineedit = this->__searchbar->findChild<LineEdit *>("", Qt::FindDirectChildrenOnly);
 		lineedit->setFocus();
 	});
+	for (int number = 1; number <= 9; ++number) {
+		QShortcut *quickPaste = new QShortcut(QKeySequence(QString("Ctrl+%1").arg(number)), this);
+		QObject::connect(quickPaste, &QShortcut::activated, this, [this, number](void) {
+			this->pasteNumberedItem(number, false);
+		});
+		QShortcut *plainPaste = new QShortcut(QKeySequence(QString("Ctrl+Shift+%1").arg(number)), this);
+		QObject::connect(plainPaste, &QShortcut::activated, this, [this, number](void) {
+			this->pasteNumberedItem(number, true);
+		});
+	}
 	QShortcut *plainSelected = new QShortcut(QKeySequence("Shift+Return"), this);
 	QObject::connect(plainSelected, &QShortcut::activated, this, [this](void) {
 		PasteItem *item = this->currentPasteItem();
@@ -375,7 +385,7 @@ PasteItem *MainWindow::currentPasteItem(void)
 	return reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
 }
 
-void MainWindow::updateHistoryStatus(void)
+void MainWindow::updateQuickPasteNumbers(void)
 {
 	int number = 0;
 	for (int i = 0; i < this->__scroll_widget->count(); ++i) {
@@ -383,8 +393,7 @@ void MainWindow::updateHistoryStatus(void)
 		PasteItem *widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
 		if (!widget)
 			continue;
-		if (!item->isHidden())
-			++number;
+		widget->setQuickPasteNumber(item->isHidden() ? 0 : ++number);
 	}
 	if (this->__history_count) {
 		const int count = this->__scroll_widget->count();
@@ -396,6 +405,21 @@ void MainWindow::updateHistoryStatus(void)
 			QObject::tr("Copy something to get started") : QObject::tr("No matching items"));
 		this->__empty_state->setGeometry(this->__scroll_widget->viewport()->rect());
 		this->__empty_state->setVisible(number == 0);
+	}
+}
+
+void MainWindow::pasteNumberedItem(int number, bool plainText)
+{
+	int visible = 0;
+	for (int i = 0; i < this->__scroll_widget->count(); ++i) {
+		QListWidgetItem *item = this->__scroll_widget->item(i);
+		if (!item->isHidden() && ++visible == number) {
+			this->__scroll_widget->setCurrentItem(item);
+			PasteItem *widget = reinterpret_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
+			if (widget)
+				widget->copyData(plainText);
+			return;
+		}
 	}
 }
 
@@ -447,7 +471,7 @@ void MainWindow::initUI(void)
 			}
 			this->__current_item = nullptr;
 		}
-		this->updateHistoryStatus();
+		this->updateQuickPasteNumbers();
 		/* Updating the list's current index can focus its item widget. Keep
 		 * typing in search until the user explicitly navigates to a card. */
 		if (keepSearchFocus)
@@ -669,7 +693,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 
 	this->__scroll_widget->setCurrentRow(0);
 	this->resetItemTabOrder();
-	this->updateHistoryStatus();
+	this->updateQuickPasteNumbers();
 	this->updateTrayTooltip();
 
 	/* Need create window init time, it's speed up for show */
@@ -847,7 +871,7 @@ void MainWindow::clipboard_later(void)
 	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
 	this->__db.insertPasteItem(itemData);
 	this->resetItemTabOrder();
-	this->updateHistoryStatus();
+	this->updateQuickPasteNumbers();
 	this->updateTrayTooltip();
 }
 

@@ -9,7 +9,7 @@
 
 class QPainter;
 
-enum class RoundedRole { Panel, Card, Search, TypeBadge, HistoryBadge, MenuButton, Content, Footer };
+enum class RoundedRole { Panel, Card, Search, TypeBadge, HistoryBadge, Number, MenuButton, Content, Footer };
 
 struct RoundedSurfaceStyle
 {

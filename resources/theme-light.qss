@@ -72,6 +72,11 @@ QListWidget::item, QListWidget::item:hover, QListWidget::item:selected {
 	background: transparent; border: 0;
 	color: #9EB5A7;
 }
+#QuickPasteNumber {
+	background: transparent; border: 0;
+	color: #78887B;
+	font-size: 11px; font-weight: 600;
+}
 #SearchBar { padding: 0; margin: 0; border: 0; background: transparent; }
 #SearchBar > QLineEdit {
 	background: transparent; border: 0;

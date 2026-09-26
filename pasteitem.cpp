@@ -15,6 +15,7 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	m_frame_effect(new QGraphicsDropShadowEffect(this)),
 	m_barnner(new Barnner(this->m_frame)),
 	m_context(new StackedWidget(this->m_frame)),
+	m_quick_paste_number(new RoundedLabel(RoundedRole::Number, this->m_frame)),
 	m_listwidget_item(item)
 {
 	this->setFocusPolicy(Qt::StrongFocus);
@@ -34,6 +35,9 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 
 	m_frame->setLayout(vboxlayout);
 	m_frame->show();
+	m_quick_paste_number->setObjectName("QuickPasteNumber");
+	m_quick_paste_number->setAlignment(Qt::AlignCenter);
+	m_quick_paste_number->hide();
 }
 
 void PasteItem::setCardKind(const char *kind)
@@ -56,6 +60,18 @@ void PasteItem::setSelected(bool selected)
 	m_frame->style()->unpolish(m_frame);
 	m_frame->style()->polish(m_frame);
 	m_frame->update();
+}
+
+void PasteItem::setQuickPasteNumber(int number)
+{
+	if (number < 1 || number > 9) {
+		m_quick_paste_number->hide();
+		return;
+	}
+	m_quick_paste_number->setText(QString::number(number));
+	m_quick_paste_number->setToolTip(QObject::tr("Ctrl+%1 to paste").arg(number));
+	m_quick_paste_number->show();
+	m_quick_paste_number->raise();
 }
 
 void PasteItem::setImage(QImage &image)
@@ -130,6 +146,7 @@ void PasteItem::resizeEvent(QResizeEvent *event)
 	QSize size = event->size();
 	m_frame->setGeometry(4, 4, qMax(0, size.width()-8), qMax(0, size.height()-8));
 	m_barnner->setFixedHeight(44);
+	m_quick_paste_number->setGeometry(m_frame->width()-34, m_frame->height()-30, 22, 22);
 
 	QWidget::resizeEvent(event);
 }

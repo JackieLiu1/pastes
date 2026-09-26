@@ -152,5 +152,9 @@
         <source>No matching items</source>
         <translation>没有找到匹配的内容</translation>
     </message>
+    <message>
+        <source>Ctrl+%1 to paste</source>
+        <translation>按 Ctrl+%1 粘贴</translation>
+    </message>
 </context>
 </TS>

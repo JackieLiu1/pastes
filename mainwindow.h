@@ -44,7 +44,8 @@ private:
 	void reloadData(void);
 	PasteItem *insertItemWidget(bool);
 	void resetItemTabOrder(void);
-	void updateHistoryStatus(void);
+	void updateQuickPasteNumbers(void);
+	void pasteNumberedItem(int number, bool plainText);
 	PasteItem *currentPasteItem(void);
 	void pasteToPreviousWindow(void);
 	QPixmap getClipboardOwnerIcon(void);

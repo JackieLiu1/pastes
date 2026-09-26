@@ -53,6 +53,7 @@ public:
 	void setIcon(QPixmap);
 	void setTime(QDateTime &);
 	void copyData(bool plainText = false);
+	void setQuickPasteNumber(int number);
 	void setSelected(bool selected);
 
 	const QString &text(void)
@@ -79,6 +80,7 @@ private:
 	/* barnner and context */
 	Barnner				*m_barnner;
 	StackedWidget			*m_context;
+	QLabel				*m_quick_paste_number;
 
 	/* scroll list widget item */
 	QListWidgetItem			*m_listwidget_item;

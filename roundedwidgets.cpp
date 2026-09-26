@@ -65,6 +65,11 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 	case RoundedRole::HistoryBadge:
 		style.fill = QColor(dark ? "#2A4338" : "#E0EDE4"); style.radius = 10;
 		break;
+	case RoundedRole::Number:
+		style.fill = dark ? QColor(36, 52, 42, 230) : QColor(255, 253, 248, 220);
+		style.border = QColor(dark ? "#526754" : "#D8E0D5");
+		style.radius = 6; style.borderWidth = 1;
+		break;
 	case RoundedRole::MenuButton:
 		if (widget->underMouse()) style.fill = QColor(dark ? "#2E4537" : "#E3EAE0");
 		if (static_cast<QPushButton *>(widget)->isDown())
