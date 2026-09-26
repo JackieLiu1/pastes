@@ -76,3 +76,22 @@ QMenu { background: #22352B; color: #E0E8E2; border: 1px solid #3C5342; padding:
 QMenu::item { padding: 7px 22px 7px 12px; border-radius: 5px; }
 QMenu::item:selected { background: #355C46; color: #B5DEC7; }
 QMenu::separator { height: 1px; background: #3B5042; margin: 5px 8px; }
+
+#PreviewDialog, #PreviewSurface, #PreviewContent { background: transparent; border: 0; }
+#PreviewTitle { color: #E0E8E2; font-size: 18px; font-weight: 600; }
+#PreviewMeta { color: #94A99B; font-size: 11px; }
+#PreviewText {
+	background: transparent; border: 0; padding: 10px;
+	font-size: 14px; color: #E0E8E2;
+	selection-background-color: #3A6453; selection-color: #F0F6F1;
+}
+#PreviewAction {
+	background: transparent; border: 0; padding: 9px 16px;
+	font-size: 12px; font-weight: 600; color: #A3DCC5;
+}
+#PreviewAction[primary="true"] { color: #173B30; }
+#PreviewClose { background: transparent; border: 0; color: #A7B9AD; font-size: 23px; }
+#PreviewScroll:vertical { background: transparent; width: 8px; margin: 2px; }
+#PreviewScroll::handle:vertical { background: #526B5C; min-height: 24px; border-radius: 3px; }
+#PreviewScroll::add-line:vertical, #PreviewScroll::sub-line:vertical { height: 0; }
+#PreviewScroll::add-page:vertical, #PreviewScroll::sub-page:vertical { background: transparent; }

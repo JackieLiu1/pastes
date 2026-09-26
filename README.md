@@ -12,4 +12,6 @@ Pastes can hold the clipboard history within 7 days. You can add it to your syst
 
 Use `Tab` / `Shift+Tab` or the left/right arrow keys to cycle through visible cards. Press `Ctrl+F` to focus search, or start typing to search directly. `Tab` from search returns to the selected result.
 
+Press `Space` to open a themed preview with selectable text and an image that fits the window. `Esc` or `Space` closes it; its buttons copy or paste the content.
+
 ![img](./pastes-view.gif)

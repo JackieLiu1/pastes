@@ -24,11 +24,11 @@
 #include <QCursor>
 #include <QKeyEvent>
 #include <QResizeEvent>
-#include <QDialog>
-#include <QTextEdit>
+#include <QPointer>
 
 #include "mainwindow.h"
 #include "pasteitem.h"
+#include "previewdialog.h"
 
 /* History older than this is dropped on startup and on every clipboard update */
 static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
@@ -487,30 +487,16 @@ void MainWindow::previewCurrentItem(void)
 	ItemData *data = reinterpret_cast<ItemData *>(item->data(Qt::UserRole).value<uint64_t>());
 	if (!data)
 		return;
-	QDialog dialog(this);
-	dialog.setWindowTitle(QObject::tr("Preview"));
-	dialog.resize(700, 480);
-	QVBoxLayout *layout = new QVBoxLayout(&dialog);
-	if (data->mimeData->hasImage()) {
-		QLabel *image = new QLabel(&dialog);
-		image->setAlignment(Qt::AlignCenter);
-		image->setPixmap(QPixmap::fromImage(qvariant_cast<QImage>(data->mimeData->imageData()))
-					.scaled(660, 440, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-		layout->addWidget(image);
-	} else {
-		QTextEdit *text = new QTextEdit(&dialog);
-		text->setReadOnly(true);
-		if (data->mimeData->hasUrls()) {
-			QStringList urls;
-			for (const QUrl &url : data->mimeData->urls())
-				urls.append(url.toString());
-			text->setPlainText(urls.join('\n'));
-		} else {
-			text->setPlainText(data->mimeData->text());
-		}
-		layout->addWidget(text);
-	}
-	dialog.exec();
+	QPointer<PasteItem> widget = this->currentPasteItem();
+	PreviewDialog dialog(*data, this);
+	QObject::connect(&dialog, &PreviewDialog::copyRequested, this, [widget](void) {
+		if (widget) widget->copyData(false, false);
+	});
+	QObject::connect(widget, &QObject::destroyed, &dialog, &QDialog::reject);
+	if (dialog.exec() == QDialog::Accepted && widget)
+		widget->copyData(dialog.plainText());
+	else if (widget)
+		widget->setFocus();
 }
 
 void MainWindow::deleteCurrentItem(void)

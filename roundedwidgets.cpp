@@ -63,10 +63,28 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 		style.radius = 6; style.borderWidth = 1;
 		break;
 	case RoundedRole::MenuButton:
+		if (widget->property("primary").toBool()) {
+			style.fill = QColor(dark ? "#76C5AA" : "#237B68");
+			if (widget->underMouse()) style.fill = QColor(dark ? "#8BD3BA" : "#2A8B76");
+			if (static_cast<QPushButton *>(widget)->isDown())
+				style.fill = QColor(dark ? "#65B59A" : "#1C6958");
+			style.radius = 10;
+			break;
+		}
 		if (widget->underMouse()) style.fill = QColor(dark ? "#2E4537" : "#E3EAE0");
 		if (static_cast<QPushButton *>(widget)->isDown())
 			style.fill = QColor(dark ? "#385441" : "#D7E1D3");
 		style.radius = 10;
+		break;
+	case RoundedRole::Preview:
+		style.fill = QColor(dark ? "#1C2C25" : "#F4F4EF");
+		style.border = QColor(dark ? "#3F5145" : "#DADFD4");
+		style.radius = 18; style.borderWidth = 1;
+		break;
+	case RoundedRole::PreviewContent:
+		style.fill = QColor(dark ? "#25382F" : "#FFFDF8");
+		style.border = QColor(dark ? "#364C40" : "#E1E5DA");
+		style.radius = 12; style.borderWidth = 1;
 		break;
 	case RoundedRole::Content:
 		if (widget->property("swatchColor").isValid()) {

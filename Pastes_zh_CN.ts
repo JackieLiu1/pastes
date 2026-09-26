@@ -196,5 +196,25 @@
         <source>Ctrl+%1 to paste</source>
         <translation>按 Ctrl+%1 粘贴</translation>
     </message>
+    <message>
+        <source>Image preview</source>
+        <translation>图片预览</translation>
+    </message>
+    <message>
+        <source>Close (Esc)</source>
+        <translation>关闭（Esc）</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>%1 files</source>
+        <translation>%1 个文件</translation>
+    </message>
+    <message>
+        <source>%1 characters</source>
+        <translation>%1 个字符</translation>
+    </message>
 </context>
 </TS>
