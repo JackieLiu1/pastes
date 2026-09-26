@@ -70,12 +70,15 @@ public:
 protected:
 	bool event(QEvent *event);
 	void resizeEvent(QResizeEvent *event);
+	void enterEvent(QEnterEvent *event) override;
+	void leaveEvent(QEvent *event) override;
 	void mouseDoubleClickEvent(QMouseEvent *event);
 	void keyPressEvent(QKeyEvent *event);
 	void contextMenuEvent(QContextMenuEvent *event);
 
 private:
 	void setCardKind(const char *kind);
+	void updateActions(void);
 	QWidget				*m_frame;
 	QGraphicsDropShadowEffect	*m_frame_effect;
 
@@ -83,6 +86,8 @@ private:
 	Barnner				*m_barnner;
 	StackedWidget			*m_context;
 	QLabel				*m_quick_paste_number;
+	QWidget				*m_actions;
+	bool				m_hovered = false;
 
 	/* scroll list widget item */
 	QListWidgetItem			*m_listwidget_item;

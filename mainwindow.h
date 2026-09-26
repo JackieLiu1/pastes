@@ -19,10 +19,13 @@
 #include <QTimer>
 #include <QPointer>
 #include <QElapsedTimer>
+#include <memory>
+#include <vector>
 
 class QSystemTrayIcon;
 class QLabel;
 class QAction;
+class QShortcut;
 #ifdef Q_OS_WIN
 class ClipboardSource;
 #endif
@@ -48,12 +51,14 @@ private:
 	void updateShortcutHint(void);
 	void applyTheme(const QString &name);
 	void reloadData(void);
-	PasteItem *insertItemWidget(bool);
+	PasteItem *insertItemWidget(bool, int row = -1);
 	void resetItemTabOrder(void);
 	void updateQuickPasteNumbers(void);
 	void pasteNumberedItem(int number, bool plainText);
 	void previewCurrentItem(void);
 	void deleteCurrentItem(void);
+	void undoDeletion(void);
+	void updateUndoState(void);
 	bool handlePointerEvent(QObject *object, QEvent *event);
 	void resetPointerGesture(void);
 	PasteItem *currentPasteItem(void);
@@ -96,6 +101,18 @@ private:
 	bool				__mouse_down = false;
 	bool				__mouse_moved = false;
 	bool				__mouse_dragging = false;
+	struct DeletedEntry {
+		std::unique_ptr<QMimeData> mime;
+		QImage icon;
+		QByteArray md5;
+		QDateTime time;
+		int row;
+	};
+	std::vector<DeletedEntry>		__deleted_items;
+	QTimer				*__undo_timer = nullptr;
+	QShortcut			*__undo_shortcut = nullptr;
+	QPushButton			*__undo_button = nullptr;
+	QLabel				*__undo_hint = nullptr;
 
 	/* system tray entry (bottom-right corner) */
 	QSystemTrayIcon			*__tray_icon = nullptr;

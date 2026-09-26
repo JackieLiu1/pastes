@@ -13,6 +13,7 @@ public:
 	explicit Barnner(QWidget *parent = nullptr);
 
 	void setIcon(QPixmap &pixmap);
+	void setActionsVisible(bool visible) { m_time->setVisible(!visible); }
 
 	QPixmap icon(void)
 	{

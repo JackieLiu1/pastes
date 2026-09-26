@@ -76,6 +76,12 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 		if (widget->underMouse()) style.fill = QColor(dark ? "#2E4537" : "#E3EAE0");
 		if (static_cast<QPushButton *>(widget)->isDown())
 			style.fill = QColor(dark ? "#385441" : "#D7E1D3");
+		if (widget->property("destructive").toBool() && widget->underMouse())
+			style.fill = QColor(dark ? "#563B34" : "#F6E7DF");
+		if (widget->hasFocus()) {
+			style.border = QColor(dark ? "#76C5AA" : "#359782");
+			style.borderWidth = 1;
+		}
 		style.radius = 10;
 		break;
 	case RoundedRole::Preview:

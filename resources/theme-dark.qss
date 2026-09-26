@@ -95,3 +95,6 @@ QMenu::separator { height: 1px; background: #3B5042; margin: 5px 8px; }
 #PreviewScroll::handle:vertical { background: #526B5C; min-height: 24px; border-radius: 3px; }
 #PreviewScroll::add-line:vertical, #PreviewScroll::sub-line:vertical { height: 0; }
 #PreviewScroll::add-page:vertical, #PreviewScroll::sub-page:vertical { background: transparent; }
+#CardPreview, #CardDelete { background: transparent; border: 0; padding: 0; }
+#UndoHint { color: #94A99B; font-size: 11px; }
+#UndoButton { background: transparent; border: 0; color: #A3DCC5; font-size: 11px; font-weight: 600; padding: 2px 10px; }

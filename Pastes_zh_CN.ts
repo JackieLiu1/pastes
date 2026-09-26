@@ -216,5 +216,25 @@
         <source>%1 characters</source>
         <translation>%1 个字符</translation>
     </message>
+    <message>
+        <source>Delete from history (Delete)</source>
+        <translation>从历史记录删除（Delete）</translation>
+    </message>
+    <message>
+        <source>Preview (Space)</source>
+        <translation>预览（Space）</translation>
+    </message>
+    <message>
+        <source>Removed from history</source>
+        <translation>已从历史记录移除</translation>
+    </message>
+    <message>
+        <source>Undo</source>
+        <translation>撤销</translation>
+    </message>
+    <message>
+        <source>Undo deletion (Ctrl+Z)</source>
+        <translation>撤销删除（Ctrl+Z）</translation>
+    </message>
 </context>
 </TS>

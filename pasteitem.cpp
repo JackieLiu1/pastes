@@ -11,6 +11,56 @@
 #include <QMenu>
 #include <QContextMenuEvent>
 #include <QStyle>
+#include <QPainter>
+#include <QPainterPath>
+#include <QEnterEvent>
+
+class CardActionButton : public RoundedButton
+{
+public:
+	CardActionButton(bool remove, QWidget *parent) : RoundedButton(parent), m_remove(remove)
+	{
+		setFixedSize(30, 30);
+		setFocusPolicy(Qt::NoFocus);
+		setAutoDefault(false);
+		setObjectName(remove ? "CardDelete" : "CardPreview");
+		setProperty("destructive", remove);
+		setToolTip(remove ? QObject::tr("Delete from history (Delete)") : QObject::tr("Preview (Space)"));
+		setAccessibleName(remove ? QObject::tr("Delete") : QObject::tr("Preview"));
+	}
+
+protected:
+	void paintEvent(QPaintEvent *event) override
+	{
+		RoundedButton::paintEvent(event);
+		QPainter painter(this);
+		painter.setRenderHint(QPainter::Antialiasing);
+		painter.translate(width()/2.0-9, height()/2.0-9);
+		QWidget *card = parentWidget()->parentWidget();
+		const bool dark = qApp->property("pastesDark").toBool() || card->property("contentKind") == "code";
+		const QColor color = m_remove && underMouse() ? QColor(dark ? "#F0A799" : "#B95342") :
+			QColor(dark ? "#B6CABD" : "#647D70");
+		painter.setPen(QPen(color, 1.4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+		painter.setBrush(Qt::NoBrush);
+		if (m_remove) {
+			painter.drawRoundedRect(QRectF(5, 6, 8, 10), 1.5, 1.5);
+			painter.drawLine(QPointF(3, 4), QPointF(15, 4));
+			painter.drawLine(QPointF(7, 2), QPointF(11, 2));
+			painter.drawLine(QPointF(8, 8), QPointF(8, 13));
+			painter.drawLine(QPointF(10, 8), QPointF(10, 13));
+		} else {
+			QPainterPath eye;
+			eye.moveTo(1, 9);
+			eye.cubicTo(5, 2, 13, 2, 17, 9);
+			eye.cubicTo(13, 16, 5, 16, 1, 9);
+			painter.drawPath(eye);
+			painter.drawEllipse(QPointF(9, 9), 2.5, 2.5);
+		}
+	}
+
+private:
+	bool m_remove;
+};
 
 PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	m_frame(new RoundedWidget(RoundedRole::Card, this)),
@@ -18,6 +68,7 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	m_barnner(new Barnner(this->m_frame)),
 	m_context(new StackedWidget(this->m_frame)),
 	m_quick_paste_number(new RoundedLabel(RoundedRole::Number, this->m_frame)),
+	m_actions(new QWidget(this->m_frame)),
 	m_listwidget_item(item)
 {
 	this->setFocusPolicy(Qt::StrongFocus);
@@ -42,6 +93,16 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	m_quick_paste_number->setObjectName("QuickPasteNumber");
 	m_quick_paste_number->setAlignment(Qt::AlignCenter);
 	m_quick_paste_number->hide();
+	auto *preview = new CardActionButton(false, m_actions);
+	auto *remove = new CardActionButton(true, m_actions);
+	QHBoxLayout *actions = new QHBoxLayout(m_actions);
+	actions->setContentsMargins(0, 0, 0, 0);
+	actions->setSpacing(2);
+	actions->addWidget(preview);
+	actions->addWidget(remove);
+	QObject::connect(preview, &QPushButton::clicked, this, &PasteItem::previewRequested);
+	QObject::connect(remove, &QPushButton::clicked, this, &PasteItem::deleteRequested);
+	m_actions->hide();
 }
 
 void PasteItem::setCardKind(const char *kind)
@@ -64,6 +125,30 @@ void PasteItem::setSelected(bool selected)
 	m_frame->style()->unpolish(m_frame);
 	m_frame->style()->polish(m_frame);
 	m_frame->update();
+	this->updateActions();
+}
+
+void PasteItem::updateActions(void)
+{
+	const bool visible = (m_hovered || m_frame->property("selected").toBool()) &&
+		!m_frame->property("pressed").toBool();
+	m_actions->setVisible(visible);
+	m_barnner->setActionsVisible(visible);
+	if (visible) m_actions->raise();
+}
+
+void PasteItem::enterEvent(QEnterEvent *event)
+{
+	m_hovered = true;
+	this->updateActions();
+	QWidget::enterEvent(event);
+}
+
+void PasteItem::leaveEvent(QEvent *event)
+{
+	m_hovered = false;
+	this->updateActions();
+	QWidget::leaveEvent(event);
 }
 
 void PasteItem::setQuickPasteNumber(int number)
@@ -83,6 +168,7 @@ void PasteItem::setPressed(bool pressed)
 	if (m_frame->property("pressed").toBool() == pressed) return;
 	m_frame->setProperty("pressed", pressed);
 	m_frame->update();
+	this->updateActions();
 }
 
 void PasteItem::setImage(QImage &image)
@@ -158,6 +244,7 @@ void PasteItem::resizeEvent(QResizeEvent *event)
 	m_frame->setGeometry(4, 4, qMax(0, size.width()-8), qMax(0, size.height()-8));
 	m_barnner->setFixedHeight(44);
 	m_quick_paste_number->setGeometry(m_frame->width()-34, m_frame->height()-30, 22, 22);
+	m_actions->setGeometry(m_frame->width()-74, 8, 62, 30);
 
 	QWidget::resizeEvent(event);
 }

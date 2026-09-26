@@ -443,7 +443,7 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 	if (!this->__scroll_widget)
 		return;
 	const int cardWidth = qBound(210, this->width()/6, 280);
-	const int cardHeight = qMax(110, this->height()-124);
+	const int cardHeight = qMax(110, this->height()-136);
 	for (int i = 0; i < this->__scroll_widget->count(); ++i)
 		this->__scroll_widget->item(i)->setSizeHint(QSize(cardWidth, cardHeight));
 	if (this->__empty_state)
@@ -630,19 +630,116 @@ void MainWindow::deleteCurrentItem(void)
 	if (!data)
 		return;
 	const int row = this->__scroll_widget->row(item);
+	/* Undo owns its clone; the database worker frees the original below. */
+	DeletedEntry removed;
+	removed.mime.reset(dup_mimedata(data->mimeData));
+	removed.icon = data->icon;
+	removed.md5 = data->md5;
+	removed.time = data->time;
+	removed.row = row;
+	if (this->__deleted_items.size() == 20)
+		this->__deleted_items.erase(this->__deleted_items.begin());
+	this->__deleted_items.push_back(std::move(removed));
+	this->__undo_timer->start(8000);
 	if (this->__current_item == item)
 		this->__current_item = nullptr;
 	item->setData(Qt::UserRole, QVariant());
 	QWidget *widget = this->__scroll_widget->itemWidget(item);
+	if (this->__pressed_item == widget) this->resetPointerGesture();
 	this->__scroll_widget->removeItemWidget(item);
 	delete item;
-	if (widget)
+	if (widget) {
+		widget->hide();
 		widget->deleteLater();
+	}
 	this->__db.deletePasteItem(data);
-	if (this->__scroll_widget->count() > 0)
-		this->__scroll_widget->setCurrentRow(qMin(row, this->__scroll_widget->count()-1));
+	int next = -1;
+	for (int i = row; i < this->__scroll_widget->count(); ++i) {
+		if (!this->__scroll_widget->item(i)->isHidden()) { next = i; break; }
+	}
+	for (int i = qMin(row-1, this->__scroll_widget->count()-1); next < 0 && i >= 0; --i) {
+		if (!this->__scroll_widget->item(i)->isHidden()) { next = i; break; }
+	}
+	this->__scroll_widget->setCurrentRow(next);
+	if (next >= 0) this->__scroll_widget->itemWidget(this->__scroll_widget->item(next))->setFocus();
+	else this->__main_frame->setFocus();
+	this->resetItemTabOrder();
 	this->updateQuickPasteNumbers();
 	this->updateTrayTooltip();
+	this->updateUndoState();
+}
+
+void MainWindow::updateUndoState(void)
+{
+	const bool available = !this->__deleted_items.empty();
+	this->__undo_hint->setVisible(available);
+	this->__undo_button->setVisible(available);
+	this->__undo_shortcut->setEnabled(available);
+	if (!available) this->__undo_timer->stop();
+}
+
+void MainWindow::undoDeletion(void)
+{
+	if (this->__deleted_items.empty()) return;
+	DeletedEntry removed = std::move(this->__deleted_items.back());
+	this->__deleted_items.pop_back();
+	PasteItem *restored = nullptr;
+	/* A fresh copy wins over the older snapshot if that content exists again. */
+	for (int i = 0; i < this->__scroll_widget->count(); ++i) {
+		QListWidgetItem *item = this->__scroll_widget->item(i);
+		auto *data = reinterpret_cast<ItemData *>(item->data(Qt::UserRole).value<uint64_t>());
+		if (data && data->md5 == removed.md5) {
+			restored = qobject_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
+			break;
+		}
+	}
+	if (!restored) {
+		auto *data = new ItemData;
+		data->mimeData = removed.mime.release();
+		data->icon = removed.icon;
+		data->md5 = removed.md5;
+		data->time = removed.time;
+		int row = qBound(0, removed.row, this->__scroll_widget->count());
+		/* New copies may have arrived since deletion; retain chronological order. */
+		while (row < this->__scroll_widget->count()) {
+			auto *next = reinterpret_cast<ItemData *>(this->__scroll_widget->item(row)->data(Qt::UserRole).value<uint64_t>());
+			if (!next || next->time <= data->time) break;
+			++row;
+		}
+		while (row > 0) {
+			auto *previous = reinterpret_cast<ItemData *>(this->__scroll_widget->item(row-1)->data(Qt::UserRole).value<uint64_t>());
+			if (!previous || previous->time >= data->time) break;
+			--row;
+		}
+		restored = this->insertItemWidget(true, row);
+		const QMimeData *mime = data->mimeData;
+		if (mime->hasUrls()) {
+			QList<QUrl> urls = mime->urls();
+			restored->setUrls(urls);
+		} else if (mime->hasHtml() && !mime->text().trimmed().isEmpty()) {
+			restored->setRichText(mime->html(), mime->text().trimmed());
+		} else if (mime->hasImage()) {
+			QImage image = qvariant_cast<QImage>(mime->imageData());
+			restored->setImage(image);
+		} else {
+			restored->setPlainText(mime->text().trimmed());
+		}
+		restored->setTime(data->time);
+		restored->setIcon(QPixmap::fromImage(data->icon));
+		restored->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(data)));
+		this->__db.insertPasteItem(data);
+		LineEdit *search = this->__searchbar->findChild<LineEdit *>();
+		restored->widgetItem()->setHidden(!restored->text().contains(search->text(), Qt::CaseInsensitive));
+	}
+	if (restored && !restored->widgetItem()->isHidden()) {
+		this->__scroll_widget->setCurrentItem(restored->widgetItem());
+		this->__scroll_widget->scrollToItem(restored->widgetItem());
+		restored->setFocus();
+	}
+	this->resetItemTabOrder();
+	this->updateQuickPasteNumbers();
+	this->updateTrayTooltip();
+	this->updateUndoState();
 }
 
 void MainWindow::initUI(void)
@@ -779,18 +876,46 @@ void MainWindow::initUI(void)
 	this->__history_count->setObjectName("HistoryCount");
 	this->__keyboard_hint = new QLabel(this->__main_frame);
 	this->__keyboard_hint->setObjectName("KeyboardHint");
+	this->__undo_hint = new QLabel(QObject::tr("Removed from history"), this->__main_frame);
+	this->__undo_hint->setObjectName("UndoHint");
+	this->__undo_button = new RoundedButton(this->__main_frame);
+	this->__undo_button->setObjectName("UndoButton");
+	this->__undo_button->setText(QObject::tr("Undo"));
+	this->__undo_button->setToolTip(QObject::tr("Undo deletion (Ctrl+Z)"));
+	this->__undo_button->setFocusPolicy(Qt::NoFocus);
+	this->__undo_button->setFixedHeight(24);
+	QObject::connect(this->__undo_button, &QPushButton::clicked, this, &MainWindow::undoDeletion);
+	this->__undo_timer = new QTimer(this);
+	this->__undo_timer->setSingleShot(true);
+	QObject::connect(this->__undo_timer, &QTimer::timeout, this, [this](void) {
+		this->__deleted_items.clear();
+		this->updateUndoState();
+	});
+	this->__undo_shortcut = new QShortcut(QKeySequence("Ctrl+Z"), this);
+	QObject::connect(this->__undo_shortcut, &QShortcut::activated, this, [this](void) {
+		LineEdit *search = this->__searchbar->findChild<LineEdit *>();
+		if (search->hasFocus() && search->isUndoAvailable()) search->undo();
+		else this->undoDeletion();
+	});
+	this->updateUndoState();
 	QHBoxLayout *footer = new QHBoxLayout();
 	footer->setContentsMargins(8, 0, 8, 0);
+	footer->setSpacing(12);
 	footer->addWidget(this->__history_count);
+	footer->addWidget(this->__undo_hint);
+	footer->addWidget(this->__undo_button);
 	footer->addStretch();
 	footer->addWidget(this->__keyboard_hint);
+	QWidget *footerWidget = new QWidget(this->__main_frame);
+	footerWidget->setFixedHeight(24);
+	footerWidget->setLayout(footer);
 
 	QVBoxLayout *vlayout = new QVBoxLayout();
 	vlayout->setContentsMargins(24, 16, 24, 12);
 	vlayout->setSpacing(10);
 	vlayout->addLayout(hlayout);
 	vlayout->addWidget(this->__scroll_widget, 1);
-	vlayout->addLayout(footer);
+	vlayout->addWidget(footerWidget);
 
 	this->__main_frame->setLayout(vlayout);
 	/* need this for resize this->__scroll_widget size */
@@ -954,7 +1079,7 @@ void MainWindow::applyTheme(const QString &name)
 }
 
 /* Insert a PasteItem into listwidget */
-PasteItem *MainWindow::insertItemWidget(bool back)
+PasteItem *MainWindow::insertItemWidget(bool back, int row)
 {
 	QListWidgetItem *item = new QListWidgetItem;
 	auto *widget = new PasteItem(nullptr, item);
@@ -981,9 +1106,11 @@ PasteItem *MainWindow::insertItemWidget(bool back)
 
 	/* resize item, It's use for pasteitem frame */
 	item->setSizeHint(QSize(qBound(210, this->width()/6, 280),
-				    qMax(110, this->height()-124)));
+				    qMax(110, this->height()-136)));
 
-	if (back) {
+	if (row >= 0) {
+		this->__scroll_widget->insertItem(row, item);
+	} else if (back) {
 		this->__scroll_widget->addItem(item);
 	} else {
 		this->__scroll_widget->insertItem(0, item);
