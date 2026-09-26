@@ -21,6 +21,7 @@
 #include <QDebug>
 #include <QSystemTrayIcon>
 #include <QSettings>
+#include <QCursor>
 #include <QKeyEvent>
 #include <QResizeEvent>
 #include <QDialog>
@@ -124,9 +125,11 @@ MainWindow::MainWindow(QWidget *parent)
 	  __hide_state(true),
 	  __current_item(nullptr)
 {
-	QRect rect = QApplication::primaryScreen()->geometry();
+	QRect rect = QApplication::primaryScreen()->availableGeometry();
 
-	this->setGeometry(0, rect.height()*0.6, rect.width(), rect.height()*0.4);
+	const int panelHeight = qMin(rect.height(), qBound(300, rect.height()*38/100, 450));
+	this->setFixedHeight(panelHeight);
+	this->setGeometry(rect.x(), rect.bottom()-panelHeight+1, rect.width(), panelHeight);
 	this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
 			     Qt::BypassWindowManagerHint | Qt::SplashScreen);
 	this->setFocusPolicy(Qt::NoFocus);
@@ -179,7 +182,7 @@ MainWindow::MainWindow(QWidget *parent)
 	});
 	this->__hide_animation->setDuration(200);
 	this->__hide_animation->setStartValue(this->pos());
-	this->__hide_animation->setEndValue(QPoint(0, rect.height()));
+	this->__hide_animation->setEndValue(QPoint(rect.x(), rect.bottom()+1));
 	this->__hide_animation->setEasingCurve(QEasingCurve::OutQuad);
 
 	QObject::connect(this->__shortcut, &DoubleCtrlShortcut::activated, [this](void) {
@@ -288,6 +291,15 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::show_window(void)
 {
+	QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
+	if (!screen)
+		screen = QApplication::primaryScreen();
+	const QRect area = screen->availableGeometry();
+	const int panelHeight = qMin(area.height(), qBound(300, area.height()*38/100, 450));
+	this->setFixedHeight(panelHeight);
+	this->setGeometry(area.x(), area.bottom()-panelHeight+1, area.width(), panelHeight);
+	this->__hide_animation->setStartValue(this->pos());
+	this->__hide_animation->setEndValue(QPoint(area.x(), area.bottom()+1));
 #ifdef Q_OS_WIN
 	HWND target = GetForegroundWindow();
 	this->__paste_target = (target && target != reinterpret_cast<HWND>(this->winId()))
@@ -306,6 +318,8 @@ void MainWindow::hide_window(void)
 		return;
 
 	this->__hide_animation->setDirection(QAbstractAnimation::Forward);
+	this->__hide_animation->setStartValue(this->pos());
+	this->__hide_animation->setEndValue(QPoint(this->x(), this->y()+this->height()));
 	this->__hide_animation->start();
 	this->__hide_state = true;
 }
