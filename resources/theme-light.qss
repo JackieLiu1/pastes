@@ -48,22 +48,10 @@ QListWidget::item, QListWidget::item:hover, QListWidget::item:selected {
 #Barnner > QLabel { background: transparent; }
 #Barnner > QLabel#CardType {
 	background: transparent; border: 0;
-	font-size: 11px; font-weight: 600; color: #927849;
-	padding: 3px 7px;
+	font-size: 11px; font-weight: 400; color: #758278;
+	padding: 0;
 }
 #Barnner > QLabel#CardTime { font-size: 10px; color: #929A8F; }
-#PasteItemFrame[contentKind="link"] #CardType {
-	background: transparent; border: 0;
-	color: #347565;
-}
-#PasteItemFrame[contentKind="image"] #CardType {
-	background: transparent; border: 0;
-	color: #526F82;
-}
-#PasteItemFrame[contentKind="file"] #CardType {
-	background: transparent; border: 0;
-	color: #726484;
-}
 #PasteItemFrame[contentKind="code"] #CardType {
 	background: transparent; border: 0;
 	color: #B6D9BF;

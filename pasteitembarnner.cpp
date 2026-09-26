@@ -1,5 +1,4 @@
 #include "pasteitembarnner.h"
-#include "roundedwidgets.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -9,7 +8,7 @@
 
 Barnner::Barnner(QWidget *parent) : QWidget(parent),
 	m_icon(new QLabel(this)),
-	m_text(new RoundedLabel(RoundedRole::TypeBadge, this)),
+	m_text(new QLabel(this)),
 	m_time(new QLabel(this))
 {
 	this->setObjectName("Barnner");

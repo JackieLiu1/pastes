@@ -54,14 +54,6 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 		}
 		style.radius = 11; style.borderWidth = 1;
 		break;
-	case RoundedRole::TypeBadge:
-		style.fill = QColor(dark ? "#414B37" : "#F4EEDD");
-		if (kind == "link") style.fill = QColor(dark ? "#375649" : "#E3F0E7");
-		if (kind == "image") style.fill = QColor(dark ? "#3A5054" : "#E2EDF1");
-		if (kind == "file") style.fill = QColor(dark ? "#4A4556" : "#EDE8F1");
-		if (kind == "code") style.fill = QColor(dark ? "#34513E" : "#34564A");
-		style.radius = 6;
-		break;
 	case RoundedRole::HistoryBadge:
 		style.fill = QColor(dark ? "#2A4338" : "#E0EDE4"); style.radius = 10;
 		break;
