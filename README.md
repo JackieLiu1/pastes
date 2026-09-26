@@ -14,7 +14,7 @@ Use `Tab` / `Shift+Tab` or the left/right arrow keys to cycle through visible ca
 
 Press `Space` to open a themed preview with selectable text and an image that fits the window. `Esc` or `Space` closes it; its buttons copy or paste the content.
 
-Click a card to select it, double-click to paste, and drag horizontally to browse. Drag a card upward until “Release to remove” appears, then let go to remove it. Dragging back or releasing below the threshold returns the card. It lifts and tilts while dragging, then flips upward on removal. Small movements remain clicks. The wheel and touchpad also scroll through cards.
+Click a card to select it, double-click to paste, and drag horizontally to browse. Drag a card upward until “Release to remove” appears, then let go to remove it. This requires about two thirds of its height (140–200 logical pixels). Dragging back or releasing below the threshold returns the card. The whole card follows your pointer beyond the panel, then rotates outward and flies upward on removal. Small movements remain clicks. The wheel and touchpad also scroll through cards.
 
 Cards keep their source, type and time visible. Press `Space` to preview. `Delete` and the context menu remove an entry from history, leaving original files intact. For eight seconds after deletion, click Undo or press `Ctrl+Z` to restore recent deletions one by one.
 
