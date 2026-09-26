@@ -43,6 +43,8 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 			style.border = QColor(dark ? "#76C5AA" : "#359782");
 			style.borderWidth = 2;
 		}
+		if (widget->property("pressed").toBool())
+			style.fill = dark ? style.fill.lighter(108) : style.fill.darker(103);
 		break;
 	case RoundedRole::Search:
 		style.fill = QColor(dark ? "#22352B" : "#FCFCF8");

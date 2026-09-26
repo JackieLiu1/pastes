@@ -17,6 +17,8 @@
 #include <QListWidgetItem>
 #include <QClipboard>
 #include <QTimer>
+#include <QPointer>
+#include <QElapsedTimer>
 
 class QSystemTrayIcon;
 class QLabel;
@@ -52,6 +54,8 @@ private:
 	void pasteNumberedItem(int number, bool plainText);
 	void previewCurrentItem(void);
 	void deleteCurrentItem(void);
+	bool handlePointerEvent(QObject *object, QEvent *event);
+	void resetPointerGesture(void);
 	PasteItem *currentPasteItem(void);
 	void pasteToPreviousWindow(void);
 	QPixmap getClipboardOwnerIcon(void);
@@ -84,6 +88,14 @@ private:
 	QListWidget			*__scroll_widget = nullptr;
 	quintptr			__paste_target = 0;
 	QString				__primary_shortcut;
+	QPointer<PasteItem>		__pressed_item;
+	QPointer<PasteItem>		__last_clicked_item;
+	QElapsedTimer			__last_click_time;
+	QPoint				__mouse_press;
+	int				__mouse_scroll_start = 0;
+	bool				__mouse_down = false;
+	bool				__mouse_moved = false;
+	bool				__mouse_dragging = false;
 
 	/* system tray entry (bottom-right corner) */
 	QSystemTrayIcon			*__tray_icon = nullptr;

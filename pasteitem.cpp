@@ -78,6 +78,13 @@ void PasteItem::setQuickPasteNumber(int number)
 	m_quick_paste_number->raise();
 }
 
+void PasteItem::setPressed(bool pressed)
+{
+	if (m_frame->property("pressed").toBool() == pressed) return;
+	m_frame->setProperty("pressed", pressed);
+	m_frame->update();
+}
+
 void PasteItem::setImage(QImage &image)
 {
 	QPixmap pixmap = QPixmap::fromImage(image);
@@ -170,8 +177,6 @@ bool PasteItem::event(QEvent *event)
 
 void PasteItem::mouseDoubleClickEvent(QMouseEvent *event)
 {
-	this->copyData();
-
 	QWidget::mouseDoubleClickEvent(event);
 }
 

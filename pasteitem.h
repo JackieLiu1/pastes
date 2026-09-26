@@ -55,6 +55,7 @@ public:
 	void copyData(bool plainText = false, bool paste = true);
 	void setQuickPasteNumber(int number);
 	void setSelected(bool selected);
+	void setPressed(bool pressed);
 
 	const QString &text(void)
 	{

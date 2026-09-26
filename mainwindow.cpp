@@ -2,7 +2,11 @@
 #include <QScreen>
 #include <QLabel>
 #include <QSizePolicy>
-#include <QScroller>
+#include <QScrollBar>
+#include <QAbstractButton>
+#include <QMouseEvent>
+#include <QWheelEvent>
+#include <QStyleHints>
 #include <QFile>
 #include <QMessageBox>
 #include <QMimeData>
@@ -271,6 +275,8 @@ bool MainWindow::event(QEvent *e)
 
 bool MainWindow::eventFilter(QObject *object, QEvent *event)
 {
+	if (this->__scroll_widget && this->isVisible() && this->handlePointerEvent(object, event))
+		return true;
 	if (this->__scroll_widget && object == this->__scroll_widget->viewport() &&
 	    event->type() == QEvent::Resize && this->__empty_state)
 		this->__empty_state->setGeometry(QRect(QPoint(0, 0), static_cast<QResizeEvent *>(event)->size()));
@@ -297,6 +303,120 @@ bool MainWindow::eventFilter(QObject *object, QEvent *event)
 	return QMainWindow::eventFilter(object, event);
 }
 
+void MainWindow::resetPointerGesture(void)
+{
+	if (this->__pressed_item)
+		this->__pressed_item->setPressed(false);
+	this->__pressed_item.clear();
+	this->__mouse_down = false;
+	this->__mouse_moved = false;
+	this->__mouse_dragging = false;
+	if (QWidget::mouseGrabber() == this->__scroll_widget->viewport())
+		this->__scroll_widget->viewport()->releaseMouse();
+	this->__scroll_widget->viewport()->unsetCursor();
+}
+
+bool MainWindow::handlePointerEvent(QObject *object, QEvent *event)
+{
+	const QEvent::Type type = event->type();
+	if (type != QEvent::MouseButtonPress && type != QEvent::MouseButtonRelease &&
+	    type != QEvent::MouseButtonDblClick && type != QEvent::MouseMove &&
+	    type != QEvent::Wheel && type != QEvent::ContextMenu)
+		return false;
+	QWidget *target = qobject_cast<QWidget *>(object);
+	QWidget *viewport = this->__scroll_widget->viewport();
+	/* Owned menus and preview windows also have a card ancestor, but their
+	 * input belongs to their own window. Only browse within the list. */
+	if (!target || target->window() != this || !(target == viewport || viewport->isAncestorOf(target)))
+		return false;
+	PasteItem *card = nullptr;
+	bool button = false;
+	for (QWidget *widget = target; widget && widget != viewport; widget = widget->parentWidget()) {
+		button |= qobject_cast<QAbstractButton *>(widget) != nullptr;
+		if ((card = qobject_cast<PasteItem *>(widget))) break;
+	}
+	if (type == QEvent::Wheel) {
+		QWheelEvent *wheel = static_cast<QWheelEvent *>(event);
+		const QPoint pixels = wheel->pixelDelta();
+		const QPoint angle = wheel->angleDelta();
+		const int amount = !pixels.isNull() ? (pixels.x() ? pixels.x() : pixels.y()) :
+			(angle.x() ? angle.x() : angle.y())*48*qApp->styleHints()->wheelScrollLines()/120;
+		QScrollBar *bar = this->__scroll_widget->horizontalScrollBar();
+		bar->setValue(bar->value()-amount);
+		wheel->accept();
+		return true;
+	}
+	if (type == QEvent::ContextMenu) {
+		if (card) {
+			this->__scroll_widget->setCurrentItem(card->widgetItem());
+			card->setFocus(Qt::MouseFocusReason);
+		}
+		return false;
+	}
+	QMouseEvent *mouse = static_cast<QMouseEvent *>(event);
+	if (button && !this->__mouse_down) return false;
+	if (type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick) {
+		if (mouse->button() != Qt::LeftButton) {
+			if (card && mouse->button() == Qt::RightButton) {
+				this->__scroll_widget->setCurrentItem(card->widgetItem());
+				card->setFocus(Qt::MouseFocusReason);
+			}
+			return false;
+		}
+		this->resetPointerGesture();
+		if (type == QEvent::MouseButtonDblClick && card && this->__last_clicked_item == card &&
+		    this->__last_click_time.isValid() && this->__last_click_time.elapsed() <= QApplication::doubleClickInterval()) {
+			this->__last_clicked_item.clear();
+			card->copyData(mouse->modifiers().testFlag(Qt::ShiftModifier));
+			return true;
+		}
+		this->__mouse_down = true;
+		this->__mouse_press = mouse->globalPosition().toPoint();
+		this->__mouse_scroll_start = this->__scroll_widget->horizontalScrollBar()->value();
+		this->__pressed_item = card;
+		if (card) card->setPressed(true);
+		return true;
+	}
+	if (type == QEvent::MouseMove && this->__mouse_down) {
+		const QPoint delta = mouse->globalPosition().toPoint()-this->__mouse_press;
+		if (!(mouse->buttons() & Qt::LeftButton)) {
+			this->resetPointerGesture();
+			this->__last_clicked_item.clear();
+			return true;
+		}
+		if (delta.manhattanLength() >= QApplication::startDragDistance()) {
+			this->__mouse_moved = true;
+			this->__last_clicked_item.clear();
+			if (this->__pressed_item) this->__pressed_item->setPressed(false);
+		}
+		if (!this->__mouse_dragging && qAbs(delta.x()) >= QApplication::startDragDistance() &&
+		    qAbs(delta.x()) >= qAbs(delta.y())) {
+			this->__mouse_dragging = true;
+			viewport->grabMouse(Qt::ClosedHandCursor);
+		}
+		if (this->__mouse_dragging)
+			this->__scroll_widget->horizontalScrollBar()->setValue(this->__mouse_scroll_start-delta.x());
+		return true;
+	}
+	if (type == QEvent::MouseButtonRelease && mouse->button() == Qt::LeftButton) {
+		QPointer<PasteItem> pressed = this->__pressed_item;
+		const bool click = this->__mouse_down && !this->__mouse_moved && pressed &&
+			(mouse->globalPosition().toPoint()-this->__mouse_press).manhattanLength() < QApplication::startDragDistance() &&
+			pressed->rect().contains(pressed->mapFromGlobal(mouse->globalPosition().toPoint()));
+		this->resetPointerGesture();
+		if (click) {
+			this->__scroll_widget->setCurrentItem(pressed->widgetItem());
+			pressed->setFocus(Qt::MouseFocusReason);
+			this->__last_clicked_item = pressed;
+			this->__last_click_time.start();
+		} else {
+			this->__last_clicked_item.clear();
+		}
+		return true;
+	}
+	return false;
+}
+
 void MainWindow::showEvent(QShowEvent *event)
 {
 	QListWidgetItem *item = this->__scroll_widget->currentItem();
@@ -312,6 +432,8 @@ void MainWindow::showEvent(QShowEvent *event)
 
 void MainWindow::hideEvent(QHideEvent *event)
 {
+	this->resetPointerGesture();
+	this->__last_clicked_item.clear();
 	QWidget::hideEvent(event);
 }
 
@@ -616,7 +738,6 @@ void MainWindow::initUI(void)
 	this->__scroll_widget->setWrapping(false);
 	this->__scroll_widget->setFocusPolicy(Qt::NoFocus);
 	this->__scroll_widget->viewport()->installEventFilter(this);
-	QScroller::grabGesture(this->__scroll_widget, QScroller::LeftMouseButtonGesture);
 	QObject::connect(this->__scroll_widget, &QListWidget::currentItemChanged, this,
 		[this](QListWidgetItem *current, QListWidgetItem *previous) {
 		if (previous) {
@@ -887,6 +1008,8 @@ void MainWindow::resetItemTabOrder(void)
 
 void MainWindow::clipboard_later(void)
 {
+	this->resetPointerGesture();
+	this->__last_clicked_item.clear();
 #ifdef Q_OS_WIN
 	const quint64 sourceRequest = this->__source_request;
 	const QImage sourceIcon = this->__source_icon;

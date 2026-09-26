@@ -14,4 +14,6 @@ Use `Tab` / `Shift+Tab` or the left/right arrow keys to cycle through visible ca
 
 Press `Space` to open a themed preview with selectable text and an image that fits the window. `Esc` or `Space` closes it; its buttons copy or paste the content.
 
+Click a card to select it, double-click to paste, and drag horizontally to browse. Small movements remain clicks. The wheel and touchpad also scroll through cards.
+
 ![img](./pastes-view.gif)
