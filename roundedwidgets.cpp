@@ -25,18 +25,18 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 	style.border = Qt::transparent;
 	switch (role) {
 	case RoundedRole::Panel:
-		style.fill = dark ? QColor(23, 34, 30, 247) : QColor(244, 244, 239, 245);
-		style.border = dark ? QColor(167, 198, 174, 38) : QColor(66, 88, 75, 32);
+		style.fill = dark ? QColor("#181818") : QColor(244, 244, 239, 245);
+		style.border = dark ? QColor(190, 190, 190, 38) : QColor(66, 88, 75, 32);
 		style.radius = 18; style.borderWidth = 1; style.corners = 1;
 		break;
 	case RoundedRole::Card:
-		style.fill = QColor(dark ? "#293930" : "#FFFDF8");
-		style.border = QColor(dark ? "#3F5145" : "#DADFD4");
-		if (kind == "link") style.fill = QColor(dark ? "#283C33" : "#F5FAF5");
-		if (kind == "image") style.fill = QColor(dark ? "#293C39" : "#F0F5F1");
+		style.fill = QColor(dark ? "#282828" : "#FFFDF8");
+		style.border = QColor(dark ? "#414141" : "#DADFD4");
+		if (kind == "link") style.fill = QColor(dark ? "#282828" : "#F5FAF5");
+		if (kind == "image") style.fill = QColor(dark ? "#282828" : "#F0F5F1");
 		if (kind == "code") {
-			style.fill = QColor(dark ? "#1D3029" : "#203B34");
-			style.border = QColor(dark ? "#3B5043" : "#315148");
+			style.fill = QColor(dark ? "#202020" : "#203B34");
+			style.border = QColor(dark ? "#393939" : "#315148");
 		}
 		style.radius = 14; style.borderWidth = 1;
 		if (widget->property("selected").toBool()) {
@@ -47,21 +47,21 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 			style.fill = dark ? style.fill.lighter(108) : style.fill.darker(103);
 		break;
 	case RoundedRole::Search:
-		style.fill = QColor(dark ? "#22352B" : "#FCFCF8");
-		style.border = QColor(dark ? "#3C5342" : "#D8DED2");
-		if (widget->underMouse()) style.border = QColor(dark ? "#58765E" : "#AEBFB0");
+		style.fill = QColor(dark ? "#242424" : "#FCFCF8");
+		style.border = QColor(dark ? "#434343" : "#D8DED2");
+		if (widget->underMouse()) style.border = QColor(dark ? "#5A5A5A" : "#AEBFB0");
 		if (widget->hasFocus()) {
-			style.fill = QColor(dark ? "#263C31" : "#FFFDF8");
+			style.fill = QColor(dark ? "#2A2A2A" : "#FFFDF8");
 			style.border = QColor(dark ? "#76C5AA" : "#359782");
 		}
 		style.radius = 11; style.borderWidth = 1;
 		break;
 	case RoundedRole::HistoryBadge:
-		style.fill = QColor(dark ? "#2A4338" : "#E0EDE4"); style.radius = 10;
+		style.fill = QColor(dark ? "#2A2A2A" : "#E0EDE4"); style.radius = 10;
 		break;
 	case RoundedRole::Number:
-		style.fill = dark ? QColor(36, 52, 42, 230) : QColor(255, 253, 248, 220);
-		style.border = QColor(dark ? "#526754" : "#D8E0D5");
+		style.fill = dark ? QColor(42, 42, 42, 230) : QColor(255, 253, 248, 220);
+		style.border = QColor(dark ? "#525252" : "#D8E0D5");
 		style.radius = 6; style.borderWidth = 1;
 		break;
 	case RoundedRole::MenuButton:
@@ -73,9 +73,9 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 			style.radius = 10;
 			break;
 		}
-		if (widget->underMouse()) style.fill = QColor(dark ? "#2E4537" : "#E3EAE0");
+		if (widget->underMouse()) style.fill = QColor(dark ? "#333333" : "#E3EAE0");
 		if (static_cast<QPushButton *>(widget)->isDown())
-			style.fill = QColor(dark ? "#385441" : "#D7E1D3");
+			style.fill = QColor(dark ? "#3D3D3D" : "#D7E1D3");
 		if (widget->property("destructive").toBool() && widget->underMouse())
 			style.fill = QColor(dark ? "#563B34" : "#F6E7DF");
 		if (widget->hasFocus()) {
@@ -85,13 +85,13 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 		style.radius = 10;
 		break;
 	case RoundedRole::Preview:
-		style.fill = QColor(dark ? "#1C2C25" : "#F4F4EF");
-		style.border = QColor(dark ? "#3F5145" : "#DADFD4");
+		style.fill = QColor(dark ? "#1F1F1F" : "#F4F4EF");
+		style.border = QColor(dark ? "#414141" : "#DADFD4");
 		style.radius = 18; style.borderWidth = 1;
 		break;
 	case RoundedRole::PreviewContent:
-		style.fill = QColor(dark ? "#25382F" : "#FFFDF8");
-		style.border = QColor(dark ? "#364C40" : "#E1E5DA");
+		style.fill = QColor(dark ? "#282828" : "#FFFDF8");
+		style.border = QColor(dark ? "#3D3D3D" : "#E1E5DA");
 		style.radius = 12; style.borderWidth = 1;
 		break;
 	case RoundedRole::Content:
@@ -107,11 +107,11 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 		if (swatch.isValid()) {
 			style.fill = qGray(swatch.rgb()) < 145 ? QColor(0, 0, 0, 20) : QColor(255, 255, 255, 35);
 		} else if (content->objectName() == "ContextPixmapFrame") {
-			style.fill = QColor(dark ? "#293C39" : "#F0F5F1");
+			style.fill = QColor(dark ? "#282828" : "#F0F5F1");
 		} else {
 			style.gradient = true;
-			style.fill = QColor(dark ? "#293930" : "#FFFDF8");
-			if (kind == "code") style.fill = QColor(dark ? "#1D3029" : "#203B34");
+			style.fill = QColor(dark ? "#282828" : "#FFFDF8");
+			if (kind == "code") style.fill = QColor(dark ? "#202020" : "#203B34");
 		}
 		break;
 	}

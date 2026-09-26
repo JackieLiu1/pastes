@@ -73,7 +73,7 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	auto *shadow = new QGraphicsDropShadowEffect(m_surface);
 	shadow->setOffset(0, 4);
 	shadow->setBlurRadius(24);
-	shadow->setColor(QColor(12, 30, 23, 45));
+	shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
 	m_surface->setGraphicsEffect(shadow);
 	m_surface->setObjectName("PreviewSurface");
 	QVBoxLayout *layout = new QVBoxLayout(m_surface);

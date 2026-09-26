@@ -37,9 +37,10 @@ protected:
 		painter.setRenderHint(QPainter::Antialiasing);
 		painter.translate(width()/2.0-9, height()/2.0-9);
 		QWidget *card = parentWidget()->parentWidget();
-		const bool dark = qApp->property("pastesDark").toBool() || card->property("contentKind") == "code";
-		const QColor color = m_remove && underMouse() ? QColor(dark ? "#F0A799" : "#B95342") :
-			QColor(dark ? "#B6CABD" : "#647D70");
+		const bool dark = qApp->property("pastesDark").toBool();
+		const bool darkSurface = dark || card->property("contentKind") == "code";
+		const QColor color = m_remove && underMouse() ? QColor(darkSurface ? "#F0A799" : "#B95342") :
+			QColor(dark ? "#BFBFBF" : (darkSurface ? "#B6CABD" : "#647D70"));
 		painter.setPen(QPen(color, 1.4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
 		painter.setBrush(Qt::NoBrush);
 		if (m_remove) {
