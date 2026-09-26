@@ -3,14 +3,19 @@
 
 #include <QApplication>
 #include <QPainter>
+#include <QLinearGradient>
+#include <QPolygonF>
 #include <QPropertyAnimation>
+#include <QRandomGenerator>
 #include <QScreen>
 #include <QTransform>
+#include <QtMath>
 
 CardSwipeOverlay::CardSwipeOverlay(QWidget *parent) : QWidget(parent, Qt::Tool |
 	Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::NoDropShadowWindowHint |
 	Qt::WindowTransparentForInput | Qt::WindowDoesNotAcceptFocus),
-	m_animation(new QPropertyAnimation(this, "offset", this))
+	m_animation(new QPropertyAnimation(this, "offset", this)),
+	m_dismiss_animation(new QPropertyAnimation(this, "dismissal", this))
 {
 	setObjectName("CardSwipeOverlay");
 	setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -19,6 +24,7 @@ CardSwipeOverlay::CardSwipeOverlay(QWidget *parent) : QWidget(parent, Qt::Tool |
 	setAttribute(Qt::WA_ShowWithoutActivating);
 	setFocusPolicy(Qt::NoFocus);
 	QObject::connect(m_animation, &QPropertyAnimation::finished, this, &CardSwipeOverlay::cancel);
+	QObject::connect(m_dismiss_animation, &QPropertyAnimation::finished, this, &CardSwipeOverlay::cancel);
 	hide();
 }
 
@@ -36,7 +42,7 @@ bool CardSwipeOverlay::begin(PasteItem *card)
 	QScreen *screen = QGuiApplication::screenAt(globalOrigin.center());
 	if (!screen) screen = card->screen();
 	/* A separate, input-transparent window lets the card cross the panel's
-	 * bounds. Keep its backing store confined to the upward flight corridor. */
+	 * bounds. Keep its backing store confined to the drag and particle corridor. */
 	const QRect corridor(globalOrigin.left()-90, screen->geometry().top(),
 		globalOrigin.width()+220, globalOrigin.bottom()+50-screen->geometry().top());
 	setGeometry(corridor.intersected(screen->geometry()));
@@ -63,26 +69,39 @@ void CardSwipeOverlay::setOffset(qreal offset)
 void CardSwipeOverlay::release(bool remove)
 {
 	if (m_snapshot.isNull()) return;
+	m_animation->stop();
+	m_dismiss_animation->stop();
 	m_removing = remove;
 	m_release_offset = m_offset;
-	m_end_offset = remove ? qMax(m_offset+260, m_origin.height()+140) : 0;
+	m_dismissal = 0;
 	/* Deletion commits at mouse release. The outgoing snapshot is purely
 	 * visual, so later input or clipboard updates cannot cancel the deletion. */
-	if (remove) m_card.clear();
-	m_animation->setDuration(remove ? 320 : 200);
+	if (remove) {
+		m_card.clear();
+		this->prepareParticles();
+		m_dismiss_animation->setDuration(700);
+		m_dismiss_animation->setEasingCurve(QEasingCurve::Linear);
+		m_dismiss_animation->setStartValue(qreal(0));
+		m_dismiss_animation->setEndValue(qreal(1));
+		m_dismiss_animation->start();
+		return;
+	}
+	m_animation->setDuration(200);
 	m_animation->setEasingCurve(QEasingCurve::OutCubic);
 	m_animation->setStartValue(m_offset);
-	m_animation->setEndValue(m_end_offset);
+	m_animation->setEndValue(qreal(0));
 	m_animation->start();
 }
 
 void CardSwipeOverlay::cancel(void)
 {
 	m_animation->stop();
+	m_dismiss_animation->stop();
 	if (m_card) m_card->endSwipe();
 	m_card.clear();
 	m_snapshot = QPixmap();
 	m_offset = 0;
+	m_dismissal = 0;
 	m_removing = false;
 	hide();
 }
@@ -94,8 +113,10 @@ void CardSwipeOverlay::paintEvent(QPaintEvent *)
 	painter.setRenderHint(QPainter::Antialiasing);
 	painter.setRenderHint(QPainter::SmoothPixmapTransform);
 	const bool dark = qApp->property("pastesDark").toBool();
-	const qreal progress = m_removing ? qBound(qreal(0),
-		(m_offset-m_release_offset)/qMax(qreal(1), m_end_offset-m_release_offset), qreal(1)) : 0;
+	if (m_removing) {
+		this->paintDismissal(painter);
+		return;
+	}
 	if (!m_removing) {
 		const QRectF hint(m_origin.left()+16, m_origin.bottom()-50, m_origin.width()-32, 32);
 		painter.setPen(Qt::NoPen);
@@ -109,16 +130,99 @@ void CardSwipeOverlay::paintEvent(QPaintEvent *)
 			QObject::tr("Drag up to remove"));
 	}
 
-	const qreal tilt = qMin(qreal(5), (m_removing ? m_release_offset : m_offset)/m_threshold*4);
-	const qreal angle = m_removing ? tilt+(28-tilt)*progress : tilt;
-	QTransform transform;
-	/* Toss a rigid card along an outward arc instead of compressing its
-	 * height. Dragging remains attached to the pointer until release. */
-	transform.translate(m_origin.center().x()+72*progress, m_origin.center().y()-m_offset);
-	transform.rotate(-angle);
-	transform.translate(-m_origin.width()/2, -m_origin.height()/2);
-	painter.setWorldTransform(transform);
-	const qreal fade = qMax(qreal(0), (progress-0.32)/0.68);
-	painter.setOpacity(1-fade*fade);
-	painter.drawPixmap(QRectF(QPointF(), m_origin.size()), m_snapshot, QRectF(m_snapshot.rect()));
+	/* Before release, keep the front face flat and attached to the pointer. */
+	painter.drawPixmap(m_origin.translated(0, -m_offset), m_snapshot, QRectF(m_snapshot.rect()));
+}
+
+void CardSwipeOverlay::setDismissal(qreal progress)
+{
+	m_dismissal = qBound(qreal(0), progress, qreal(1));
+	update();
+}
+
+void CardSwipeOverlay::prepareParticles(void)
+{
+	const qreal camera = qMax(qreal(550), m_origin.height()*2.5);
+	const qreal depth = 38+m_origin.height()*0.24;
+	m_line_center = QPointF(m_origin.center().x(), m_origin.top()-m_release_offset-36);
+	m_line_width = (m_origin.width()-8)*camera/(camera+depth);
+	const bool dark = qApp->property("pastesDark").toBool();
+	const std::array<QColor, 3> colors = dark ? std::array<QColor, 3>{
+		QColor("#8EDCC4"), QColor("#F2C879"), QColor("#FFF4D8")} :
+		std::array<QColor, 3>{QColor("#399D82"), QColor("#D59D4D"), QColor("#79AFA1")};
+	/* Randomness and allocation happen once at release, never per frame. */
+	QRandomGenerator *random = QRandomGenerator::global();
+	for (size_t i = 0; i < m_particles.size(); ++i) {
+		Particle &particle = m_particles[i];
+		const qreal angle = random->generateDouble()*2*M_PI;
+		const qreal speed = 95+random->generateDouble()*105;
+		particle.origin = QPointF((random->generateDouble()-0.5)*m_line_width*0.82, 0);
+		particle.velocity = QPointF(qCos(angle)*speed, qSin(angle)*speed-22);
+		particle.color = colors[i%colors.size()];
+		particle.radius = 1.1+random->generateDouble()*1.1;
+	}
+}
+
+void CardSwipeOverlay::paintDismissal(QPainter &painter)
+{
+	const qreal progress = m_dismissal;
+	const qreal fold = QEasingCurve(QEasingCurve::InOutCubic).valueForProgress(
+		qBound(qreal(0), progress/0.60, qreal(1)));
+	const qreal camera = qMax(qreal(550), m_origin.height()*2.5);
+	const qreal depth = (38+m_origin.height()*0.24)*fold;
+	const qreal angle = qDegreesToRadians(qMin(qreal(89.75), fold*90));
+	const QPointF hinge(m_origin.center().x(), m_origin.top()-m_release_offset-36*fold);
+	if (progress < 0.60) {
+		/* Rotate the bottom edge away from the viewer around the top edge.
+		 * Perspective narrows the receding edge; its height converges to a line. */
+		auto project = [&](qreal x, qreal y) {
+			const qreal scale = camera/(camera+depth+y*qSin(angle));
+			return hinge+QPointF((x-m_origin.width()/2)*scale, y*qCos(angle)*scale);
+		};
+		const qreal width = m_origin.width(), height = m_origin.height();
+		const QPolygonF source{QPointF(0, 0), QPointF(width, 0), QPointF(width, height), QPointF(0, height)};
+		const QPolygonF target{project(0, 0), project(width, 0), project(width, height), project(0, height)};
+		QTransform transform;
+		if (QTransform::quadToQuad(source, target, transform)) {
+			painter.save();
+			painter.setWorldTransform(transform);
+			painter.setOpacity(1-fold*0.20);
+			painter.drawPixmap(QRectF(QPointF(), m_origin.size()), m_snapshot, QRectF(m_snapshot.rect()));
+			painter.restore();
+		}
+	}
+	if (progress >= 0.55 && progress < 0.86) {
+		const qreal light = qMin(qreal(1), (progress-0.55)/0.07)*
+			(1-qBound(qreal(0), (progress-0.68)/0.18, qreal(1)));
+		const QPointF left = m_line_center-QPointF(m_line_width/2, 0);
+		const QPointF right = m_line_center+QPointF(m_line_width/2, 0);
+		QLinearGradient gradient(left, right);
+		gradient.setColorAt(0, QColor(142, 220, 196, 0));
+		gradient.setColorAt(0.18, QColor("#8EDCC4"));
+		gradient.setColorAt(0.5, QColor("#FFF4D8"));
+		gradient.setColorAt(0.82, QColor("#F2C879"));
+		gradient.setColorAt(1, QColor(242, 200, 121, 0));
+		painter.setOpacity(light*0.18);
+		painter.setPen(QPen(QBrush(gradient), 5, Qt::SolidLine, Qt::RoundCap));
+		painter.drawLine(left, right);
+		painter.setOpacity(light);
+		painter.setPen(QPen(QBrush(gradient), 1.5, Qt::SolidLine, Qt::RoundCap));
+		painter.drawLine(left, right);
+	}
+	if (progress < 0.67) return;
+	const qreal burst = qBound(qreal(0), (progress-0.67)/0.33, qreal(1));
+	const qreal time = burst*0.33;
+	const qreal alpha = qMin(qreal(1), burst*10)*qPow(1-burst, 1.4);
+	for (const Particle &particle : m_particles) {
+		const QPointF position = m_line_center+particle.origin+particle.velocity*time+QPointF(0, 55*time*time);
+		const qreal radius = particle.radius*(1-burst*0.55);
+		painter.setPen(Qt::NoPen);
+		painter.setBrush(particle.color);
+		painter.setOpacity(alpha*0.14);
+		painter.drawEllipse(position, radius*2.4, radius*2.4);
+		painter.setOpacity(alpha);
+		painter.drawEllipse(position, radius, radius);
+		painter.setPen(QPen(particle.color, radius*0.7, Qt::SolidLine, Qt::RoundCap));
+		painter.drawLine(position-particle.velocity*0.018, position);
+	}
 }
