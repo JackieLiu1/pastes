@@ -21,6 +21,9 @@
 class QSystemTrayIcon;
 class QLabel;
 class QAction;
+#ifdef Q_OS_WIN
+class ClipboardSource;
+#endif
 class MainWindow : public QMainWindow
 {
 	Q_OBJECT
@@ -89,8 +92,11 @@ private:
 	/* current theme: "dark" or "light" (persisted in QSettings) */
 	QString				__theme;
 
-	/* It's copyed from myself, We need save icon */
-	QPixmap				__pasteitem_icon;
+#ifdef Q_OS_WIN
+	ClipboardSource			*__clipboard_source;
+	quint64				__source_request = 0;
+	QImage				__source_icon;
+#endif
 
 	/* Use for store current row when searching. Not a QObject, so it can't
 	 * be a QPointer: clipboard_later() resets it when it deletes the item. */

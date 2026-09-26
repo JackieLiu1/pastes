@@ -45,7 +45,7 @@ static const int CLIPBOARD_SETTLE_MS = 1000;
 #include <commctrl.h>
 #include <objbase.h>
 #include <commoncontrols.h>
-#include <psapi.h>
+#include "clipboardsource_win.h"
 #include <QOperatingSystemVersion>
 #endif
 
@@ -169,7 +169,36 @@ MainWindow::MainWindow(QWidget *parent)
 	this->__clipboard_timer->setSingleShot(true);
 	this->__clipboard_timer->setInterval(CLIPBOARD_SETTLE_MS);
 	QObject::connect(this->__clipboard_timer, &QTimer::timeout, this, &MainWindow::clipboard_later);
+#ifdef Q_OS_WIN
+	this->__clipboard_source = new ClipboardSource(this);
+	QObject::connect(this->__clipboard_source, &ClipboardSource::iconReady, this,
+		[this](quint64 request, const QImage &icon) {
+		if (request == this->__source_request)
+			this->__source_icon = icon;
+		if (icon.isNull())
+			return;
+		/* A slow icon lookup may finish after the history entry was saved.
+		 * Match a live widget by request ID, never a worker-owned pointer. */
+		for (int i = 0; i < this->__scroll_widget->count(); ++i) {
+			QListWidgetItem *item = this->__scroll_widget->item(i);
+			auto *widget = qobject_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
+			if (!widget || widget->property("sourceRequest").toULongLong() != request)
+				continue;
+			auto *data = reinterpret_cast<ItemData *>(item->data(Qt::UserRole).value<uint64_t>());
+			if (data) {
+				data->icon = icon;
+				widget->setIcon(QPixmap::fromImage(icon));
+				this->__db.updatePasteItemIcon(data->md5, icon);
+			}
+			break;
+		}
+	}, Qt::QueuedConnection);
+#endif
 	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, this, [this](void) {
+#ifdef Q_OS_WIN
+		this->__source_icon = QImage();
+		this->__clipboard_source->capture(++this->__source_request);
+#endif
 		/* Restarting on every change collapses rapid clipboard updates
 		 * into one snapshot taken once the clipboard has settled. */
 		this->__clipboard_timer->start();
@@ -872,6 +901,10 @@ void MainWindow::resetItemTabOrder(void)
 
 void MainWindow::clipboard_later(void)
 {
+#ifdef Q_OS_WIN
+	const quint64 sourceRequest = this->__source_request;
+	const QImage sourceIcon = this->__source_icon;
+#endif
 	const QMimeData *mime_data = QApplication::clipboard()->mimeData();
 	PasteItem *widget = nullptr;
 	QCryptographicHash hash(QCryptographicHash::Md5);
@@ -943,8 +976,6 @@ void MainWindow::clipboard_later(void)
 			continue;
 		/* They have same md5, remove it */
 		if (itemData->md5 == tmp_itemData->md5) {
-			/* move icon from old data */
-			itemData->icon = tmp_itemData->icon;
 			this->__db.deletePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			if (this->__current_item == tmp_item)
@@ -965,11 +996,13 @@ void MainWindow::clipboard_later(void)
 	itemData->time = QDateTime::currentDateTime();
 	widget->setTime(itemData->time);
 
-	if (itemData->icon.isNull()) {
-		/* Find and set icon who triggers the clipboard */
-		QPixmap owner_icon = this->getClipboardOwnerIcon().scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-		itemData->icon = owner_icon.toImage();
-	}
+#ifdef Q_OS_WIN
+	itemData->icon = sourceIcon;
+	widget->setProperty("sourceRequest", QVariant::fromValue(sourceRequest));
+#else
+	itemData->icon = this->getClipboardOwnerIcon().scaled(32, 32,
+		Qt::KeepAspectRatio, Qt::SmoothTransformation).toImage();
+#endif
 	QPixmap icon = QPixmap::fromImage(itemData->icon);
 	widget->setIcon(icon);
 	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
@@ -1019,51 +1052,6 @@ static QString strip_cmd(QString window_title)
 QPixmap MainWindow::getClipboardOwnerIcon(void)
 {
 	QPixmap pixmap;
-
-#ifdef Q_OS_WIN
-	HWND hwnd = GetClipboardOwner();
-	/* Get icon from Window */
-	HICON icon = reinterpret_cast<HICON>(::SendMessageW(hwnd, WM_GETICON, ICON_BIG, 0));
-	if (!icon)
-		/* Try get icon from window class */
-		icon = reinterpret_cast<HICON>(::GetClassLongPtr(hwnd, GCLP_HICON));
-	if (!icon) {
-		/* Find process id and get the process path, Final extract icons from executable files */
-		DWORD pid;
-		::GetWindowThreadProcessId(hwnd, &pid);
-		HANDLE processHandle = ::OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-		TCHAR filename[MAX_PATH];
-		DWORD cbNeeded;
-		HMODULE hMod;
-		if (processHandle) {
-			if(::EnumProcessModules(processHandle, &hMod, sizeof(hMod), &cbNeeded)) {
-				GetModuleFileNameEx(processHandle, NULL, filename, MAX_PATH);
-				SHFILEINFO info;
-				ZeroMemory(&info, sizeof(SHFILEINFO));
-				unsigned int flags = SHGFI_ICON | SHGFI_SYSICONINDEX | SHGFI_ICONLOCATION |
-					SHGFI_OPENICON | SHGFI_USEFILEATTRIBUTES;
-				const HRESULT hr = SHGetFileInfo(filename, 0, &info, sizeof(SHFILEINFO), flags);
-				if (FAILED(hr)) {
-					pixmap = pixmapFromHICON(::LoadIcon(0, IDI_APPLICATION));
-				} else  {
-					pixmap = pixmapFromShellImageList(0x4, info);
-					if (pixmap.isNull())
-						pixmap = pixmapFromShellImageList(0x2, info);
-					if (pixmap.isNull())
-						pixmap = pixmapFromHICON(info.hIcon);
-					if (pixmap.isNull())
-						pixmap = pixmapFromHICON(::LoadIcon(0, IDI_APPLICATION));
-				}
-			}
-			::CloseHandle(processHandle);
-		} else {
-			/* Failed, use default windows icon */
-			pixmap = pixmapFromHICON(::LoadIcon(0, IDI_APPLICATION));
-		}
-	} else {
-		pixmap = pixmapFromHICON(icon);
-	}
-#endif
 
 #ifdef Q_OS_LINUX
 	int i = 0;

@@ -4,6 +4,10 @@
 <context>
     <name>QObject</name>
     <message>
+        <source>Source unavailable</source>
+        <translation>未能识别来源应用</translation>
+    </message>
+    <message>
         <source>%1 Open   ·   ← → Browse   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>

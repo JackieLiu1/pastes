@@ -116,6 +116,16 @@ public slots:
 		}
 	}
 
+	void updateIcon(const QByteArray &md5, const QImage &icon)
+	{
+		QSqlQuery query(m_db);
+		query.prepare("update item set icondata = :icon where md5 = :md5;");
+		query.bindValue(":icon", Worker::convertImage2Array(icon));
+		query.bindValue(":md5", md5);
+		if (!query.exec())
+			DEBUG() << query.lastError();
+	}
+
 	void remove(ItemData *itemData)
 	{
 		QSqlQuery query(m_db);
@@ -174,6 +184,7 @@ Database::Database(QObject *parent) : QObject(parent),
 	QObject::connect(m_thread, &QThread::finished, m_worker, &QObject::deleteLater);
 	QObject::connect(this, &Database::loadRequested, m_worker, &Worker::load);
 	QObject::connect(this, &Database::insertRequested, m_worker, &Worker::insert);
+	QObject::connect(this, &Database::updateIconRequested, m_worker, &Worker::updateIcon);
 	QObject::connect(this, &Database::deleteRequested, m_worker, &Worker::remove);
 	QObject::connect(m_worker, &Worker::dataLoaded, this, &Database::dataLoaded);
 
@@ -194,6 +205,11 @@ void Database::loadData(void)
 void Database::insertPasteItem(ItemData *itemData)
 {
 	emit insertRequested(itemData, itemData->icon);
+}
+
+void Database::updatePasteItemIcon(const QByteArray &md5, const QImage &icon)
+{
+	emit updateIconRequested(md5, icon);
 }
 
 void Database::deletePasteItem(ItemData *itemData)

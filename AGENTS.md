@@ -33,6 +33,7 @@ cmake --build build
 
 ```
 QClipboard::dataChanged
+  → Windows 立即记录来源窗口/图标，ClipboardSource 在独立线程读取程序图标（QImage）
   → 防抖定时器（1s，CLIPBOARD_SETLE_MS）
   → MainWindow::clipboard_later()          # 快照、dup_mimedata、MD5、去重、建 PasteItem
       → Database::insertPasteItem()        # 队列化信号转发到工作线程
@@ -45,6 +46,7 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
 
 - `MainWindow`（mainwindow.cpp）— 主窗口、剪贴板监听、条目生命周期。
 - `Database` + `Database::Worker`（database.cpp）— 数据库门面 + 工作线程。
+- `ClipboardSource`（clipboardsource_win.cpp）— Windows 来源图标捕获；异步结果用请求编号匹配仍存在的条目，迟到图标经 Database 更新。
 - `PasteItem`（pasteitem.cpp）— 列表条目 widget；`copyData()` 复制回剪贴板。
 - `StackedWidget`/`TextFrame`/`PixmapFrame`/`FileFrame`（pasteitemcontext.cpp）— 条目内容渲染。
 - `GlobalShortcut`/`ShortcutPrivate`（shortcut*.cpp）— 全局唤出快捷键，

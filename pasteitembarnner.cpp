@@ -3,6 +3,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QResizeEvent>
+#include <QPainter>
 
 #include <QDebug>
 
@@ -33,9 +34,21 @@ Barnner::Barnner(QWidget *parent) : QWidget(parent),
 void Barnner::setIcon(QPixmap &pixmap)
 {
 	m_pixmap = pixmap;
-	m_icon->setVisible(!m_pixmap.isNull());
+	m_icon->setToolTip(m_pixmap.isNull() ? QObject::tr("Source unavailable") : QString());
+	if (m_pixmap.isNull()) {
+		QImage image(40, 40, QImage::Format_ARGB32_Premultiplied);
+		image.fill(Qt::transparent);
+		QPainter painter(&image);
+		painter.setRenderHint(QPainter::Antialiasing);
+		painter.setPen(QPen(QColor("#81968C"), 2));
+		painter.drawRoundedRect(QRectF(5, 7, 30, 26), 4, 4);
+		painter.drawLine(QPointF(5, 15), QPointF(35, 15));
+		painter.end();
+		m_pixmap = QPixmap::fromImage(image);
+	}
 	m_icon->setPixmap(m_pixmap.scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
+
 void Barnner::showEvent(QShowEvent *event)
 {
 	if (!this->m_datetime.isNull()) {

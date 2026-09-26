@@ -26,6 +26,7 @@ public:
 
 	void loadData(void);
 	void insertPasteItem(ItemData *itemData);
+	void updatePasteItemIcon(const QByteArray &md5, const QImage &icon);
 	/* Removes the rows from the database and deletes itemData on the worker thread */
 	void deletePasteItem(ItemData *itemData);
 
@@ -35,6 +36,7 @@ signals:
 	/* Internal: forwarded to the worker thread */
 	void loadRequested(void);
 	void insertRequested(ItemData *itemData, QImage iconImage);
+	void updateIconRequested(QByteArray md5, QImage icon);
 	void deleteRequested(ItemData *itemData);
 
 private:
