@@ -50,6 +50,7 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
 - `PasteItem`（pasteitem.cpp）— 列表条目 widget；`copyData()` 复制回剪贴板。
 - `CardSwipeOverlay`（cardswipe.cpp）— GUI 线程缓存卡片快照，拖动可越过面板边界；松手后向后翻倒至细线并散开粒子，未达到阈值时回弹；撤销反向展开并落回卡槽，快速撤销接续当前删除阶段；删除在松手时提交，动画不持有剪贴板数据。
 - `CardReflowOverlay`（cardreflow.cpp）— 删除或撤销前记录相邻卡片位置，实际列表更新后用缓存快照平移补位或让位；取消动画恢复真实卡片，连续操作接续当前视觉位置。
+- `ElasticScrollController`（elasticscroll.cpp）— GUI 线程控制横向滚动的惯性与边界阻力/回弹，通过平移真实 viewport 保持卡片和点击位置一致；触控板不重复施加系统惯性，列表变化、搜索、导航或隐藏时取消运动。
 - `StackedWidget`/`TextFrame`/`PixmapFrame`/`FileFrame`（pasteitemcontext.cpp）— 条目内容渲染。
 - `GlobalShortcut`/`ShortcutPrivate`（shortcut*.cpp）— 全局唤出快捷键，
   平台实现分文件（shortcut_win.cpp / shortcut_x11.cpp）。

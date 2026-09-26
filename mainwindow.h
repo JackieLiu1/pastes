@@ -28,6 +28,7 @@ class QAction;
 class QShortcut;
 class CardSwipeOverlay;
 class CardReflowOverlay;
+class ElasticScrollController;
 #ifdef Q_OS_WIN
 class ClipboardSource;
 #endif
@@ -62,7 +63,7 @@ private:
 	void undoDeletion(void);
 	void updateUndoState(void);
 	bool handlePointerEvent(QObject *object, QEvent *event);
-	void resetPointerGesture(bool cancelSwipe = true, bool cancelReflow = true);
+	void resetPointerGesture(bool cancelSwipe = true, bool cancelReflow = true, bool cancelScroll = true);
 	PasteItem *currentPasteItem(void);
 	void pasteToPreviousWindow(void);
 	QPixmap getClipboardOwnerIcon(void);
@@ -99,13 +100,13 @@ private:
 	QPointer<PasteItem>		__last_clicked_item;
 	QElapsedTimer			__last_click_time;
 	QPoint				__mouse_press;
-	int				__mouse_scroll_start = 0;
 	bool				__mouse_down = false;
 	bool				__mouse_moved = false;
 	enum class PointerGesture { Pending, Browse, Dismiss, Cancelled };
 	PointerGesture			__pointer_gesture = PointerGesture::Pending;
 	CardSwipeOverlay		*__card_swipe = nullptr;
 	CardReflowOverlay		*__card_reflow = nullptr;
+	ElasticScrollController		*__elastic_scroll = nullptr;
 	struct DeletedEntry {
 		std::unique_ptr<QMimeData> mime;
 		QImage icon;

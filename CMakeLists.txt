@@ -24,6 +24,7 @@ set(PASTES_SOURCES
     previewdialog.cpp previewdialog.h
     cardswipe.cpp cardswipe.h
     cardreflow.cpp cardreflow.h
+    elasticscroll.cpp elasticscroll.h
     mainwindow.cpp mainwindow.h
     database.cpp database.h
     pasteitem.cpp pasteitem.h
