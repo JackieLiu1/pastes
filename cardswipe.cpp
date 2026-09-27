@@ -81,7 +81,7 @@ void CardSwipeOverlay::release(bool remove)
 		m_card.clear();
 		++m_dismissal_id;
 		this->prepareSeam();
-		m_dismiss_animation->setDuration(700);
+		m_dismiss_animation->setDuration(480);
 		m_dismiss_animation->setEasingCurve(QEasingCurve::Linear);
 		m_dismiss_animation->setStartValue(qreal(0));
 		m_dismiss_animation->setEndValue(qreal(1));
