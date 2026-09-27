@@ -29,6 +29,7 @@
 #include <QResizeEvent>
 #include <QPointer>
 #include <QHash>
+#include <QScopedValueRollback>
 
 #include "mainwindow.h"
 #include "pasteitem.h"
@@ -565,6 +566,9 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 void MainWindow::show_window(void)
 {
 #ifdef Q_OS_MACOS
+	/* Re-activating an owned dialog must not summon the history panel. */
+	if (this->__app_dialog_open)
+		return;
 	QScreen *screen = macPanelScreen();
 #else
 	QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
@@ -1147,7 +1151,7 @@ void MainWindow::setupTrayIcon(void)
 	QAction *about_me = new QAction(QObject::tr("About Pastes"), this);
 	QObject::connect(about_me, &QAction::triggered, [this](void) {
 		AboutDialog dialog(this);
-		dialog.exec();
+		this->execAppDialog(dialog);
 	});
 	tray_menu->addAction(about_me);
 	panel_menu->addAction(about_me);
@@ -1213,6 +1217,17 @@ void MainWindow::showSettings(void)
 		this->__keyboard_hint->setVisible(visible);
 	});
 	QObject::connect(this->__shortcut, &GlobalShortcut::primaryShortcutChanged, &dialog, &SettingsDialog::setPrimaryShortcut);
+	this->execAppDialog(dialog);
+}
+
+void MainWindow::execAppDialog(AppDialog &dialog)
+{
+#ifdef Q_OS_MACOS
+	/* Cover the activation events dispatched by the modal event loop,
+	 * including those emitted before Qt registers the active dialog. */
+	QScopedValueRollback<bool> dialogOpen(this->__app_dialog_open, true);
+	this->hide_window();
+#endif
 	dialog.exec();
 }
 

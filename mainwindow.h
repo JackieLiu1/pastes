@@ -26,6 +26,7 @@ class QSystemTrayIcon;
 class QLabel;
 class QAction;
 class QShortcut;
+class AppDialog;
 class CardSwipeOverlay;
 class CardReflowOverlay;
 class ElasticScrollController;
@@ -54,6 +55,7 @@ private:
 	void updateShortcutHint(void);
 	void applyTheme(const QString &name);
 	void showSettings(void);
+	void execAppDialog(AppDialog &dialog);
 	void setHistoryRecording(bool enabled);
 	void reloadData(void);
 	PasteItem *insertItemWidget(bool, int row = -1);
@@ -86,6 +88,9 @@ private:
 	GlobalShortcut			*__shortcut;
 	/* That is a workaround for hide window */
 	bool				__hide_state;
+#ifdef Q_OS_MACOS
+	bool				__app_dialog_open = false;
+#endif
 	Database			__db;
 	/* Debounces rapid clipboard updates into one snapshot */
 	QTimer				*__clipboard_timer;
