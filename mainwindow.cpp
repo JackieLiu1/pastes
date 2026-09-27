@@ -930,10 +930,6 @@ void MainWindow::initUI(void)
 	this->__menu_button->setAccessibleName(QObject::tr("Menu"));
 	this->__menu_button->setFixedSize(36, 36);
 	this->__menu_button->setFlat(true);
-	QObject::connect(this->__menu_button, &QPushButton::clicked, [this](void) {
-		this->__tray_icon->contextMenu()->exec(this->__menu_button->mapToGlobal(
-			QPoint(0, this->__menu_button->height())));
-	});
 
 	this->__scroll_widget = new QListWidget(this->__main_frame);
 	this->__scroll_widget->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -1054,6 +1050,7 @@ void MainWindow::initUI(void)
 void MainWindow::setupTrayIcon(void)
 {
 	QMenu *tray_menu = new QMenu(this);
+	QMenu *panel_menu = new QMenu(this->__menu_button);
 
 	this->__show_action = new QAction(this);
 	QObject::connect(this->__show_action, &QAction::triggered, [this](void) {
@@ -1065,6 +1062,7 @@ void MainWindow::setupTrayIcon(void)
 	settings->setObjectName("SettingsAction");
 	QObject::connect(settings, &QAction::triggered, this, &MainWindow::showSettings);
 	tray_menu->addAction(settings);
+	panel_menu->addAction(settings);
 
 	QAction *about_me = new QAction(QObject::tr("About Pastes"), this);
 	QObject::connect(about_me, &QAction::triggered, [this](void) {
@@ -1072,14 +1070,21 @@ void MainWindow::setupTrayIcon(void)
 		dialog.exec();
 	});
 	tray_menu->addAction(about_me);
+	panel_menu->addAction(about_me);
 
 	tray_menu->addSeparator();
+	panel_menu->addSeparator();
 
 	QAction *quit_action = new QAction(QObject::tr("Quit"), this);
 	QObject::connect(quit_action, &QAction::triggered, [](void) {
 		qApp->quit();
 	});
 	tray_menu->addAction(quit_action);
+	panel_menu->addAction(quit_action);
+	QObject::connect(this->__menu_button, &QPushButton::clicked, this, [this, panel_menu](void) {
+		panel_menu->exec(this->__menu_button->mapToGlobal(
+			QPoint(0, this->__menu_button->height())));
+	});
 
 	this->__tray_icon = new QSystemTrayIcon(this);
 	this->__tray_icon->setIcon(QIcon(":/resources/pastes.svg"));
