@@ -70,6 +70,8 @@ AppDialog::AppDialog(const QString &title, int width, QWidget *parent) :
 	header->setSpacing(14);
 	header->addLayout(titles, 1);
 	header->addWidget(close, 0, Qt::AlignTop);
+	this->installEventFilter(this);
+	m_surface->installEventFilter(this);
 	m_header->installEventFilter(this);
 	for (QLabel *label : m_header->findChildren<QLabel *>())
 		label->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -91,9 +93,16 @@ void AppDialog::setSubtitle(const QString &text)
 
 bool AppDialog::eventFilter(QObject *object, QEvent *event)
 {
-	if (object == m_header && event->type() == QEvent::MouseButtonPress) {
+	if ((object == this || object == m_surface || object == m_header) &&
+		event->type() == QEvent::MouseButtonPress) {
 		auto *mouse = static_cast<QMouseEvent *>(event);
-		if (mouse->button() == Qt::LeftButton && windowHandle()) {
+		/* Include the padding above and beside the heading, plus half the
+		 * gap before the body. Buttons keep handling their own presses. */
+		const QPoint point = mapFromGlobal(mouse->globalPosition().toPoint());
+		const int bottom = m_header->mapTo(this, QPoint(0, m_header->height())).y()
+			+ m_surface->layout()->spacing()/2;
+		if (mouse->button() == Qt::LeftButton && rect().contains(point) &&
+			point.y() < bottom && windowHandle()) {
 			windowHandle()->startSystemMove();
 			return true;
 		}
