@@ -239,21 +239,18 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 {
 	QMenu menu(this);
-	QAction *pasteAction = menu.addAction(QObject::tr("Paste"));
-	QAction *plainAction = menu.addAction(QObject::tr("Paste as Plain Text"));
+	QAction *copyAction = menu.addAction(QObject::tr("Copy to Clipboard"));
+	QAction *plainAction = menu.addAction(QObject::tr("Copy as Plain Text"));
 	ItemData *data = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
 	plainAction->setEnabled(data && data->mimeData->hasText());
-	QAction *copyAction = menu.addAction(QObject::tr("Copy to Clipboard"));
 	menu.addSeparator();
 	QAction *previewAction = menu.addAction(QObject::tr("Preview"));
 	QAction *deleteAction = menu.addAction(QObject::tr("Delete"));
 	QAction *chosen = menu.exec(event->globalPos());
-	if (chosen == pasteAction)
-		this->copyData();
-	else if (chosen == plainAction)
-		this->copyData(true);
-	else if (chosen == copyAction)
+	if (chosen == copyAction)
 		this->copyData(false, false);
+	else if (chosen == plainAction)
+		this->copyData(true, false);
 	else if (chosen == previewAction)
 		emit this->previewRequested();
 	else if (chosen == deleteAction)

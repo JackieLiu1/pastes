@@ -145,8 +145,8 @@
         <translation>粘贴</translation>
     </message>
     <message>
-        <source>Paste as Plain Text</source>
-        <translation>粘贴为纯文本</translation>
+        <source>Copy as Plain Text</source>
+        <translation>复制为纯文本</translation>
     </message>
     <message>
         <source>Copy to Clipboard</source>
