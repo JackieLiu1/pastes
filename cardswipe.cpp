@@ -102,11 +102,11 @@ quint64 CardSwipeOverlay::dismissalId(PasteItem *card) const
 
 bool CardSwipeOverlay::restore(PasteItem *card, quint64 dismissalId)
 {
-	/* An immediate undo reverses the outgoing visual at its current phase.
-	 * Later undo uses the same renderer, with a shorter trip above the slot. */
+	/* Reverse a live fold at its current phase. After the fold, start at the
+	 * seam so restoring a card never replays the deletion's particle burst. */
 	const bool reverse = dismissalId && dismissalId == m_dismissal_id &&
 		m_removing && !m_restoring && !m_snapshot.isNull();
-	const qreal progress = reverse ? m_dismissal : 1;
+	const qreal progress = reverse ? qMin(m_dismissal, qreal(0.60)) : qreal(0.60);
 	const qreal lift = reverse ? m_release_offset : qBound(qreal(60), card ? card->height()*0.32 : 0, qreal(110));
 	if (!this->begin(card)) return false;
 	m_restoring = true;
@@ -124,7 +124,7 @@ bool CardSwipeOverlay::restore(PasteItem *card, quint64 dismissalId)
 	m_removing = true;
 	m_restore_start = progress;
 	m_dismissal = progress;
-	this->prepareParticles(reverse);
+	this->prepareParticles(true);
 	m_dismiss_animation->setDuration(qMax(180, qRound(660*progress)));
 	m_dismiss_animation->setEasingCurve(QEasingCurve::Linear);
 	m_dismiss_animation->setStartValue(progress);
@@ -256,7 +256,7 @@ void CardSwipeOverlay::paintDismissal(QPainter &painter)
 		painter.setPen(QPen(QBrush(gradient), 1.5, Qt::SolidLine, Qt::RoundCap));
 		painter.drawLine(left, right);
 	}
-	if (progress < 0.67) return;
+	if (progress < 0.67 || m_restoring) return;
 	const qreal burst = qBound(qreal(0), (progress-0.67)/0.33, qreal(1));
 	const qreal time = burst*0.33;
 	const qreal alpha = qMin(qreal(1), burst*10)*qPow(1-burst, 1.4);
