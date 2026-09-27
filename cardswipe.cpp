@@ -186,7 +186,7 @@ void CardSwipeOverlay::prepareParticles(bool reuse)
 {
 	const qreal camera = qMax(qreal(550), m_origin.height()*2.5);
 	const qreal depth = 38+m_origin.height()*0.24;
-	m_line_center = QPointF(m_origin.center().x(), m_origin.top()-m_release_offset-36);
+	m_line_center = QPointF(m_origin.center().x(), m_origin.bottom()-m_release_offset-36);
 	m_line_width = (m_origin.width()-8)*camera/(camera+depth);
 	if (reuse) return;
 	const bool dark = qApp->property("pastesDark").toBool();
@@ -217,13 +217,14 @@ void CardSwipeOverlay::paintDismissal(QPainter &painter)
 	const qreal lift = m_restoring ? m_release_offset*
 		QEasingCurve(QEasingCurve::InOutCubic).valueForProgress(qBound(qreal(0),
 			progress/qMin(qreal(0.60), m_restore_start), qreal(1))) : m_release_offset;
-	const QPointF hinge(m_origin.center().x(), m_origin.top()-lift-36*fold);
+	const QPointF hinge(m_origin.center().x(), m_origin.bottom()-lift-36*fold);
 	if (progress < 0.60) {
-		/* Rotate the bottom edge away from the viewer around the top edge.
+		/* Rotate the top edge away from the viewer around the bottom edge.
 		 * Perspective narrows the receding edge; its height converges to a line. */
 		auto project = [&](qreal x, qreal y) {
-			const qreal scale = camera/(camera+depth+y*qSin(angle));
-			return hinge+QPointF((x-m_origin.width()/2)*scale, y*qCos(angle)*scale);
+			const qreal distance = m_origin.height()-y;
+			const qreal scale = camera/(camera+depth+distance*qSin(angle));
+			return hinge+QPointF((x-m_origin.width()/2)*scale, -distance*qCos(angle)*scale);
 		};
 		const qreal width = m_origin.width(), height = m_origin.height();
 		const QPolygonF source{QPointF(0, 0), QPointF(width, 0), QPointF(width, height), QPointF(0, height)};
