@@ -22,6 +22,7 @@ set(PASTES_SOURCES
     mainframe.cpp mainframe.h
     roundedwidgets.cpp roundedwidgets.h
     previewdialog.cpp previewdialog.h
+    appdialog.cpp appdialog.h
     cardswipe.cpp cardswipe.h
     cardreflow.cpp cardreflow.h
     elasticscroll.cpp elasticscroll.h
@@ -43,6 +44,7 @@ elseif(UNIX AND NOT APPLE)
 endif()
 
 qt_add_executable(pastes ${PASTES_SOURCES})
+target_compile_definitions(pastes PRIVATE PASTES_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(pastes PRIVATE
     Qt6::Core

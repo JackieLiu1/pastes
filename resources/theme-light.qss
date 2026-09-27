@@ -101,3 +101,11 @@ QMenu::separator { height: 1px; background: #E5E8DF; margin: 5px 8px; }
 #PreviewScroll::add-page:vertical, #PreviewScroll::sub-page:vertical { background: transparent; }
 #UndoHint { color: #77827A; font-size: 11px; }
 #UndoButton { background: transparent; border: 0; color: #237B68; font-size: 11px; font-weight: 600; padding: 2px 10px; }
+
+#AppDialog, #AppDialogSurface, #AppDialogCard { background: transparent; border: 0; }
+#AppDialog, #AppDialog QWidget { font-family: "Microsoft YaHei UI", "Segoe UI", "Noto Sans CJK SC", sans-serif; }
+#AppDialogTitle { font-size: 20px; font-weight: 600; color: #273E35; }
+#AppDialogMuted { font-size: 12px; color: #77827A; background: transparent; }
+#AppDialogValue { font-size: 12px; color: #293A35; background: transparent; }
+#AboutBrand { font-size: 28px; font-weight: 600; color: #273E35; }
+#AboutVersion { font-size: 11px; color: #237B68; padding: 5px 11px; background: transparent; }

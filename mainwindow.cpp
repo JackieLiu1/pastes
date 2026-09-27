@@ -8,7 +8,6 @@
 #include <QWheelEvent>
 #include <QStyleHints>
 #include <QFile>
-#include <QMessageBox>
 #include <QMimeData>
 #include <QCryptographicHash>
 #include <QImage>
@@ -33,6 +32,7 @@
 #include "mainwindow.h"
 #include "pasteitem.h"
 #include "previewdialog.h"
+#include "appdialog.h"
 #include "cardswipe.h"
 #include "cardreflow.h"
 #include "elasticscroll.h"
@@ -1032,9 +1032,10 @@ void MainWindow::setupTrayIcon(void)
 	});
 	tray_menu->addAction(this->__show_action);
 
-	QAction *about_me = new QAction(QObject::tr("About me"), this);
+	QAction *about_me = new QAction(QObject::tr("About Pastes"), this);
 	QObject::connect(about_me, &QAction::triggered, [this](void) {
-		QMessageBox::about(this, QObject::tr("About me"), "Powered by Jackie Liu <liuyun01@kylinos.cn>");
+		AboutDialog dialog(this);
+		dialog.exec();
 	});
 	tray_menu->addAction(about_me);
 

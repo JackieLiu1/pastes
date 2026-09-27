@@ -68,10 +68,8 @@
         <translation>多个文件</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="55"/>
-        <location filename="mainwindow.cpp" line="57"/>
-        <source>About me</source>
-        <translation>关于我</translation>
+        <source>About Pastes</source>
+        <translation>关于 Pastes</translation>
     </message>
     <message>
         <location filename="pasteitembarnner.cpp" line="119"/>
@@ -243,6 +241,38 @@
     <message>
         <source>Release to remove</source>
         <translation>松开即可删除</translation>
+    </message>
+    <message>
+        <source>Version %1</source>
+        <translation>版本 %1</translation>
+    </message>
+    <message>
+        <source>Keep useful copies close at hand.</source>
+        <translation>把常用的复制内容留在手边。</translation>
+    </message>
+    <message>
+        <source>Created by</source>
+        <translation>开发者</translation>
+    </message>
+    <message>
+        <source>License</source>
+        <translation>许可证</translation>
+    </message>
+    <message>
+        <source>History</source>
+        <translation>历史记录</translation>
+    </message>
+    <message>
+        <source>Stored locally · Last 7 days</source>
+        <translation>本地保存 · 最近 7 天</translation>
+    </message>
+    <message>
+        <source>Project page</source>
+        <translation>项目主页</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>完成</translation>
     </message>
 </context>
 </TS>
