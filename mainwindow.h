@@ -111,10 +111,15 @@ private:
 	CardReflowOverlay		*__card_reflow = nullptr;
 	ElasticScrollController		*__elastic_scroll = nullptr;
 	struct DeletedEntry {
+		struct Neighbor {
+			QByteArray md5;
+			QDateTime time;
+		};
 		std::unique_ptr<QMimeData> mime;
 		QImage icon;
 		QByteArray md5;
 		QDateTime time;
+		std::vector<Neighbor> neighbors;
 		int row;
 		quint64 dismissalId = 0;
 	};

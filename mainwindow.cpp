@@ -28,6 +28,7 @@
 #include <QKeyEvent>
 #include <QResizeEvent>
 #include <QPointer>
+#include <QHash>
 
 #include "mainwindow.h"
 #include "pasteitem.h"
@@ -704,6 +705,13 @@ void MainWindow::deleteCurrentItem(void)
 	removed.md5 = data->md5;
 	removed.time = data->time;
 	removed.row = row;
+	removed.neighbors.reserve(this->__scroll_widget->count());
+	for (int i = 0; i < this->__scroll_widget->count(); ++i) {
+		QListWidgetItem *neighbor = this->__scroll_widget->item(i);
+		auto *data = reinterpret_cast<ItemData *>(neighbor->data(Qt::UserRole).value<uint64_t>());
+		removed.neighbors.push_back(data ? DeletedEntry::Neighbor{data->md5, data->time}
+			: DeletedEntry::Neighbor{});
+	}
 	removed.dismissalId = this->__card_swipe->dismissalId(
 		qobject_cast<PasteItem *>(this->__scroll_widget->itemWidget(item)));
 	if (this->__deleted_items.size() == 20)
@@ -778,17 +786,29 @@ void MainWindow::undoDeletion(void)
 		data->icon = removed.icon;
 		data->md5 = removed.md5;
 		data->time = removed.time;
-		int row = qBound(0, removed.row, this->__scroll_widget->count());
-		/* New copies may have arrived since deletion; retain chronological order. */
-		while (row < this->__scroll_widget->count()) {
-			auto *next = reinterpret_cast<ItemData *>(this->__scroll_widget->item(row)->data(Qt::UserRole).value<uint64_t>());
-			if (!next || next->time <= data->time) break;
-			++row;
+		const int count = this->__scroll_widget->count();
+		const int originalCount = static_cast<int>(removed.neighbors.size());
+		int row = qBound(0, removed.row + count - (originalCount-1), count);
+		QHash<QByteArray, int> neighborRows;
+		/* Restore the original slot even when the loaded history is not sorted.
+		 * Match timestamps too: a re-copied neighbor has moved to a new slot. */
+		for (int i = 0; i < count; ++i) {
+			auto *neighbor = reinterpret_cast<ItemData *>(this->__scroll_widget->item(i)->data(Qt::UserRole).value<uint64_t>());
+			if (neighbor) neighborRows.insert(neighbor->md5, i);
 		}
-		while (row > 0) {
-			auto *previous = reinterpret_cast<ItemData *>(this->__scroll_widget->item(row-1)->data(Qt::UserRole).value<uint64_t>());
-			if (!previous || previous->time >= data->time) break;
-			--row;
+		auto originalNeighborRow = [this, &removed, &neighborRows, originalCount](int index) {
+			if (index < 0 || index >= originalCount) return -1;
+			const DeletedEntry::Neighbor &saved = removed.neighbors[index];
+			const int row = neighborRows.value(saved.md5, -1);
+			if (row < 0) return -1;
+			auto *data = reinterpret_cast<ItemData *>(this->__scroll_widget->item(row)->data(Qt::UserRole).value<uint64_t>());
+			return data->time == saved.time ? row : -1;
+		};
+		for (int distance = 1; distance < originalCount; ++distance) {
+			const int previous = originalNeighborRow(removed.row-distance);
+			if (previous >= 0) { row = previous+1; break; }
+			const int next = originalNeighborRow(removed.row+distance);
+			if (next >= 0) { row = next; break; }
 		}
 		restored = this->insertItemWidget(true, row);
 		inserted = true;
