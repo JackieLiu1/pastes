@@ -16,6 +16,8 @@
         <translation>显示（%1）</translation>
     </message>
     <message>
+        <location filename="shortcut_mac.cpp" line="28"/>
+        <location filename="shortcut_win.cpp" line="67"/>
         <source>Tray icon</source>
         <translation>托盘图标</translation>
     </message>

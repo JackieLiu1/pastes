@@ -41,6 +41,8 @@ set(PASTES_SOURCES
 if(WIN32)
     list(APPEND PASTES_SOURCES shortcut_win.cpp shortcut_win_state.h
         clipboardsource_win.cpp clipboardsource_win.h)
+elseif(APPLE)
+    list(APPEND PASTES_SOURCES shortcut_mac.cpp)
 elseif(UNIX AND NOT APPLE)
     list(APPEND PASTES_SOURCES shortcut_x11.cpp)
 endif()
@@ -59,6 +61,9 @@ target_link_libraries(pastes PRIVATE
 if(WIN32)
     set_target_properties(pastes PROPERTIES WIN32_EXECUTABLE TRUE)
     target_link_libraries(pastes PRIVATE psapi gdi32 shell32)
+elseif(APPLE)
+    find_library(CARBON_FRAMEWORK Carbon REQUIRED)
+    target_link_libraries(pastes PRIVATE ${CARBON_FRAMEWORK})
 elseif(UNIX AND NOT APPLE)
     find_package(X11 REQUIRED)
     find_package(PkgConfig REQUIRED)

@@ -26,6 +26,11 @@ protected:
 	std::atomic_bool	m_stoped{false};
 	/* platform thread id of run(), used to wake its blocking loop */
 	std::atomic<quintptr>	m_thread_id{0};
+#ifdef Q_OS_MACOS
+	/* Carbon delivers hotkey events on the GUI thread. */
+	void *m_event_handler = nullptr;
+	void *m_hotkey = nullptr;
+#endif
 };
 
 class GlobalShortcut : public QObject

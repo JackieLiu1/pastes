@@ -237,6 +237,8 @@ MainWindow::MainWindow(QWidget *parent)
 	});
 #ifdef Q_OS_WIN
 	this->__primary_shortcut = QStringLiteral("Win+V");
+#elif defined(Q_OS_MACOS)
+	this->__primary_shortcut = QStringLiteral("Shift+Cmd+V");
 #else
 	this->__primary_shortcut = QStringLiteral("Ctrl+Shift+V");
 #endif
