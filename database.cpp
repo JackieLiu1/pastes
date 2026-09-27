@@ -6,6 +6,11 @@
 #include <QSqlRecord>
 #include <QDateTime>
 #include <QDebug>
+#ifdef Q_OS_MACOS
+#include <QDir>
+#include <QFileInfo>
+#include <QStandardPaths>
+#endif
 
 #define DEBUG() qDebug()<<__FILE__<<__func__<<__LINE__
 
@@ -25,6 +30,12 @@ public:
 public slots:
 	void open(void)
 	{
+#ifdef Q_OS_MACOS
+		if (!QDir().mkpath(QFileInfo(m_databaseName).absolutePath())) {
+			qWarning() << "Pastes: unable to create database directory";
+			return;
+		}
+#endif
 		m_db = QSqlDatabase::addDatabase("QSQLITE", "pastes-worker");
 		m_db.setDatabaseName(m_databaseName);
 		DEBUG() << m_db.databaseName();
@@ -177,6 +188,10 @@ Database::Database(QObject *parent) : QObject(parent),
 #endif
 #ifdef Q_OS_WIN
 	databaseName = QCoreApplication::applicationDirPath() + "/" + "PastesDatabase.db";
+#endif
+#ifdef Q_OS_MACOS
+	databaseName = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
+		+ "/PastesDatabase.db";
 #endif
 
 	m_worker = new Worker(databaseName);
