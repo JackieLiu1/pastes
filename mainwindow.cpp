@@ -71,6 +71,10 @@ static int historyPanelHeight(const QRect &area)
 #include <QOperatingSystemVersion>
 #endif
 
+#ifdef Q_OS_MACOS
+#include "clipboardsource_mac.h"
+#endif
+
 #ifdef Q_OS_LINUX
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -205,7 +209,7 @@ MainWindow::MainWindow(QWidget *parent)
 	this->__clipboard_timer->setSingleShot(true);
 	this->__clipboard_timer->setInterval(CLIPBOARD_SETTLE_MS);
 	QObject::connect(this->__clipboard_timer, &QTimer::timeout, this, &MainWindow::clipboard_later);
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	this->__clipboard_source = new ClipboardSource(this);
 	QObject::connect(this->__clipboard_source, &ClipboardSource::iconReady, this,
 		[this](quint64 request, const QImage &icon) {
@@ -230,10 +234,10 @@ MainWindow::MainWindow(QWidget *parent)
 		}
 	}, Qt::QueuedConnection);
 #endif
-	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, this, [this](void) {
+	auto clipboardChanged = [this](void) {
 		if (!this->__recording_enabled)
 			return;
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 		const QVariant copiedIcon = QApplication::clipboard()->mimeData()->property("pastesSourceIcon");
 		++this->__source_request;
 		this->__source_icon = copiedIcon.value<QImage>();
@@ -243,7 +247,12 @@ MainWindow::MainWindow(QWidget *parent)
 		/* Restarting on every change collapses rapid clipboard updates
 		 * into one snapshot taken once the clipboard has settled. */
 		this->__clipboard_timer->start();
-	});
+	};
+#ifdef Q_OS_MACOS
+	QObject::connect(this->__clipboard_source, &ClipboardSource::clipboardChanged, this, clipboardChanged);
+#else
+	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, this, clipboardChanged);
+#endif
 	QObject::connect(this->__hide_animation, &QPropertyAnimation::finished, [this](void) {
 		if (this->__hide_animation->direction() == QAbstractAnimation::Forward) {
 			/* Hidden stage */
@@ -1211,7 +1220,7 @@ void MainWindow::setHistoryRecording(bool enabled)
 {
 	this->__recording_enabled = enabled;
 	this->__clipboard_timer->stop();
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	++this->__source_request;
 	this->__source_icon = QImage();
 #endif
@@ -1386,9 +1395,14 @@ void MainWindow::clipboard_later(void)
 {
 	if (!this->__recording_enabled)
 		return;
+#ifdef Q_OS_MACOS
+	/* Do not pair a copy made between polls with the previous source. */
+	if (this->__clipboard_source->synchronize())
+		return;
+#endif
 	this->resetPointerGesture();
 	this->__last_clicked_item.clear();
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	const quint64 sourceRequest = this->__source_request;
 	const QImage sourceIcon = this->__source_icon;
 #endif
@@ -1459,7 +1473,7 @@ void MainWindow::clipboard_later(void)
 	if (copiedIcon.isValid()) {
 		itemData->icon = copiedIcon.value<QImage>();
 	} else {
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 		itemData->icon = sourceIcon;
 #else
 		itemData->icon = this->getClipboardOwnerIcon().scaled(32, 32,
@@ -1498,7 +1512,7 @@ void MainWindow::clipboard_later(void)
 	itemData->time = QDateTime::currentDateTime();
 	widget->setTime(itemData->time);
 
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	/* Internal copies have their original icon and must not be overwritten
 	 * by a late lookup for the Pastes window that performed the copy. */
 	widget->setProperty("sourceRequest", QVariant::fromValue(copiedIcon.isValid() ? quint64(0) : sourceRequest));

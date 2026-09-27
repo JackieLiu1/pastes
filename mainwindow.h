@@ -29,7 +29,7 @@ class QShortcut;
 class CardSwipeOverlay;
 class CardReflowOverlay;
 class ElasticScrollController;
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 class ClipboardSource;
 #endif
 class MainWindow : public QMainWindow
@@ -138,7 +138,7 @@ private:
 	QString				__theme;
 	bool				__recording_enabled = true;
 
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	ClipboardSource			*__clipboard_source;
 	quint64				__source_request = 0;
 	QImage				__source_icon;
