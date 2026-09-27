@@ -46,7 +46,9 @@ public slots:
 		QList<ItemData *> list;
 		QSqlQuery query(m_db);
 
-		if (!query.exec("select * from item;")) {
+		/* Undo reinserts an old copy with a new ID. Keep copy time primary;
+		 * push_front below reverses this order into newest-first history. */
+		if (!query.exec("select * from item order by time asc, id asc;")) {
 			DEBUG() << query.lastError();
 			emit dataLoaded(list);
 			return;
