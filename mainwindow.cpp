@@ -38,6 +38,9 @@
 #include "cardswipe.h"
 #include "cardreflow.h"
 #include "elasticscroll.h"
+#ifdef Q_OS_MACOS
+#include "window_mac.h"
+#endif
 
 /* History older than this is dropped on startup and on every clipboard update */
 static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
@@ -134,19 +137,30 @@ MainWindow::MainWindow(QWidget *parent)
 	  __hide_state(true),
 	  __current_item(nullptr)
 {
+#ifdef Q_OS_MACOS
+	QRect rect = QApplication::primaryScreen()->geometry();
+#else
 	QRect rect = QApplication::primaryScreen()->availableGeometry();
+#endif
 	this->__recording_enabled = !QSettings().value("pauseRecording", false).toBool();
 
 	const int panelHeight = qMin(rect.height(), qBound(300, rect.height()*38/100, 450));
 	this->setFixedHeight(panelHeight);
 	this->setGeometry(rect.x(), rect.bottom()-panelHeight+1, rect.width(), panelHeight);
+#ifdef Q_OS_MACOS
+	/* Qt::Tool supplies a keyable native panel. */
+	this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
+		Qt::NoDropShadowWindowHint | Qt::Tool);
+	this->setAttribute(Qt::WA_MacAlwaysShowToolWindow);
+#else
 	this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
 			     Qt::BypassWindowManagerHint | Qt::SplashScreen);
+#endif
 	this->setFocusPolicy(Qt::NoFocus);
 	this->setFont(QFont(QStringLiteral("Segoe UI"), 10));
 	this->applyTheme(QSettings().value("theme", "light").toString());
 	this->setCentralWidget(this->__main_frame);
-#if !defined Q_OS_LINUX && !defined Q_OS_WIN
+#if !defined Q_OS_LINUX && !defined Q_OS_WIN && !defined Q_OS_MACOS
 	this->setContentsMargins(0, 10, 0, 0);
 #endif
 	this->setAttribute(Qt::WA_TranslucentBackground, true);
@@ -156,7 +170,9 @@ MainWindow::MainWindow(QWidget *parent)
 	this->__main_frame_shadow->setOffset(0, 0);
 	this->__main_frame_shadow->setColor(QColor(0, 0, 0, 130));
 	this->__main_frame_shadow->setBlurRadius(24);
+#ifndef Q_OS_MACOS
 	this->__main_frame->setGraphicsEffect(this->__main_frame_shadow);
+#endif
 	this->__main_frame->setFocusPolicy(Qt::ClickFocus);
 	QObject::connect(this->__main_frame, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));
 	QObject::connect(this->__main_frame, &MainFrame::hideWindow, [this](void) {
@@ -519,10 +535,18 @@ void MainWindow::show_window(void)
 	QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
 	if (!screen)
 		screen = QApplication::primaryScreen();
+#ifdef Q_OS_MACOS
+	const QRect area = screen->geometry();
+#else
 	const QRect area = screen->availableGeometry();
+#endif
 	const int panelHeight = qMin(area.height(), qBound(300, area.height()*38/100, 450));
 	this->setFixedHeight(panelHeight);
 	this->setGeometry(area.x(), area.bottom()-panelHeight+1, area.width(), panelHeight);
+#ifdef Q_OS_MACOS
+	/* Configure the panel before the animation moves it off screen. */
+	prepareMacPanel(this);
+#endif
 	this->__hide_animation->setStartValue(this->pos());
 	this->__hide_animation->setEndValue(QPoint(area.x(), area.bottom()+1));
 #ifdef Q_OS_WIN
@@ -534,6 +558,7 @@ void MainWindow::show_window(void)
 	this->__hide_animation->start();
 	this->__hide_state = false;
 	this->show();
+	this->raise();
 	this->activateWindow();
 }
 

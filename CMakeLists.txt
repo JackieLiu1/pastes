@@ -42,7 +42,10 @@ if(WIN32)
     list(APPEND PASTES_SOURCES shortcut_win.cpp shortcut_win_state.h
         clipboardsource_win.cpp clipboardsource_win.h)
 elseif(APPLE)
-    list(APPEND PASTES_SOURCES shortcut_mac.cpp)
+    enable_language(OBJCXX)
+    set(CMAKE_OBJCXX_STANDARD 17)
+    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+    list(APPEND PASTES_SOURCES shortcut_mac.cpp window_mac.mm window_mac.h)
 elseif(UNIX AND NOT APPLE)
     list(APPEND PASTES_SOURCES shortcut_x11.cpp)
 endif()
@@ -63,7 +66,10 @@ if(WIN32)
     target_link_libraries(pastes PRIVATE psapi gdi32 shell32)
 elseif(APPLE)
     find_library(CARBON_FRAMEWORK Carbon REQUIRED)
-    target_link_libraries(pastes PRIVATE ${CARBON_FRAMEWORK})
+    find_library(APPKIT_FRAMEWORK AppKit REQUIRED)
+    find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
+    target_link_libraries(pastes PRIVATE ${CARBON_FRAMEWORK}
+        ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK})
     set_target_properties(pastes PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME Pastes
