@@ -3,6 +3,7 @@
 #include <SingleApplication>
 #include <QTranslator>
 #include <QLocale>
+#include <QTimer>
 
 #include "mainwindow.h"
 
@@ -41,9 +42,22 @@ int main(int argc, char *argv[])
 	LoadTranlateFile(&a);
 
 	MainWindow w;
+#ifdef Q_OS_MACOS
+	QObject::connect(&a, &SingleApplication::instanceStarted,
+			 &w, &MainWindow::show_window);
+	QObject::connect(&a, &QGuiApplication::applicationStateChanged, &w,
+		[&w](Qt::ApplicationState state) {
+		if (state == Qt::ApplicationActive && !w.isVisible())
+			w.show_window();
+	});
+	QTimer::singleShot(0, &w, &MainWindow::show_window);
+#else
 	QObject::connect(&a, &SingleApplication::instanceStarted, [&w](void) {
 		w.hide();
 	});
+	if (a.arguments().contains(QStringLiteral("--show")))
+		QTimer::singleShot(0, &w, &MainWindow::show_window);
+#endif
 
 	a.setQuitOnLastWindowClosed(false);
 	return a.exec();
