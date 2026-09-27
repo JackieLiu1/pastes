@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QScreen>
 #include <QCursor>
+#include <QTimer>
 #import <AppKit/AppKit.h>
 
 void configureMacApplication(void)
@@ -57,6 +58,70 @@ static NSView *nativeView(QWidget *widget)
 		!widget->testAttribute(Qt::WA_WState_Created))
 		return nil;
 	return reinterpret_cast<NSView *>(widget->winId());
+}
+
+class MacPanelObserver : public QObject
+{
+public:
+	MacPanelObserver(QWidget *widget, const std::function<void(bool)> &dismiss)
+		: QObject(widget), m_widget(widget), m_dismiss(dismiss)
+	{
+		NSNotificationCenter *workspace = NSWorkspace.sharedWorkspace.notificationCenter;
+		m_spaceObserver = [workspace addObserverForName:NSWorkspaceActiveSpaceDidChangeNotification
+			object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *) {
+			/* The old Space is already gone; finish hiding before redisplay. */
+			this->dismiss(true);
+		}];
+		m_applicationObserver = [workspace addObserverForName:NSWorkspaceDidActivateApplicationNotification
+			object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *notification) {
+			NSRunningApplication *app = notification.userInfo[NSWorkspaceApplicationKey];
+			if (app.processIdentifier != NSProcessInfo.processInfo.processIdentifier)
+				this->dismiss(false);
+		}];
+		m_focusObserver = [NSNotificationCenter.defaultCenter addObserverForName:NSWindowDidResignKeyNotification
+			object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *notification) {
+			if (notification.object == nativeView(m_widget).window)
+				this->dismiss(false);
+		}];
+	}
+
+	~MacPanelObserver() override
+	{
+		NSNotificationCenter *workspace = NSWorkspace.sharedWorkspace.notificationCenter;
+		[workspace removeObserver:m_spaceObserver];
+		[workspace removeObserver:m_applicationObserver];
+		[NSNotificationCenter.defaultCenter removeObserver:m_focusObserver];
+	}
+
+private:
+	void dismiss(bool immediate)
+	{
+		/* Let AppKit finish assigning focus before inspecting owned dialogs. */
+		QTimer::singleShot(0, this, [this, immediate](void) {
+			if (!m_widget->isVisible())
+				return;
+			if (!immediate) {
+				if (nativeView(m_widget).window.keyWindow)
+					return;
+				QWidget *active = QApplication::activeWindow();
+				if (active && active != m_widget && m_widget->isAncestorOf(active))
+					return;
+			}
+			m_dismiss(immediate);
+		});
+	}
+
+	QWidget *m_widget;
+	std::function<void(bool)> m_dismiss;
+	id m_spaceObserver;
+	id m_applicationObserver;
+	id m_focusObserver;
+};
+
+void watchMacPanelDismissal(QWidget *widget, const std::function<void(bool)> &dismiss)
+{
+	if (QGuiApplication::platformName() == QStringLiteral("cocoa"))
+		new MacPanelObserver(widget, dismiss);
 }
 
 static NSImage *panelMask(void)
@@ -133,7 +198,8 @@ void prepareMacPanel(QWidget *widget)
 	window.hasShadow = NO;
 	window.opaque = NO;
 	window.backgroundColor = [NSColor clearColor];
-	NSWindowCollectionBehavior behavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
+	/* Move here when summoned, then remain in this Space during a swipe. */
+	NSWindowCollectionBehavior behavior = NSWindowCollectionBehaviorMoveToActiveSpace |
 		NSWindowCollectionBehaviorFullScreenAuxiliary |
 		NSWindowCollectionBehaviorTransient | NSWindowCollectionBehaviorIgnoresCycle;
 	if (@available(macOS 13.0, *))

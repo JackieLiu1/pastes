@@ -299,6 +299,17 @@ MainWindow::MainWindow(QWidget *parent)
 	});
 
 	this->initUI();
+#ifdef Q_OS_MACOS
+	watchMacPanelDismissal(this, [this](bool immediate) {
+		if (immediate) {
+			this->__hide_animation->stop();
+			this->__hide_state = true;
+			this->hide();
+		} else {
+			this->hide_window();
+		}
+	});
+#endif
 }
 
 bool MainWindow::event(QEvent *e)
