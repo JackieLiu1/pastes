@@ -52,6 +52,7 @@ private:
 	qreal m_velocity = 0;
 	qreal m_drag_origin = 0;
 	qreal m_wheel_raw = 0;
+	bool m_compact_pixels = false;
 	bool m_applying = false;
 };
 

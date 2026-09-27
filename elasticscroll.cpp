@@ -28,6 +28,7 @@ ElasticScrollController::ElasticScrollController(QListWidget *list) : QObject(li
 
 qreal ElasticScrollController::limit(void) const
 {
+	if (m_compact_pixels) return 20;
 	return m_list ? qBound(qreal(42), m_list->viewport()->width()*0.12, qreal(88)) : 42;
 }
 
@@ -83,6 +84,7 @@ void ElasticScrollController::beginDrag(void)
 	this->synchronize();
 	m_timer.stop();
 	m_wheel_end.stop();
+	m_compact_pixels = false;
 	m_drag_origin = this->rawPosition();
 	m_velocity = 0;
 	m_mode = Mode::Drag;
@@ -121,20 +123,26 @@ void ElasticScrollController::releaseDrag(bool coast)
 
 void ElasticScrollController::wheel(qreal distance, bool pixels, Qt::ScrollPhase phase)
 {
-	if (!m_list || !m_list->count()) return;
+	if (!m_list || !m_list->count()) { this->cancel(); return; }
 	this->synchronize();
+	const QScrollBar *bar = m_list->horizontalScrollBar();
+	/* A fitting row needs only a small hint of touchpad edge resistance.
+	 * Mouse dragging keeps the full elastic travel, regardless of item count. */
+	m_compact_pixels = pixels && bar->minimum() == bar->maximum();
 	if (pixels) {
 		if (m_mode != Mode::Pixels || phase == Qt::ScrollBegin) m_wheel_raw = this->rawPosition();
 		m_timer.stop();
 		m_velocity = 0;
 		m_mode = Mode::Pixels;
 		m_wheel_raw += distance;
+		if (m_compact_pixels)
+			m_wheel_raw = qBound(bar->minimum()-this->limit()*2,
+				m_wheel_raw, bar->maximum()+this->limit()*2);
 		m_position = this->rubber(m_wheel_raw);
 		this->apply();
 	} else if (distance != 0) {
 		if (m_mode != Mode::Wheel) m_wheel_raw = this->rawPosition();
 		m_mode = Mode::Wheel;
-		const QScrollBar *bar = m_list->horizontalScrollBar();
 		m_wheel_raw = qBound(bar->minimum()-this->limit()*2,
 			m_wheel_raw+distance, bar->maximum()+this->limit()*2);
 		m_target = this->rubber(m_wheel_raw);
@@ -182,8 +190,9 @@ void ElasticScrollController::advance(void)
 				m_mode = Mode::Spring;
 			}
 		} else {
-			const qreal damping = m_mode == Mode::Wheel ? 32 : 25;
-			m_velocity += ((m_target-m_position)*300-damping*m_velocity)*seconds;
+			const qreal stiffness = m_compact_pixels ? 450 : 300;
+			const qreal damping = m_compact_pixels ? 40 : (m_mode == Mode::Wheel ? 32 : 25);
+			m_velocity += ((m_target-m_position)*stiffness-damping*m_velocity)*seconds;
 			m_position += m_velocity*seconds;
 		}
 		const qreal edge = this->bounded(m_position);
@@ -214,6 +223,7 @@ void ElasticScrollController::cancel(void)
 		m_list->viewport()->move(m_viewport_origin);
 	}
 	m_mode = Mode::Idle;
+	m_compact_pixels = false;
 }
 
 bool ElasticScrollController::eventFilter(QObject *object, QEvent *event)
