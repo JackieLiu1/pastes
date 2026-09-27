@@ -21,7 +21,8 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	m_quick_paste_number(new RoundedLabel(RoundedRole::Number, this->m_frame)),
 	m_listwidget_item(item)
 {
-	this->setFocusPolicy(Qt::StrongFocus);
+	/* Pointer gestures select on release, after ruling out browsing. */
+	this->setFocusPolicy(Qt::TabFocus);
 	this->setAttribute(Qt::WA_TranslucentBackground);
 
 	m_frame_effect->setOffset(0, 2);

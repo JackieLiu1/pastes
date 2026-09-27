@@ -188,7 +188,8 @@ MainWindow::MainWindow(QWidget *parent)
 #ifndef Q_OS_MACOS
 	this->__main_frame->setGraphicsEffect(this->__main_frame_shadow);
 #endif
-	this->__main_frame->setFocusPolicy(Qt::ClickFocus);
+	/* Do not move focus before the pointer gesture decides it is a click. */
+	this->__main_frame->setFocusPolicy(Qt::TabFocus);
 	QObject::connect(this->__main_frame, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));
 	QObject::connect(this->__main_frame, &MainFrame::hideWindow, [this](void) {
 		this->hide_window();
