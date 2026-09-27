@@ -22,18 +22,29 @@ AppDialog::AppDialog(const QString &title, int width, QWidget *parent) :
 	setObjectName("AppDialog");
 	setWindowTitle(title);
 	setAttribute(Qt::WA_TranslucentBackground);
+#ifdef Q_OS_MACOS
+	setWindowFlag(Qt::NoDropShadowWindowHint);
+#endif
 	setModal(true);
 	setFixedWidth(width);
 	setFont(QFont(QStringLiteral("Segoe UI"), 10));
 	auto *outer = new QVBoxLayout(this);
+#ifdef Q_OS_MACOS
+	/* Paint the rounded surface at the native window edge, without a
+	 * transparent shadow gutter or a second AppKit outline. */
+	outer->setContentsMargins(0, 0, 0, 0);
+#else
 	outer->setContentsMargins(14, 14, 14, 18);
+#endif
 	outer->addWidget(m_surface);
 	m_surface->setObjectName("AppDialogSurface");
+#ifndef Q_OS_MACOS
 	auto *shadow = new QGraphicsDropShadowEffect(m_surface);
 	shadow->setOffset(0, 4);
 	shadow->setBlurRadius(24);
 	shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
 	m_surface->setGraphicsEffect(shadow);
+#endif
 	auto *layout = new QVBoxLayout(m_surface);
 	layout->setContentsMargins(24, 20, 24, 24);
 	layout->setSpacing(22);
