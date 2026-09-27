@@ -14,6 +14,7 @@ void watchMacPanelDismissal(QWidget *widget, const std::function<void(bool)> &di
 void prepareMacPanel(QWidget *widget);
 void updateMacPanelBackdrop(QWidget *widget);
 void activateMacPanel(QWidget *widget);
+void prepareMacDialog(QWidget *widget);
 /* Return false only when the native menu is unavailable. */
 bool popupMacMenu(QMenu *menu, QWidget *anchor);
 

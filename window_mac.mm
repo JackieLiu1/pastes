@@ -223,6 +223,32 @@ void activateMacPanel(QWidget *widget)
 	[window makeFirstResponder:view];
 }
 
+void prepareMacDialog(QWidget *widget)
+{
+	NSWindow *window = nativeView(widget).window;
+	if (!window)
+		return;
+#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0)
+	/* Older Qt lacks the expanded client-area flags. */
+	window.styleMask |= NSWindowStyleMaskFullSizeContentView;
+#endif
+	window.titleVisibility = NSWindowTitleHidden;
+	window.titlebarAppearsTransparent = YES;
+	window.hasShadow = NO;
+	window.opaque = NO;
+	window.backgroundColor = [NSColor clearColor];
+	window.appearance = [NSAppearance appearanceNamed:
+		qApp->property("pastesDark").toBool() ?
+		NSAppearanceNameDarkAqua : NSAppearanceNameAqua];
+	if (@available(macOS 11.0, *))
+		window.titlebarSeparatorStyle = NSTitlebarSeparatorStyleNone;
+	/* Keep AppKit's close target and Qt's window delegate, so a red-button
+	 * close rejects the modal dialog just like Escape. */
+	[window standardWindowButton:NSWindowCloseButton].enabled = YES;
+	[window standardWindowButton:NSWindowMiniaturizeButton].enabled = NO;
+	[window standardWindowButton:NSWindowZoomButton].enabled = NO;
+}
+
 bool popupMacMenu(QMenu *menu, QWidget *anchor)
 {
 	NSView *view = nativeView(anchor->window());
