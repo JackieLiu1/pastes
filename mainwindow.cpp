@@ -1122,10 +1122,18 @@ void MainWindow::setupTrayIcon(void)
 	tray_menu->addAction(this->__show_action);
 	tray_menu->addSeparator();
 	QAction *settings = new QAction(QObject::tr("Settings"), this);
+#ifdef Q_OS_MACOS
+	settings->setText(QObject::tr("Preferences…"));
+	settings->setShortcut(QKeySequence::Preferences);
+	this->addAction(settings);
+#endif
 	settings->setObjectName("SettingsAction");
 	QObject::connect(settings, &QAction::triggered, this, &MainWindow::showSettings);
 	tray_menu->addAction(settings);
 	panel_menu->addAction(settings);
+#ifdef Q_OS_MACOS
+	panel_menu->addSeparator();
+#endif
 
 	QAction *about_me = new QAction(QObject::tr("About Pastes"), this);
 	QObject::connect(about_me, &QAction::triggered, [this](void) {
@@ -1139,12 +1147,21 @@ void MainWindow::setupTrayIcon(void)
 	panel_menu->addSeparator();
 
 	QAction *quit_action = new QAction(QObject::tr("Quit"), this);
+#ifdef Q_OS_MACOS
+	quit_action->setText(QObject::tr("Quit Pastes"));
+	quit_action->setShortcut(QKeySequence::Quit);
+	this->addAction(quit_action);
+#endif
 	QObject::connect(quit_action, &QAction::triggered, [](void) {
 		qApp->quit();
 	});
 	tray_menu->addAction(quit_action);
 	panel_menu->addAction(quit_action);
 	QObject::connect(this->__menu_button, &QPushButton::clicked, this, [this, panel_menu](void) {
+#ifdef Q_OS_MACOS
+		if (popupMacMenu(panel_menu, this->__menu_button))
+			return;
+#endif
 		panel_menu->exec(this->__menu_button->mapToGlobal(
 			QPoint(0, this->__menu_button->height())));
 	});

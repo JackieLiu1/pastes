@@ -119,6 +119,10 @@
         <translation>浅色主题</translation>
     </message>
     <message>
+        <source>Quit Pastes</source>
+        <translation>退出 Pastes</translation>
+    </message>
+    <message>
         <location filename="mainwindow.cpp" line="425"/>
         <source>Quit</source>
         <translation>退出</translation>
@@ -275,6 +279,10 @@
     <message>
         <source>Done</source>
         <translation>完成</translation>
+    </message>
+    <message>
+        <source>Preferences…</source>
+        <translation>偏好设置…</translation>
     </message>
     <message>
         <source>Settings</source>

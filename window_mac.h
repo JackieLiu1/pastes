@@ -5,6 +5,7 @@
 
 class QWidget;
 class QScreen;
+class QMenu;
 
 void configureMacApplication(void);
 QScreen *macPanelScreen(void);
@@ -13,5 +14,7 @@ void watchMacPanelDismissal(QWidget *widget, const std::function<void(bool)> &di
 void prepareMacPanel(QWidget *widget);
 void updateMacPanelBackdrop(QWidget *widget);
 void activateMacPanel(QWidget *widget);
+/* Return false only when the native menu is unavailable. */
+bool popupMacMenu(QMenu *menu, QWidget *anchor);
 
 #endif // WINDOW_MAC_H
