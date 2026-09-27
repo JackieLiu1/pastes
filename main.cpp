@@ -17,7 +17,7 @@ void LoadTranlateFile(SingleApplication *app)
 	QLocale locale = QLocale::system();
 	if (locale.language() == QLocale::Chinese) {
 		QString directory = QString(QM_FILES_INSTALL_PATH);
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 		/* Startup entries do not guarantee the executable's working directory. */
 		directory = QCoreApplication::applicationDirPath();
 #endif

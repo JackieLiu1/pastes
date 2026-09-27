@@ -64,6 +64,13 @@ if(WIN32)
 elseif(APPLE)
     find_library(CARBON_FRAMEWORK Carbon REQUIRED)
     target_link_libraries(pastes PRIVATE ${CARBON_FRAMEWORK})
+    set_target_properties(pastes PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME Pastes
+        MACOSX_BUNDLE_GUI_IDENTIFIER io.github.JackieLiu1.pastes
+        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+    )
 elseif(UNIX AND NOT APPLE)
     find_package(X11 REQUIRED)
     find_package(PkgConfig REQUIRED)
@@ -78,6 +85,13 @@ endif()
 # translations: Pastes_zh_CN.ts -> Pastes_zh_CN.qm
 qt_add_translation(QM_FILES Pastes_zh_CN.ts)
 add_custom_target(translations ALL DEPENDS ${QM_FILES})
+if(APPLE)
+    add_dependencies(pastes translations)
+    add_custom_command(TARGET pastes POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${QM_FILES} $<TARGET_FILE_DIR:pastes>
+    )
+endif()
 
 if(UNIX AND NOT APPLE)
     # main.cpp loads the .qm from this path at runtime
