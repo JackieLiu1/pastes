@@ -29,7 +29,7 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 		style.fill = QColor(dark ? "#181818" : "#F4F4EF");
 		if (widget->window()->property("macPanelBackdrop").toBool())
 			style.fill.setAlpha(dark ? 72 : 52);
-		style.border = QColor(255, 255, 255, dark ? 76 : 120);
+		style.border = dark ? QColor(255, 255, 255, 76) : QColor(0, 0, 0, 64);
 		/* Keep the glass outline one physical pixel wide on Retina displays. */
 		style.borderWidth = 1/widget->devicePixelRatioF();
 		style.radius = 18; style.corners = 1;
@@ -97,6 +97,10 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 	case RoundedRole::Preview:
 		style.fill = QColor(dark ? "#1F1F1F" : "#F4F4EF");
 		style.border = QColor(dark ? "#414141" : "#DADFD4");
+#ifdef Q_OS_MACOS
+		if (!dark)
+			style.border = QColor(0, 0, 0, 64);
+#endif
 		style.radius = 18; style.borderWidth = 1;
 		break;
 	case RoundedRole::PreviewContent:
