@@ -4,9 +4,9 @@
 #include <QApplication>
 #include <QPainter>
 #include <QLinearGradient>
+#include <QRadialGradient>
 #include <QPolygonF>
 #include <QPropertyAnimation>
-#include <QRandomGenerator>
 #include <QScreen>
 #include <QTransform>
 #include <QtMath>
@@ -42,7 +42,7 @@ bool CardSwipeOverlay::begin(PasteItem *card)
 	QScreen *screen = QGuiApplication::screenAt(globalOrigin.center());
 	if (!screen) screen = card->screen();
 	/* A separate, input-transparent window lets the card cross the panel's
-	 * bounds. Keep its backing store confined to the drag and particle corridor. */
+	 * bounds. Keep its backing store confined to the drag and glow corridor. */
 	const QRect corridor(globalOrigin.left()-90, screen->geometry().top(),
 		globalOrigin.width()+220, globalOrigin.bottom()+50-screen->geometry().top());
 	setGeometry(corridor.intersected(screen->geometry()));
@@ -80,7 +80,7 @@ void CardSwipeOverlay::release(bool remove)
 		m_departing_card = m_card;
 		m_card.clear();
 		++m_dismissal_id;
-		this->prepareParticles();
+		this->prepareSeam();
 		m_dismiss_animation->setDuration(700);
 		m_dismiss_animation->setEasingCurve(QEasingCurve::Linear);
 		m_dismiss_animation->setStartValue(qreal(0));
@@ -103,7 +103,7 @@ quint64 CardSwipeOverlay::dismissalId(PasteItem *card) const
 bool CardSwipeOverlay::restore(PasteItem *card, quint64 dismissalId)
 {
 	/* Reverse a live fold at its current phase. After the fold, start at the
-	 * seam so restoring a card never replays the deletion's particle burst. */
+	 * seam so restoring a card never replays the deletion's shutdown flash. */
 	const bool reverse = dismissalId && dismissalId == m_dismissal_id &&
 		m_removing && !m_restoring && !m_snapshot.isNull();
 	const qreal progress = reverse ? qMin(m_dismissal, qreal(0.60)) : qreal(0.60);
@@ -124,7 +124,7 @@ bool CardSwipeOverlay::restore(PasteItem *card, quint64 dismissalId)
 	m_removing = true;
 	m_restore_start = progress;
 	m_dismissal = progress;
-	this->prepareParticles(true);
+	this->prepareSeam();
 	m_dismiss_animation->setDuration(qMax(180, qRound(660*progress)));
 	m_dismiss_animation->setEasingCurve(QEasingCurve::Linear);
 	m_dismiss_animation->setStartValue(progress);
@@ -182,28 +182,12 @@ void CardSwipeOverlay::setDismissal(qreal progress)
 	update();
 }
 
-void CardSwipeOverlay::prepareParticles(bool reuse)
+void CardSwipeOverlay::prepareSeam(void)
 {
 	const qreal camera = qMax(qreal(550), m_origin.height()*2.5);
 	const qreal depth = 38+m_origin.height()*0.24;
 	m_line_center = QPointF(m_origin.center().x(), m_origin.bottom()-m_release_offset-36);
 	m_line_width = (m_origin.width()-8)*camera/(camera+depth);
-	if (reuse) return;
-	const bool dark = qApp->property("pastesDark").toBool();
-	const std::array<QColor, 3> colors = dark ? std::array<QColor, 3>{
-		QColor("#8EDCC4"), QColor("#F2C879"), QColor("#FFF4D8")} :
-		std::array<QColor, 3>{QColor("#399D82"), QColor("#D59D4D"), QColor("#79AFA1")};
-	/* Randomness and allocation happen once at release, never per frame. */
-	QRandomGenerator *random = QRandomGenerator::global();
-	for (size_t i = 0; i < m_particles.size(); ++i) {
-		Particle &particle = m_particles[i];
-		const qreal angle = random->generateDouble()*2*M_PI;
-		const qreal speed = 95+random->generateDouble()*105;
-		particle.origin = QPointF((random->generateDouble()-0.5)*m_line_width*0.82, 0);
-		particle.velocity = QPointF(qCos(angle)*speed, qSin(angle)*speed-22);
-		particle.color = colors[i%colors.size()];
-		particle.radius = 1.1+random->generateDouble()*1.1;
-	}
 }
 
 void CardSwipeOverlay::paintDismissal(QPainter &painter)
@@ -238,38 +222,47 @@ void CardSwipeOverlay::paintDismissal(QPainter &painter)
 			painter.restore();
 		}
 	}
+	const QColor halo(qApp->property("pastesDark").toBool() ? "#8EDCC4" : "#399D82");
+	const QColor core("#FFF9E9");
 	if (progress >= 0.55 && progress < 0.86) {
-		const qreal light = qMin(qreal(1), (progress-0.55)/0.07)*
-			(1-qBound(qreal(0), (progress-0.68)/0.18, qreal(1)));
-		const QPointF left = m_line_center-QPointF(m_line_width/2, 0);
-		const QPointF right = m_line_center+QPointF(m_line_width/2, 0);
+		/* Like a CRT switching off, contract the bright seam toward its
+		 * center. Undo starts at the full seam and only unfolds the card. */
+		const qreal collapse = m_restoring ? 0 : QEasingCurve(QEasingCurve::InCubic).
+			valueForProgress(qBound(qreal(0), (progress-0.60)/0.26, qreal(1)));
+		const qreal light = qMin(qreal(1), (progress-0.55)/0.07);
+		const qreal halfWidth = qMax(qreal(0.7), m_line_width*(1-collapse)/2);
+		const QPointF left = m_line_center-QPointF(halfWidth, 0);
+		const QPointF right = m_line_center+QPointF(halfWidth, 0);
 		QLinearGradient gradient(left, right);
-		gradient.setColorAt(0, QColor(142, 220, 196, 0));
-		gradient.setColorAt(0.18, QColor("#8EDCC4"));
-		gradient.setColorAt(0.5, QColor("#FFF4D8"));
-		gradient.setColorAt(0.82, QColor("#F2C879"));
-		gradient.setColorAt(1, QColor(242, 200, 121, 0));
-		painter.setOpacity(light*0.18);
-		painter.setPen(QPen(QBrush(gradient), 5, Qt::SolidLine, Qt::RoundCap));
+		QColor transparent = halo;
+		transparent.setAlpha(0);
+		gradient.setColorAt(0, transparent);
+		gradient.setColorAt(0.18, halo);
+		gradient.setColorAt(0.5, core);
+		gradient.setColorAt(0.82, halo);
+		gradient.setColorAt(1, transparent);
+		painter.setOpacity(light*0.22);
+		painter.setPen(QPen(QBrush(gradient), 6, Qt::SolidLine, Qt::RoundCap));
 		painter.drawLine(left, right);
 		painter.setOpacity(light);
 		painter.setPen(QPen(QBrush(gradient), 1.5, Qt::SolidLine, Qt::RoundCap));
 		painter.drawLine(left, right);
 	}
-	if (progress < 0.67 || m_restoring) return;
-	const qreal burst = qBound(qreal(0), (progress-0.67)/0.33, qreal(1));
-	const qreal time = burst*0.33;
-	const qreal alpha = qMin(qreal(1), burst*10)*qPow(1-burst, 1.4);
-	for (const Particle &particle : m_particles) {
-		const QPointF position = m_line_center+particle.origin+particle.velocity*time+QPointF(0, 55*time*time);
-		const qreal radius = particle.radius*(1-burst*0.55);
-		painter.setPen(Qt::NoPen);
-		painter.setBrush(particle.color);
-		painter.setOpacity(alpha*0.14);
-		painter.drawEllipse(position, radius*2.4, radius*2.4);
-		painter.setOpacity(alpha);
-		painter.drawEllipse(position, radius, radius);
-		painter.setPen(QPen(particle.color, radius*0.7, Qt::SolidLine, Qt::RoundCap));
-		painter.drawLine(position-particle.velocity*0.018, position);
-	}
+	if (m_restoring || progress < 0.80) return;
+	const qreal flash = qBound(qreal(0), (progress-0.80)/0.06, qreal(1));
+	const qreal fade = 1-QEasingCurve(QEasingCurve::OutCubic).valueForProgress(
+		qBound(qreal(0), (progress-0.86)/0.14, qreal(1)));
+	QRadialGradient glow(m_line_center, 9);
+	glow.setColorAt(0, core);
+	QColor soft = halo;
+	soft.setAlpha(100);
+	glow.setColorAt(0.28, soft);
+	soft.setAlpha(0);
+	glow.setColorAt(1, soft);
+	painter.setOpacity(flash*fade);
+	painter.setPen(Qt::NoPen);
+	painter.setBrush(glow);
+	painter.drawEllipse(m_line_center, 9, 9);
+	painter.setBrush(core);
+	painter.drawEllipse(m_line_center, 1.5*fade, 1.5*fade);
 }

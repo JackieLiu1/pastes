@@ -2,11 +2,9 @@
 #define CARDSWIPE_H
 
 #include <QPixmap>
-#include <QColor>
 #include <QPointer>
 #include <QRectF>
 #include <QWidget>
-#include <array>
 
 class PasteItem;
 class QPropertyAnimation;
@@ -38,15 +36,8 @@ protected:
 	void paintEvent(QPaintEvent *event) override;
 
 private:
-	void prepareParticles(bool reuse = false);
+	void prepareSeam(void);
 	void paintDismissal(QPainter &painter);
-	struct Particle {
-		QPointF origin;
-		QPointF velocity;
-		QColor color;
-		qreal radius;
-	};
-	std::array<Particle, 36> m_particles;
 	QPointer<PasteItem> m_card;
 	QPointer<PasteItem> m_departing_card;
 	QPixmap m_snapshot;
