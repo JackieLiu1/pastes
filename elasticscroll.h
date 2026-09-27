@@ -30,9 +30,10 @@ protected:
 	bool eventFilter(QObject *object, QEvent *event) override;
 
 private:
-	enum class Mode { Idle, Drag, Pixels, Wheel, Coast, Spring };
+	enum class Mode { Idle, Drag, Pixels, Momentum, Wheel, Coast, Spring };
 	void synchronize(void);
 	void apply(void);
+	void moveTo(qreal position);
 	void startMotion(void);
 	void advance(void);
 	void endWheel(void);
@@ -52,7 +53,7 @@ private:
 	qreal m_velocity = 0;
 	qreal m_drag_origin = 0;
 	qreal m_wheel_raw = 0;
-	bool m_compact_pixels = false;
+	bool m_momentum_return = false;
 	bool m_applying = false;
 };
 

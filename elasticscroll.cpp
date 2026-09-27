@@ -28,7 +28,6 @@ ElasticScrollController::ElasticScrollController(QListWidget *list) : QObject(li
 
 qreal ElasticScrollController::limit(void) const
 {
-	if (m_compact_pixels) return 20;
 	return m_list ? qBound(qreal(42), m_list->viewport()->width()*0.12, qreal(88)) : 42;
 }
 
@@ -84,7 +83,7 @@ void ElasticScrollController::beginDrag(void)
 	this->synchronize();
 	m_timer.stop();
 	m_wheel_end.stop();
-	m_compact_pixels = false;
+	m_momentum_return = false;
 	m_drag_origin = this->rawPosition();
 	m_velocity = 0;
 	m_mode = Mode::Drag;
@@ -94,7 +93,11 @@ void ElasticScrollController::beginDrag(void)
 void ElasticScrollController::dragTo(qreal distance)
 {
 	if (m_mode != Mode::Drag) return;
-	const qreal next = this->rubber(m_drag_origin-distance);
+	this->moveTo(this->rubber(m_drag_origin-distance));
+}
+
+void ElasticScrollController::moveTo(qreal next)
+{
 	if (qAbs(next-m_position) < 0.01) return;
 	const qreal seconds = qMax(qreal(0.008), m_input_clock.nsecsElapsed()/1e9);
 	const qreal velocity = qBound(qreal(-2200), (next-m_position)/seconds, qreal(2200));
@@ -125,21 +128,31 @@ void ElasticScrollController::wheel(qreal distance, bool pixels, Qt::ScrollPhase
 {
 	if (!m_list || !m_list->count()) { this->cancel(); return; }
 	this->synchronize();
+	if (phase == Qt::ScrollEnd) { this->endWheel(); return; }
+	if (pixels && phase == Qt::ScrollMomentum) {
+		m_wheel_end.stop();
+		/* The fingers have lifted. Native inertia can still browse within
+		 * the row, but must not keep holding or pulling a stretched edge. */
+		if (m_momentum_return || (m_mode != Mode::Pixels && m_mode != Mode::Momentum))
+			return;
+		if (qAbs(this->overshoot()) > 0.1) { this->endWheel(); return; }
+		m_mode = Mode::Momentum;
+		this->moveTo(this->rubber(m_position+distance));
+		if (qAbs(this->overshoot()) > 0.1) this->endWheel();
+		return;
+	}
 	const QScrollBar *bar = m_list->horizontalScrollBar();
-	/* A fitting row needs only a small hint of touchpad edge resistance.
-	 * Mouse dragging keeps the full elastic travel, regardless of item count. */
-	m_compact_pixels = pixels && bar->minimum() == bar->maximum();
+	m_momentum_return = false;
 	if (pixels) {
-		if (m_mode != Mode::Pixels || phase == Qt::ScrollBegin) m_wheel_raw = this->rawPosition();
+		if (m_mode != Mode::Pixels || phase == Qt::ScrollBegin) {
+			m_wheel_raw = this->rawPosition();
+			m_velocity = 0;
+			m_input_clock.start();
+		}
 		m_timer.stop();
-		m_velocity = 0;
 		m_mode = Mode::Pixels;
 		m_wheel_raw += distance;
-		if (m_compact_pixels)
-			m_wheel_raw = qBound(bar->minimum()-this->limit()*2,
-				m_wheel_raw, bar->maximum()+this->limit()*2);
-		m_position = this->rubber(m_wheel_raw);
-		this->apply();
+		this->moveTo(this->rubber(m_wheel_raw));
 	} else if (distance != 0) {
 		if (m_mode != Mode::Wheel) m_wheel_raw = this->rawPosition();
 		m_mode = Mode::Wheel;
@@ -148,15 +161,21 @@ void ElasticScrollController::wheel(qreal distance, bool pixels, Qt::ScrollPhase
 		m_target = this->rubber(m_wheel_raw);
 		this->startMotion();
 	}
-	if (phase == Qt::ScrollEnd) this->endWheel();
-	else m_wheel_end.start();
+	/* A phased touchpad can pause while the fingers remain on it. Only
+	 * devices without release phases need the inactivity fallback. */
+	if (phase == Qt::NoScrollPhase) m_wheel_end.start();
+	else m_wheel_end.stop();
 }
 
 void ElasticScrollController::endWheel(void)
 {
 	m_wheel_end.stop();
-	if (m_mode == Mode::Pixels) {
-		/* Touchpads already supply momentum; add only the edge return. */
+	if (m_mode == Mode::Pixels || m_mode == Mode::Momentum) {
+		if (qAbs(this->overshoot()) <= 0.1) { this->cancel(); return; }
+		if (m_input_clock.elapsed() > 90) m_velocity = 0;
+		/* Use the mouse release spring, then reject the rest of this
+		 * momentum stream even after the spring has come to rest. */
+		m_momentum_return = true;
 		m_target = this->bounded(m_position);
 		m_mode = Mode::Spring;
 		this->startMotion();
@@ -190,9 +209,8 @@ void ElasticScrollController::advance(void)
 				m_mode = Mode::Spring;
 			}
 		} else {
-			const qreal stiffness = m_compact_pixels ? 450 : 300;
-			const qreal damping = m_compact_pixels ? 40 : (m_mode == Mode::Wheel ? 32 : 25);
-			m_velocity += ((m_target-m_position)*stiffness-damping*m_velocity)*seconds;
+			const qreal damping = m_mode == Mode::Wheel ? 32 : 25;
+			m_velocity += ((m_target-m_position)*300-damping*m_velocity)*seconds;
 			m_position += m_velocity*seconds;
 		}
 		const qreal edge = this->bounded(m_position);
@@ -223,7 +241,7 @@ void ElasticScrollController::cancel(void)
 		m_list->viewport()->move(m_viewport_origin);
 	}
 	m_mode = Mode::Idle;
-	m_compact_pixels = false;
+	m_momentum_return = false;
 }
 
 bool ElasticScrollController::eventFilter(QObject *object, QEvent *event)
