@@ -23,6 +23,8 @@ set(PASTES_SOURCES
     roundedwidgets.cpp roundedwidgets.h
     previewdialog.cpp previewdialog.h
     appdialog.cpp appdialog.h
+    settingsdialog.cpp settingsdialog.h
+    startupintegration.cpp startupintegration.h
     cardswipe.cpp cardswipe.h
     cardreflow.cpp cardreflow.h
     elasticscroll.cpp elasticscroll.h

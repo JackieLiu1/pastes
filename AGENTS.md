@@ -45,6 +45,8 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
 关键类：
 
 - `MainWindow`（mainwindow.cpp）— 主窗口、剪贴板监听、条目生命周期。
+- `AppDialog` / `AboutDialog`（appdialog.cpp）、`SettingsDialog`（settingsdialog.cpp）— 统一圆角弹窗；设置通过信号即时应用主题、快捷键提示与记录暂停，并由 QSettings 保存。暂停时取消防抖，不记录当时的剪贴板；恢复后仅记录新复制。
+- `StartupIntegration`（startupintegration.cpp）— Windows 当前账户 Run 注册表项、Linux 用户 autostart 文件；以系统项为状态来源，写入失败须恢复开关并显示错误，不能只保存一个假状态。旧 Windows 安装的全用户项需要升级安装器清理。
 - `Database` + `Database::Worker`（database.cpp）— 数据库门面 + 工作线程。
 - `ClipboardSource`（clipboardsource_win.cpp）— Windows 来源图标捕获；异步结果用请求编号匹配仍存在的条目，迟到图标经 Database 更新。
 - `PasteItem`（pasteitem.cpp）— 列表条目 widget；`copyData()` 复制回剪贴板，通过 QMimeData 的进程内属性保留原来源图标（不增加 MIME 格式），经同一防抖流程重新置顶；重复条目在来源查询为空时保留已有图标。

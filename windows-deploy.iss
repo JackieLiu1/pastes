@@ -32,6 +32,9 @@ WizardStyle=modern
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[Tasks]
+Name: "startup"; Description: "Start Pastes when I sign in"; Flags: unchecked
+
 [Files]
 Source: "{#DeployDir}\pastes.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DeployDir}\Pastes_zh_CN.qm"; DestDir: "{app}"; Flags: ignoreversion
@@ -57,5 +60,8 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Registry]
-Root:HKLM;Subkey:SOFTWARE\Microsoft\Windows\CurrentVersion\Run;ValueType: string; ValueName: Pastes;ValueData:{app}\pastes.exe;Flags: uninsdeletevalue
+; Remove the legacy all-user entry when upgrading. Startup is now optional.
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "Pastes"; Flags: deletevalue 32bit
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "Pastes"; Flags: deletevalue 64bit; Check: IsWin64
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Pastes"; ValueData: """{app}\pastes.exe"""; Flags: uninsdeletevalue; Tasks: startup
 

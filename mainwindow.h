@@ -53,6 +53,8 @@ private:
 	void updateTrayTooltip(void);
 	void updateShortcutHint(void);
 	void applyTheme(const QString &name);
+	void showSettings(void);
+	void setHistoryRecording(bool enabled);
 	void reloadData(void);
 	PasteItem *insertItemWidget(bool, int row = -1);
 	void resetItemTabOrder(void);
@@ -91,6 +93,7 @@ private:
 	SearchBar			*__searchbar = nullptr;
 	QLabel				*__history_count = nullptr;
 	QLabel				*__keyboard_hint = nullptr;
+	QLabel				*__recording_status = nullptr;
 	QLabel				*__empty_state = nullptr;
 	QPushButton			*__menu_button;
 	QListWidget			*__scroll_widget = nullptr;
@@ -127,6 +130,7 @@ private:
 
 	/* current theme: "dark" or "light" (persisted in QSettings) */
 	QString				__theme;
+	bool				__recording_enabled = true;
 
 #ifdef Q_OS_WIN
 	ClipboardSource			*__clipboard_source;

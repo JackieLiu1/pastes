@@ -12,13 +12,17 @@
 
 void LoadTranlateFile(SingleApplication *app)
 {
-	QTranslator *translator = new QTranslator;
+	QTranslator *translator = new QTranslator(app);
 
 	QLocale locale = QLocale::system();
 	if (locale.language() == QLocale::Chinese) {
-		if (!translator->load(QString(QM_FILES_INSTALL_PATH)+"/Pastes_zh_CN.qm"))
-			translator->load("Pastes_zh_CN.qm");
-		app->installTranslator(translator);
+		QString directory = QString(QM_FILES_INSTALL_PATH);
+#ifdef Q_OS_WIN
+		/* Startup entries do not guarantee the executable's working directory. */
+		directory = QCoreApplication::applicationDirPath();
+#endif
+		if (translator->load(directory+"/Pastes_zh_CN.qm") || translator->load("Pastes_zh_CN.qm"))
+			app->installTranslator(translator);
 	}
 }
 

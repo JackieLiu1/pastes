@@ -274,5 +274,121 @@
         <source>Done</source>
         <translation>完成</translation>
     </message>
+    <message>
+        <source>Settings</source>
+        <translation>设置</translation>
+    </message>
+    <message>
+        <source>Appearance, startup and clipboard history.</source>
+        <translation>外观、开机启动与剪贴板记录。</translation>
+    </message>
+    <message>
+        <source>Appearance</source>
+        <translation>外观</translation>
+    </message>
+    <message>
+        <source>Light</source>
+        <translation>浅色</translation>
+    </message>
+    <message>
+        <source>Dark</source>
+        <translation>深色</translation>
+    </message>
+    <message>
+        <source>Color theme</source>
+        <translation>界面主题</translation>
+    </message>
+    <message>
+        <source>For the panel and its windows.</source>
+        <translation>适用于主面板和弹窗。</translation>
+    </message>
+    <message>
+        <source>Keyboard hints</source>
+        <translation>快捷键提示</translation>
+    </message>
+    <message>
+        <source>Show the controls below your cards.</source>
+        <translation>在卡片下方显示操作提示。</translation>
+    </message>
+    <message>
+        <source>General</source>
+        <translation>常规</translation>
+    </message>
+    <message>
+        <source>Launch at sign-in</source>
+        <translation>开机启动</translation>
+    </message>
+    <message>
+        <source>Ready in the tray when you need it.</source>
+        <translation>登录后在托盘待命，随时可用。</translation>
+    </message>
+    <message>
+        <source>Startup is not available on this platform yet.</source>
+        <translation>此平台暂不支持开机启动。</translation>
+    </message>
+    <message>
+        <source>Pause clipboard recording</source>
+        <translation>暂停记录剪贴板</translation>
+    </message>
+    <message>
+        <source>Keep existing history; skip new copies.</source>
+        <translation>保留已有历史，不记录新复制的内容。</translation>
+    </message>
+    <message>
+        <source>Shortcuts</source>
+        <translation>快捷键</translation>
+    </message>
+    <message>
+        <source>Open history</source>
+        <translation>打开历史面板</translation>
+    </message>
+    <message>
+        <source>Paste selected item</source>
+        <translation>粘贴选中条目</translation>
+    </message>
+    <message>
+        <source>Enter / Double-click</source>
+        <translation>Enter / 双击</translation>
+    </message>
+    <message>
+        <source>Preview selected item</source>
+        <translation>预览选中条目</translation>
+    </message>
+    <message>
+        <source>Search history</source>
+        <translation>搜索历史记录</translation>
+    </message>
+    <message>
+        <source>Changes are saved automatically.</source>
+        <translation>修改立即生效并自动保存。</translation>
+    </message>
+    <message>
+        <source>Could not save settings. Check your account permissions and try again.</source>
+        <translation>无法保存设置，请检查账户权限后重试。</translation>
+    </message>
+    <message>
+        <source>Recording paused</source>
+        <translation>记录已暂停</translation>
+    </message>
+    <message>
+        <source>An older installation enabled startup for all users. Reinstall the current version to manage startup for your account.</source>
+        <translation>旧版安装程序为所有用户启用了开机启动。请重新安装当前版本，再管理此账户的启动设置。</translation>
+    </message>
+    <message>
+        <source>This application path cannot be used for startup.</source>
+        <translation>当前程序路径无法用于开机启动。</translation>
+    </message>
+    <message>
+        <source>Could not update startup. Check your account permissions and try again.</source>
+        <translation>无法修改开机启动，请检查账户权限后重试。</translation>
+    </message>
+    <message>
+        <source>Could not create the startup folder.</source>
+        <translation>无法创建开机启动目录。</translation>
+    </message>
+    <message>
+        <source>Could not save startup: %1</source>
+        <translation>无法保存开机启动设置：%1</translation>
+    </message>
 </context>
 </TS>

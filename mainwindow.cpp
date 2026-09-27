@@ -33,6 +33,7 @@
 #include "pasteitem.h"
 #include "previewdialog.h"
 #include "appdialog.h"
+#include "settingsdialog.h"
 #include "cardswipe.h"
 #include "cardreflow.h"
 #include "elasticscroll.h"
@@ -133,6 +134,7 @@ MainWindow::MainWindow(QWidget *parent)
 	  __current_item(nullptr)
 {
 	QRect rect = QApplication::primaryScreen()->availableGeometry();
+	this->__recording_enabled = !QSettings().value("pauseRecording", false).toBool();
 
 	const int panelHeight = qMin(rect.height(), qBound(300, rect.height()*38/100, 450));
 	this->setFixedHeight(panelHeight);
@@ -202,6 +204,8 @@ MainWindow::MainWindow(QWidget *parent)
 	}, Qt::QueuedConnection);
 #endif
 	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, this, [this](void) {
+		if (!this->__recording_enabled)
+			return;
 #ifdef Q_OS_WIN
 		const QVariant copiedIcon = QApplication::clipboard()->mimeData()->property("pastesSourceIcon");
 		++this->__source_request;
@@ -958,6 +962,10 @@ void MainWindow::initUI(void)
 	hlayout->addWidget(brandTitle);
 	hlayout->addSpacing(14);
 	hlayout->addWidget(historyTab);
+	this->__recording_status = new QLabel(QObject::tr("Recording paused"), this->__main_frame);
+	this->__recording_status->setObjectName("RecordingStatus");
+	this->__recording_status->setVisible(!this->__recording_enabled);
+	hlayout->addWidget(this->__recording_status);
 	hlayout->addStretch();
 	hlayout->addWidget(this->__searchbar);
 	hlayout->addWidget(this->__menu_button);
@@ -970,6 +978,7 @@ void MainWindow::initUI(void)
 	this->__history_count->setObjectName("HistoryCount");
 	this->__keyboard_hint = new QLabel(this->__main_frame);
 	this->__keyboard_hint->setObjectName("KeyboardHint");
+	this->__keyboard_hint->setVisible(QSettings().value("showKeyboardHints", true).toBool());
 	this->__undo_hint = new QLabel(QObject::tr("Removed from history"), this->__main_frame);
 	this->__undo_hint->setObjectName("UndoHint");
 	this->__undo_button = new RoundedButton(this->__main_frame);
@@ -1031,6 +1040,11 @@ void MainWindow::setupTrayIcon(void)
 		this->show_window();
 	});
 	tray_menu->addAction(this->__show_action);
+	tray_menu->addSeparator();
+	QAction *settings = new QAction(QObject::tr("Settings"), this);
+	settings->setObjectName("SettingsAction");
+	QObject::connect(settings, &QAction::triggered, this, &MainWindow::showSettings);
+	tray_menu->addAction(settings);
 
 	QAction *about_me = new QAction(QObject::tr("About Pastes"), this);
 	QObject::connect(about_me, &QAction::triggered, [this](void) {
@@ -1038,14 +1052,6 @@ void MainWindow::setupTrayIcon(void)
 		dialog.exec();
 	});
 	tray_menu->addAction(about_me);
-
-	QAction *light_theme = new QAction(QObject::tr("Light theme"), this);
-	light_theme->setCheckable(true);
-	light_theme->setChecked(this->__theme == "light");
-	QObject::connect(light_theme, &QAction::toggled, [this](bool checked) {
-		this->applyTheme(checked ? "light" : "dark");
-	});
-	tray_menu->addAction(light_theme);
 
 	tray_menu->addSeparator();
 
@@ -1080,7 +1086,32 @@ void MainWindow::updateTrayTooltip(void)
 		return;
 
 	this->__tray_icon->setToolTip(QString("Pastes · %1\n%2 ").arg(this->__primary_shortcut)
-		.arg(this->__scroll_widget->count()) + QObject::tr("records"));
+		.arg(this->__scroll_widget->count()) + QObject::tr("records") +
+		(this->__recording_enabled ? QString() : '\n'+QObject::tr("Recording paused")));
+}
+
+void MainWindow::showSettings(void)
+{
+	SettingsDialog dialog(this->__primary_shortcut, this);
+	QObject::connect(&dialog, &SettingsDialog::themeChanged, this, &MainWindow::applyTheme);
+	QObject::connect(&dialog, &SettingsDialog::recordingChanged, this, &MainWindow::setHistoryRecording);
+	QObject::connect(&dialog, &SettingsDialog::hintsChanged, this, [this](bool visible) {
+		this->__keyboard_hint->setVisible(visible);
+	});
+	QObject::connect(this->__shortcut, &GlobalShortcut::primaryShortcutChanged, &dialog, &SettingsDialog::setPrimaryShortcut);
+	dialog.exec();
+}
+
+void MainWindow::setHistoryRecording(bool enabled)
+{
+	this->__recording_enabled = enabled;
+	this->__clipboard_timer->stop();
+#ifdef Q_OS_WIN
+	++this->__source_request;
+	this->__source_icon = QImage();
+#endif
+	this->__recording_status->setVisible(!enabled);
+	this->updateTrayTooltip();
 }
 
 void MainWindow::updateShortcutHint(void)
@@ -1188,7 +1219,8 @@ PasteItem *MainWindow::insertItemWidget(bool back, int row)
 	QObject::connect(widget, &PasteItem::clipboardUpdated, this, [this](void) {
 		/* Internal copies use the same debounce to refresh and promote the
 		 * entry even when Qt delivered dataChanged synchronously. */
-		this->__clipboard_timer->start();
+		if (this->__recording_enabled)
+			this->__clipboard_timer->start();
 	});
 	QObject::connect(widget, &PasteItem::copied, this, [this](void) {
 		this->pasteToPreviousWindow();
@@ -1233,6 +1265,8 @@ void MainWindow::resetItemTabOrder(void)
 
 void MainWindow::clipboard_later(void)
 {
+	if (!this->__recording_enabled)
+		return;
 	this->resetPointerGesture();
 	this->__last_clicked_item.clear();
 #ifdef Q_OS_WIN

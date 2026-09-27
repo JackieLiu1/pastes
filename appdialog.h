@@ -18,6 +18,7 @@ protected:
 	void setSubtitle(const QString &text);
 	bool eventFilter(QObject *object, QEvent *event) override;
 	void showEvent(QShowEvent *event) override;
+	void changeEvent(QEvent *event) override;
 
 private:
 	RoundedWidget *m_surface;

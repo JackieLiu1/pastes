@@ -105,3 +105,13 @@ QMenu::separator { height: 1px; background: #414141; margin: 5px 8px; }
 #AppDialogValue { font-size: 12px; color: #E6E6E6; background: transparent; }
 #AboutBrand { font-size: 28px; font-weight: 600; color: #F1F1F1; }
 #AboutVersion { font-size: 11px; color: #A3DCC5; padding: 5px 11px; background: transparent; }
+#SettingsScroll, #SettingsBody { background: transparent; border: 0; }
+#SettingsSectionTitle { font-size: 12px; font-weight: 600; color: #B5B5B5; }
+#SettingsRowTitle { font-size: 13px; font-weight: 600; color: #E6E6E6; }
+#SettingsDivider { background: #3D3D3D; border: 0; }
+#SettingsChoice { background: transparent; border: 0; color: #B5B5B5; font-size: 12px; }
+#SettingsChoice[primary="true"] { color: #173B30; font-weight: 600; }
+#SettingsKey { background: transparent; border: 0; padding: 4px 8px; color: #B8B8B8; font-size: 11px; }
+#SettingsStatus { font-size: 11px; color: #9C9C9C; }
+#SettingsStatus[error="true"] { color: #E7A28C; }
+#RecordingStatus { font-size: 11px; color: #E7A28C; }

@@ -99,6 +99,15 @@ void AppDialog::showEvent(QShowEvent *event)
 	move(area.center()-QPoint(width()/2, height()/2));
 }
 
+void AppDialog::changeEvent(QEvent *event)
+{
+	QDialog::changeEvent(event);
+	if (event->type() == QEvent::StyleChange) {
+		if (auto *shadow = qobject_cast<QGraphicsDropShadowEffect *>(m_surface->graphicsEffect()))
+			shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
+	}
+}
+
 AboutDialog::AboutDialog(QWidget *parent) : AppDialog(QObject::tr("About Pastes"), 492, parent)
 {
 	auto *hero = new QVBoxLayout;

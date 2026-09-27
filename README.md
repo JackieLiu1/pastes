@@ -19,3 +19,21 @@ Click a card to select it, double-click to paste, and drag horizontally to brows
 Cards keep their source, type and time visible. Press `Space` to preview. `Delete` and the context menu remove an entry from history, leaving original files intact. Neighboring cards slide into the gap after removal. For eight seconds after deletion, click Undo or press `Ctrl+Z` to restore recent deletions one by one. A thin line unfolds into the card and settles back into its slot as neighboring cards slide aside. Undo during the fold reverses its current pose; undo after the fold starts from the line without replaying the shutdown flash or sparks.
 
 ![img](./pastes-view.gif)
+
+## Settings
+
+Open Settings from the panel or tray menu. Changes apply immediately and
+persist across restarts:
+
+- Choose a light or dark theme for the panel and its dialogs.
+- Show or hide keyboard hints below the cards.
+- Launch at sign-in using a current-user Windows startup entry or a Linux
+  user autostart entry. Toggle startup off and on after moving the executable.
+- Pause clipboard recording without removing existing history. Pending
+  capture is cancelled; resuming records only subsequent copies. The panel
+  and tray tooltip show when recording is paused.
+- Read the active open shortcut and the paste, preview and search shortcuts.
+
+About Pastes shows the application icon, build version, author, license and
+project link in a themed dialog. History remains local with a seven-day
+retention period.
