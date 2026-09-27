@@ -230,7 +230,7 @@ MainWindow::MainWindow(QWidget *parent)
 	this->__hide_animation->setEasingCurve(QEasingCurve::OutQuad);
 
 	QObject::connect(this->__shortcut, &GlobalShortcut::pasteActivated, [this](void) {
-		if (this->isVisible())
+		if (!this->__hide_state)
 			this->hide_window();
 		else
 			this->show_window();
