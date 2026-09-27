@@ -3,12 +3,52 @@
 #include <QWidget>
 #include <QGuiApplication>
 #include <QApplication>
+#include <QScreen>
+#include <QCursor>
 #import <AppKit/AppKit.h>
 
 void configureMacApplication(void)
 {
 	if (QGuiApplication::platformName() == QStringLiteral("cocoa"))
 		[NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+}
+
+QScreen *macPanelScreen(void)
+{
+	/* Pick the frontmost application's display before taking key focus.
+	 * Window bounds are available without requesting accessibility access. */
+	const pid_t owner = NSWorkspace.sharedWorkspace.frontmostApplication.processIdentifier;
+	CFArrayRef windows = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly |
+		kCGWindowListExcludeDesktopElements, kCGNullWindowID);
+	QScreen *screen = nullptr;
+	if (windows) {
+		for (NSDictionary *info in (NSArray *)windows) {
+			if ([info[(id)kCGWindowOwnerPID] intValue] != owner ||
+				[info[(id)kCGWindowLayer] intValue] != 0)
+				continue;
+			CGRect bounds;
+			if (!CGRectMakeWithDictionaryRepresentation(
+				(CFDictionaryRef)info[(id)kCGWindowBounds], &bounds))
+				continue;
+			const QRect rect(qRound(bounds.origin.x), qRound(bounds.origin.y),
+				qRound(bounds.size.width), qRound(bounds.size.height));
+			qint64 largestArea = 0;
+			for (QScreen *candidate : QGuiApplication::screens()) {
+				const QRect overlap = candidate->geometry().intersected(rect);
+				const qint64 area = qint64(overlap.width()) * overlap.height();
+				if (area > largestArea) {
+					largestArea = area;
+					screen = candidate;
+				}
+			}
+			if (screen)
+				break;
+		}
+		CFRelease(windows);
+	}
+	if (!screen)
+		screen = QGuiApplication::screenAt(QCursor::pos());
+	return screen ? screen : QGuiApplication::primaryScreen();
 }
 
 static NSView *nativeView(QWidget *widget)

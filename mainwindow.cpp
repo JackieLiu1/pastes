@@ -544,9 +544,13 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::show_window(void)
 {
+#ifdef Q_OS_MACOS
+	QScreen *screen = macPanelScreen();
+#else
 	QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
 	if (!screen)
 		screen = QApplication::primaryScreen();
+#endif
 #ifdef Q_OS_MACOS
 	const QRect area = screen->geometry();
 #else
