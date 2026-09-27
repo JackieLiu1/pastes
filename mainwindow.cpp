@@ -529,6 +529,9 @@ void MainWindow::hideEvent(QHideEvent *event)
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
 	QMainWindow::resizeEvent(event);
+#ifdef Q_OS_MACOS
+	updateMacPanelBackdrop(this);
+#endif
 	if (!this->__scroll_widget)
 		return;
 	this->resetPointerGesture();
@@ -1269,6 +1272,9 @@ void MainWindow::applyTheme(const QString &name)
 
 	this->__theme = (name == "light") ? "light" : "dark";
 	QSettings().setValue("theme", this->__theme);
+#ifdef Q_OS_MACOS
+	updateMacPanelBackdrop(this);
+#endif
 }
 
 /* Insert a PasteItem into listwidget */

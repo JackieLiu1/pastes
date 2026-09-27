@@ -4,5 +4,6 @@
 class QWidget;
 
 void prepareMacPanel(QWidget *widget);
+void updateMacPanelBackdrop(QWidget *widget);
 
 #endif // WINDOW_MAC_H

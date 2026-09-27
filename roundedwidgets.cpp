@@ -25,9 +25,16 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 	style.border = Qt::transparent;
 	switch (role) {
 	case RoundedRole::Panel:
+#ifdef Q_OS_MACOS
+		style.fill = QColor(dark ? "#181818" : "#F4F4EF");
+		if (widget->window()->property("macPanelBackdrop").toBool())
+			style.fill.setAlpha(dark ? 72 : 52);
+		style.radius = 18; style.corners = 1;
+#else
 		style.fill = dark ? QColor("#181818") : QColor(244, 244, 239, 245);
 		style.border = dark ? QColor(190, 190, 190, 38) : QColor(66, 88, 75, 32);
 		style.radius = 18; style.borderWidth = 1; style.corners = 1;
+#endif
 		break;
 	case RoundedRole::Card:
 		style.fill = QColor(dark ? "#282828" : "#FFFDF8");
