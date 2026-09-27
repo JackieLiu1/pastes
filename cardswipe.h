@@ -2,9 +2,11 @@
 #define CARDSWIPE_H
 
 #include <QPixmap>
+#include <QColor>
 #include <QPointer>
 #include <QRectF>
 #include <QWidget>
+#include <array>
 
 class PasteItem;
 class QPropertyAnimation;
@@ -37,7 +39,14 @@ protected:
 
 private:
 	void prepareSeam(void);
+	void prepareSparks(void);
 	void paintDismissal(QPainter &painter);
+	struct Spark {
+		QPointF velocity;
+		QColor color;
+		qreal radius;
+	};
+	std::array<Spark, 24> m_sparks;
 	QPointer<PasteItem> m_card;
 	QPointer<PasteItem> m_departing_card;
 	QPixmap m_snapshot;

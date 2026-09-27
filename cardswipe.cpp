@@ -7,6 +7,7 @@
 #include <QRadialGradient>
 #include <QPolygonF>
 #include <QPropertyAnimation>
+#include <QRandomGenerator>
 #include <QScreen>
 #include <QTransform>
 #include <QtMath>
@@ -42,7 +43,7 @@ bool CardSwipeOverlay::begin(PasteItem *card)
 	QScreen *screen = QGuiApplication::screenAt(globalOrigin.center());
 	if (!screen) screen = card->screen();
 	/* A separate, input-transparent window lets the card cross the panel's
-	 * bounds. Keep its backing store confined to the drag and glow corridor. */
+	 * bounds. Keep its backing store confined to the drag and spark corridor. */
 	const QRect corridor(globalOrigin.left()-90, screen->geometry().top(),
 		globalOrigin.width()+220, globalOrigin.bottom()+50-screen->geometry().top());
 	setGeometry(corridor.intersected(screen->geometry()));
@@ -81,6 +82,7 @@ void CardSwipeOverlay::release(bool remove)
 		m_card.clear();
 		++m_dismissal_id;
 		this->prepareSeam();
+		this->prepareSparks();
 		m_dismiss_animation->setDuration(480);
 		m_dismiss_animation->setEasingCurve(QEasingCurve::Linear);
 		m_dismiss_animation->setStartValue(qreal(0));
@@ -103,7 +105,7 @@ quint64 CardSwipeOverlay::dismissalId(PasteItem *card) const
 bool CardSwipeOverlay::restore(PasteItem *card, quint64 dismissalId)
 {
 	/* Reverse a live fold at its current phase. After the fold, start at the
-	 * seam so restoring a card never replays the deletion's shutdown flash. */
+	 * seam so restoring a card never replays the shutdown flash or sparks. */
 	const bool reverse = dismissalId && dismissalId == m_dismissal_id &&
 		m_removing && !m_restoring && !m_snapshot.isNull();
 	const qreal progress = reverse ? qMin(m_dismissal, qreal(0.60)) : qreal(0.60);
@@ -190,6 +192,25 @@ void CardSwipeOverlay::prepareSeam(void)
 	m_line_width = (m_origin.width()-8)*camera/(camera+depth);
 }
 
+void CardSwipeOverlay::prepareSparks(void)
+{
+	const bool dark = qApp->property("pastesDark").toBool();
+	const std::array<QColor, 3> colors = dark ? std::array<QColor, 3>{
+		QColor("#8EDCC4"), QColor("#F2C879"), QColor("#FFF4D8")} :
+		std::array<QColor, 3>{QColor("#399D82"), QColor("#D59D4D"), QColor("#79AFA1")};
+	/* Prepare the burst once at release. Spread directions evenly so this
+	 * short tail stays legible without extending the dismissal duration. */
+	QRandomGenerator *random = QRandomGenerator::global();
+	for (size_t i = 0; i < m_sparks.size(); ++i) {
+		Spark &spark = m_sparks[i];
+		const qreal angle = (i+random->generateDouble())*2*M_PI/m_sparks.size();
+		const qreal speed = 90+random->generateDouble()*150;
+		spark.velocity = QPointF(qCos(angle)*speed, qSin(angle)*speed-12);
+		spark.color = colors[i%colors.size()];
+		spark.radius = 0.9+random->generateDouble()*0.8;
+	}
+}
+
 void CardSwipeOverlay::paintDismissal(QPainter &painter)
 {
 	const qreal progress = m_dismissal;
@@ -224,11 +245,11 @@ void CardSwipeOverlay::paintDismissal(QPainter &painter)
 	}
 	const QColor halo(qApp->property("pastesDark").toBool() ? "#8EDCC4" : "#399D82");
 	const QColor core("#FFF9E9");
-	if (progress >= 0.55 && progress < 0.86) {
+	if (progress >= 0.55 && progress < 0.78) {
 		/* Like a CRT switching off, contract the bright seam toward its
 		 * center. Undo starts at the full seam and only unfolds the card. */
 		const qreal collapse = m_restoring ? 0 : QEasingCurve(QEasingCurve::InCubic).
-			valueForProgress(qBound(qreal(0), (progress-0.60)/0.26, qreal(1)));
+			valueForProgress(qBound(qreal(0), (progress-0.60)/0.18, qreal(1)));
 		const qreal light = qMin(qreal(1), (progress-0.55)/0.07);
 		const qreal halfWidth = qMax(qreal(0.7), m_line_width*(1-collapse)/2);
 		const QPointF left = m_line_center-QPointF(halfWidth, 0);
@@ -248,10 +269,10 @@ void CardSwipeOverlay::paintDismissal(QPainter &painter)
 		painter.setPen(QPen(QBrush(gradient), 1.5, Qt::SolidLine, Qt::RoundCap));
 		painter.drawLine(left, right);
 	}
-	if (m_restoring || progress < 0.80) return;
-	const qreal flash = qBound(qreal(0), (progress-0.80)/0.06, qreal(1));
+	if (m_restoring || progress < 0.74) return;
+	const qreal flash = qBound(qreal(0), (progress-0.74)/0.04, qreal(1));
 	const qreal fade = 1-QEasingCurve(QEasingCurve::OutCubic).valueForProgress(
-		qBound(qreal(0), (progress-0.86)/0.14, qreal(1)));
+		qBound(qreal(0), (progress-0.78)/0.10, qreal(1)));
 	QRadialGradient glow(m_line_center, 9);
 	glow.setColorAt(0, core);
 	QColor soft = halo;
@@ -265,4 +286,21 @@ void CardSwipeOverlay::paintDismissal(QPainter &painter)
 	painter.drawEllipse(m_line_center, 9, 9);
 	painter.setBrush(core);
 	painter.drawEllipse(m_line_center, 1.5*fade, 1.5*fade);
+	if (progress < 0.78) return;
+	/* The burst overlaps the final glow inside the same 480 ms timeline. */
+	const qreal burst = qBound(qreal(0), (progress-0.78)/0.22, qreal(1));
+	const qreal time = burst*0.18;
+	const qreal alpha = qMin(qreal(1), burst*9)*qPow(1-burst, 1.4);
+	for (const Spark &spark : m_sparks) {
+		const QPointF position = m_line_center+spark.velocity*time+QPointF(0, 40*time*time);
+		const qreal radius = spark.radius*(1-burst*0.55);
+		painter.setPen(Qt::NoPen);
+		painter.setBrush(spark.color);
+		painter.setOpacity(alpha*0.14);
+		painter.drawEllipse(position, radius*2.4, radius*2.4);
+		painter.setOpacity(alpha);
+		painter.drawEllipse(position, radius, radius);
+		painter.setPen(QPen(spark.color, radius*0.7, Qt::SolidLine, Qt::RoundCap));
+		painter.drawLine(position-spark.velocity*0.010, position);
+	}
 }
