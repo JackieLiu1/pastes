@@ -113,7 +113,6 @@ SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
 	scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	scroll->verticalScrollBar()->setObjectName("PreviewScroll");
 	QScreen *screen = parent ? parent->screen() : QGuiApplication::primaryScreen();
-	scroll->setFixedHeight(qBound(180, screen ? screen->availableGeometry().height()-210 : 490, 490));
 	auto *content = new QWidget;
 	content->setObjectName("SettingsBody");
 	auto *groups = new QVBoxLayout(content);
@@ -181,6 +180,11 @@ SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
 	shortcutRow(QObject::tr("Preview selected item"), QStringLiteral("Space"));
 	shortcutRow(QObject::tr("Search history"), QStringLiteral("Ctrl+F"));
 	groups->addStretch(); scroll->setWidget(content);
+	/* Fit the styled content when the screen allows it, instead of
+	 * introducing a tiny scroll range that clips the first heading. */
+	content->ensurePolished();
+	const int availableHeight = qMax(180, screen ? screen->availableGeometry().height()-210 : 490);
+	scroll->setFixedHeight(qBound(180, content->minimumSizeHint().height(), availableHeight));
 	bodyLayout()->addWidget(scroll);
 	m_status->setObjectName("SettingsStatus"); m_status->setWordWrap(true);
 	m_status->setText(QObject::tr("Changes are saved automatically."));
