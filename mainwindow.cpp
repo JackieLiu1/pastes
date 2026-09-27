@@ -48,6 +48,16 @@ static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
  * updates from one copy collapse into a single entry */
 static const int CLIPBOARD_SETTLE_MS = 1000;
 
+static int historyPanelHeight(const QRect &area)
+{
+#ifdef Q_OS_MACOS
+	/* Fit a 288 px card below the header, keeping the action hints. */
+	return qMin(area.height(), 414);
+#else
+	return qMin(area.height(), qBound(300, area.height()*38/100, 450));
+#endif
+}
+
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <windowsx.h>
@@ -144,7 +154,7 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
 	this->__recording_enabled = !QSettings().value("pauseRecording", false).toBool();
 
-	const int panelHeight = qMin(rect.height(), qBound(300, rect.height()*38/100, 450));
+	const int panelHeight = historyPanelHeight(rect);
 	this->setFixedHeight(panelHeight);
 	this->setGeometry(rect.x(), rect.bottom()-panelHeight+1, rect.width(), panelHeight);
 #ifdef Q_OS_MACOS
@@ -522,10 +532,9 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 	if (!this->__scroll_widget)
 		return;
 	this->resetPointerGesture();
-	const int cardWidth = qBound(210, this->width()/6, 280);
-	const int cardHeight = qMax(110, this->height()-136);
+	const QSize size = this->cardSize();
 	for (int i = 0; i < this->__scroll_widget->count(); ++i)
-		this->__scroll_widget->item(i)->setSizeHint(QSize(cardWidth, cardHeight));
+		this->__scroll_widget->item(i)->setSizeHint(size);
 	if (this->__empty_state)
 		this->__empty_state->setGeometry(this->__scroll_widget->viewport()->rect());
 }
@@ -540,7 +549,7 @@ void MainWindow::show_window(void)
 #else
 	const QRect area = screen->availableGeometry();
 #endif
-	const int panelHeight = qMin(area.height(), qBound(300, area.height()*38/100, 450));
+	const int panelHeight = historyPanelHeight(area);
 	this->setFixedHeight(panelHeight);
 	this->setGeometry(area.x(), area.bottom()-panelHeight+1, area.width(), panelHeight);
 #ifdef Q_OS_MACOS
@@ -1057,8 +1066,13 @@ void MainWindow::initUI(void)
 	footerWidget->setLayout(footer);
 
 	QVBoxLayout *vlayout = new QVBoxLayout();
+#ifdef Q_OS_MACOS
+	vlayout->setContentsMargins(24, 12, 24, 12);
+	vlayout->setSpacing(8);
+#else
 	vlayout->setContentsMargins(24, 16, 24, 12);
 	vlayout->setSpacing(10);
+#endif
 	vlayout->addLayout(hlayout);
 	vlayout->addWidget(this->__scroll_widget, 1);
 	vlayout->addWidget(footerWidget);
@@ -1287,8 +1301,7 @@ PasteItem *MainWindow::insertItemWidget(bool back, int row)
 	});
 
 	/* resize item, It's use for pasteitem frame */
-	item->setSizeHint(QSize(qBound(210, this->width()/6, 280),
-				    qMax(110, this->height()-136)));
+	item->setSizeHint(this->cardSize());
 
 	if (row >= 0) {
 		this->__scroll_widget->insertItem(row, item);
@@ -1302,6 +1315,18 @@ PasteItem *MainWindow::insertItemWidget(bool back, int row)
 	widget->setSelected(item->isSelected());
 
 	return widget;
+}
+
+QSize MainWindow::cardSize(void) const
+{
+#ifdef Q_OS_MACOS
+	/* Paste's reference card is 272x288 logical pixels; reserve the
+	 * existing 4 px shadow gutter on each side of the visible surface. */
+	const int height = qMax(110, this->height()-126);
+	return QSize(qMin(280, qRound(height*17.0/18.0)+8), height+8);
+#else
+	return QSize(qBound(210, this->width()/6, 280), qMax(110, this->height()-136));
+#endif
 }
 
 void MainWindow::resetItemTabOrder(void)

@@ -57,6 +57,7 @@ private:
 	void setHistoryRecording(bool enabled);
 	void reloadData(void);
 	PasteItem *insertItemWidget(bool, int row = -1);
+	QSize cardSize(void) const;
 	void resetItemTabOrder(void);
 	void updateQuickPasteNumbers(void);
 	void pasteNumberedItem(int number, bool plainText);
