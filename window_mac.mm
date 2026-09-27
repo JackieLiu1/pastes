@@ -5,6 +5,12 @@
 #include <QApplication>
 #import <AppKit/AppKit.h>
 
+void configureMacApplication(void)
+{
+	if (QGuiApplication::platformName() == QStringLiteral("cocoa"))
+		[NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+}
+
 static NSView *nativeView(QWidget *widget)
 {
 	if (QGuiApplication::platformName() != QStringLiteral("cocoa") ||
@@ -74,11 +80,38 @@ void prepareMacPanel(QWidget *widget)
 	NSWindow *window = nativeView(widget).window;
 	if (!window)
 		return;
+	/* A nonactivating NSPanel can take keyboard focus in another app's
+	 * full-screen Space without activating Pastes' desktop Space. */
+	if ([window isKindOfClass:[NSPanel class]]) {
+		if (!(window.styleMask & NSWindowStyleMaskNonactivatingPanel))
+			window.styleMask |= NSWindowStyleMaskNonactivatingPanel;
+		NSPanel *panel = static_cast<NSPanel *>(window);
+		panel.floatingPanel = YES;
+		panel.becomesKeyOnlyIfNeeded = NO;
+	}
 	window.hidesOnDeactivate = NO;
 	window.hasShadow = NO;
 	window.opaque = NO;
 	window.backgroundColor = [NSColor clearColor];
-	/* Cover the Dock at the screen edge. */
+	NSWindowCollectionBehavior behavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
+		NSWindowCollectionBehaviorFullScreenAuxiliary |
+		NSWindowCollectionBehaviorTransient | NSWindowCollectionBehaviorIgnoresCycle;
+	if (@available(macOS 13.0, *))
+		behavior |= NSWindowCollectionBehaviorCanJoinAllApplications;
+	window.collectionBehavior = behavior;
+	/* Stay above full-screen content as well as the Dock. */
 	window.level = CGWindowLevelForKey(kCGScreenSaverWindowLevelKey);
 	updateMacPanelBackdrop(widget);
+}
+
+void activateMacPanel(QWidget *widget)
+{
+	NSView *view = nativeView(widget);
+	NSWindow *window = view.window;
+	if (!window)
+		return;
+	/* Raising through Qt activates NSApp and can switch desktop Spaces. */
+	[window orderFrontRegardless];
+	[window makeKeyWindow];
+	[window makeFirstResponder:view];
 }

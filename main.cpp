@@ -6,6 +6,9 @@
 #include <QTimer>
 
 #include "mainwindow.h"
+#ifdef Q_OS_MACOS
+#include "window_mac.h"
+#endif
 
 #ifndef QM_FILES_INSTALL_PATH
 #define QM_FILES_INSTALL_PATH "."
@@ -39,6 +42,9 @@ int main(int argc, char *argv[])
 #endif
 
 	SingleApplication a(argc, argv);
+#ifdef Q_OS_MACOS
+	configureMacApplication();
+#endif
 	LoadTranlateFile(&a);
 
 	MainWindow w;

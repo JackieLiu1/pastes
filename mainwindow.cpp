@@ -158,7 +158,7 @@ MainWindow::MainWindow(QWidget *parent)
 	this->setFixedHeight(panelHeight);
 	this->setGeometry(rect.x(), rect.bottom()-panelHeight+1, rect.width(), panelHeight);
 #ifdef Q_OS_MACOS
-	/* Qt::Tool supplies a keyable native panel. */
+	/* Qt::Tool supplies a keyable NSPanel for other apps' full-screen Spaces. */
 	this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
 		Qt::NoDropShadowWindowHint | Qt::Tool);
 	this->setAttribute(Qt::WA_MacAlwaysShowToolWindow);
@@ -570,8 +570,12 @@ void MainWindow::show_window(void)
 	this->__hide_animation->start();
 	this->__hide_state = false;
 	this->show();
+#ifdef Q_OS_MACOS
+	activateMacPanel(this);
+#else
 	this->raise();
 	this->activateWindow();
+#endif
 }
 
 void MainWindow::hide_window(void)
