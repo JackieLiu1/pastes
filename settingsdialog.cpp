@@ -111,6 +111,9 @@ SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
 	scroll->setObjectName("SettingsScroll");
 	scroll->setFrameShape(QFrame::NoFrame); scroll->setWidgetResizable(true);
 	scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+#ifdef Q_OS_MACOS
+	scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+#endif
 	scroll->verticalScrollBar()->setObjectName("PreviewScroll");
 	QScreen *screen = parent ? parent->screen() : QGuiApplication::primaryScreen();
 	auto *content = new QWidget;
