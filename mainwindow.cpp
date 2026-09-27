@@ -203,8 +203,11 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
 	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, this, [this](void) {
 #ifdef Q_OS_WIN
-		this->__source_icon = QImage();
-		this->__clipboard_source->capture(++this->__source_request);
+		const QVariant copiedIcon = QApplication::clipboard()->mimeData()->property("pastesSourceIcon");
+		++this->__source_request;
+		this->__source_icon = copiedIcon.value<QImage>();
+		if (!copiedIcon.isValid())
+			this->__clipboard_source->capture(this->__source_request);
 #endif
 		/* Restarting on every change collapses rapid clipboard updates
 		 * into one snapshot taken once the clipboard has settled. */
@@ -1182,7 +1185,9 @@ PasteItem *MainWindow::insertItemWidget(bool back, int row)
 	QObject::connect(widget, &PasteItem::moveFocusPrevNext,
 			 this, &MainWindow::move_to_prev_next_focus_widget);
 	QObject::connect(widget, &PasteItem::clipboardUpdated, this, [this](void) {
-		this->__clipboard_timer->stop();
+		/* Internal copies use the same debounce to refresh and promote the
+		 * entry even when Qt delivered dataChanged synchronously. */
+		this->__clipboard_timer->start();
 	});
 	QObject::connect(widget, &PasteItem::copied, this, [this](void) {
 		this->pasteToPreviousWindow();
@@ -1234,6 +1239,7 @@ void MainWindow::clipboard_later(void)
 	const QImage sourceIcon = this->__source_icon;
 #endif
 	const QMimeData *mime_data = QApplication::clipboard()->mimeData();
+	const QVariant copiedIcon = mime_data->property("pastesSourceIcon");
 	PasteItem *widget = nullptr;
 	QCryptographicHash hash(QCryptographicHash::Md5);
 	ItemData *itemData = new ItemData;
@@ -1296,6 +1302,16 @@ void MainWindow::clipboard_later(void)
 	} while (0);
 
 	itemData->md5 = hash.result();
+	if (copiedIcon.isValid()) {
+		itemData->icon = copiedIcon.value<QImage>();
+	} else {
+#ifdef Q_OS_WIN
+		itemData->icon = sourceIcon;
+#else
+		itemData->icon = this->getClipboardOwnerIcon().scaled(32, 32,
+			Qt::KeepAspectRatio, Qt::SmoothTransformation).toImage();
+#endif
+	}
 	/* Remove dup item */
 	for (int i = 1; i < this->__scroll_widget->count(); i++) {
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(i);
@@ -1304,6 +1320,10 @@ void MainWindow::clipboard_later(void)
 			continue;
 		/* They have same md5, remove it */
 		if (itemData->md5 == tmp_itemData->md5) {
+			/* Capture the value before the worker takes ownership of the
+			 * duplicate. A failed lookup must not erase a known source icon. */
+			if (itemData->icon.isNull())
+				itemData->icon = tmp_itemData->icon;
 			this->__db.deletePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			if (this->__current_item == tmp_item)
@@ -1325,11 +1345,9 @@ void MainWindow::clipboard_later(void)
 	widget->setTime(itemData->time);
 
 #ifdef Q_OS_WIN
-	itemData->icon = sourceIcon;
-	widget->setProperty("sourceRequest", QVariant::fromValue(sourceRequest));
-#else
-	itemData->icon = this->getClipboardOwnerIcon().scaled(32, 32,
-		Qt::KeepAspectRatio, Qt::SmoothTransformation).toImage();
+	/* Internal copies have their original icon and must not be overwritten
+	 * by a late lookup for the Pastes window that performed the copy. */
+	widget->setProperty("sourceRequest", QVariant::fromValue(copiedIcon.isValid() ? quint64(0) : sourceRequest));
 #endif
 	QPixmap icon = QPixmap::fromImage(itemData->icon);
 	widget->setIcon(icon);

@@ -47,7 +47,7 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
 - `MainWindow`（mainwindow.cpp）— 主窗口、剪贴板监听、条目生命周期。
 - `Database` + `Database::Worker`（database.cpp）— 数据库门面 + 工作线程。
 - `ClipboardSource`（clipboardsource_win.cpp）— Windows 来源图标捕获；异步结果用请求编号匹配仍存在的条目，迟到图标经 Database 更新。
-- `PasteItem`（pasteitem.cpp）— 列表条目 widget；`copyData()` 复制回剪贴板。
+- `PasteItem`（pasteitem.cpp）— 列表条目 widget；`copyData()` 复制回剪贴板，通过 QMimeData 的进程内属性保留原来源图标（不增加 MIME 格式），经同一防抖流程重新置顶；重复条目在来源查询为空时保留已有图标。
 - `CardSwipeOverlay`（cardswipe.cpp）— GUI 线程缓存卡片快照，拖动可越过面板边界；松手后上沿向后翻倒至亮线，再向中心收成光点并熄灭，未达到阈值时回弹；撤销从细线反向展开并落回卡槽，不播放关机闪光，快速撤销接续当前翻转姿态；删除在松手时提交，动画不持有剪贴板数据。
 - `CardReflowOverlay`（cardreflow.cpp）— 删除或撤销前记录相邻卡片位置，实际列表更新后用缓存快照平移补位或让位；取消动画恢复真实卡片，连续操作接续当前视觉位置。
 - `ElasticScrollController`（elasticscroll.cpp）— GUI 线程控制横向滚动的惯性与边界阻力/回弹，通过平移真实 viewport 保持卡片和点击位置一致；触控板不重复施加系统惯性，列表变化、搜索、导航或隐藏时取消运动。

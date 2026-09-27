@@ -304,10 +304,13 @@ void PasteItem::copyData(bool plainText, bool paste)
 
 	QClipboard *clipboard = QApplication::clipboard();
 
-	if (plainText && itemData->mimeData->hasText())
-		clipboard->setText(itemData->mimeData->text(), QClipboard::Clipboard);
-	else
-		clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Clipboard);
+	QMimeData *mime = plainText ? new QMimeData : dup_mimedata(itemData->mimeData);
+	if (plainText)
+		mime->setText(itemData->mimeData->text());
+	/* This in-process property preserves source identity without exporting
+	 * private metadata as a clipboard format or retaining the old item. */
+	mime->setProperty("pastesSourceIcon", itemData->icon);
+	clipboard->setMimeData(mime, QClipboard::Clipboard);
 
 #ifdef Q_OS_LINUX
 	if (plainText && itemData->mimeData->hasText())
