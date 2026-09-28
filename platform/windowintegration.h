@@ -26,6 +26,8 @@ struct DialogAppearance
 	Qt::WindowFlags flags = Qt::Dialog | Qt::FramelessWindowHint;
 	QMargins outerMargins{14, 14, 14, 18};
 	QMargins contentMargins{24, 20, 24, 24};
+	QMargins previewContentMargins{20, 16, 20, 16};
+	int previewSpacing = 16;
 	bool nativeControls = false;
 	Qt::ScrollBarPolicy scrollBar = Qt::ScrollBarAsNeeded;
 };

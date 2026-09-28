@@ -247,6 +247,10 @@ void Platform::prepareDialog(QWidget *widget)
 	NSWindow *window = nativeView(widget).window;
 	if (!window)
 		return;
+	/* Utility panels use smaller traffic lights. Keep the native panel and
+	 * its activation behavior, with the same controls as other dialogs. */
+	if (window.styleMask & NSWindowStyleMaskUtilityWindow)
+		window.styleMask &= ~NSWindowStyleMaskUtilityWindow;
 #if QT_VERSION < QT_VERSION_CHECK(6, 9, 0)
 	/* Older Qt lacks the expanded client-area flags. */
 	window.styleMask |= NSWindowStyleMaskFullSizeContentView;
@@ -295,6 +299,8 @@ const DialogAppearance &dialogAppearance(void)
 #endif
 		value.outerMargins = QMargins(0, 0, 0, 0);
 		value.contentMargins = QMargins(24, 44, 24, 24);
+		value.previewContentMargins = QMargins(24, 32, 24, 24);
+		value.previewSpacing = 12;
 		value.nativeControls = true;
 		value.scrollBar = Qt::ScrollBarAlwaysOff;
 		return value;

@@ -84,9 +84,8 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	}
 	m_surface->setObjectName("PreviewSurface");
 	QVBoxLayout *layout = new QVBoxLayout(m_surface);
-	layout->setContentsMargins(appearance.nativeControls ? appearance.contentMargins :
-		QMargins(20, 16, 20, 16));
-	layout->setSpacing(16);
+	layout->setContentsMargins(appearance.previewContentMargins);
+	layout->setSpacing(appearance.previewSpacing);
 
 	QLabel *icon = new QLabel(m_header);
 	icon->setFixedSize(30, 30);
