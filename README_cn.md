@@ -47,7 +47,11 @@ Pastes 保留最近 30 天的剪贴板历史。用左右方向键或 `Tab` / `Sh
 
 ## 平台代码结构
 
-界面与历史管理通过 `platform/` 的公共 C++/Qt 接口调用系统能力。
+项目最低要求 C++17 和 Qt 6.3。`core/` 管理数据与规则，`application/` 管理业务和接口，
+`storage/` 实现 SQLite，`ui/` 负责呈现，`app/` 统一组装依赖。
+完整分层、所有权和测试命令见[工程架构说明](docs/architecture.md)。
+
+界面与剪贴板适配通过 `platform/` 的公共 C++/Qt 接口调用系统能力。
 Windows、macOS、Linux 的原生实现分别位于对应子目录，共用 Qt 行为放在
 `platform/desktop/`，由 CMake 选择当前系统的实现。
 接口职责、线程约束和扩展方法见[平台结构说明](docs/platform-architecture.md)。

@@ -42,7 +42,12 @@ retention period.
 
 ## Platform architecture
 
-UI and history code use public C++/Qt contracts in `platform/`. Native
+The project requires C++17 and Qt 6.3 or newer. `core/` owns data and rules,
+`application/` owns use cases and ports, `storage/` implements SQLite, and
+`ui/` presents history. `app/` assembles their concrete dependencies.
+See [the architecture and testing guide](docs/architecture.md).
+
+UI and clipboard adapters use public C++/Qt contracts in `platform/`. Native
 clipboard, paste, window, shortcut, icon, path and startup implementations
 live in `platform/windows/`, `platform/macos/` and `platform/linux/`. CMake
 selects one backend; Windows and Linux reuse Qt behavior from
