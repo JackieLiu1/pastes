@@ -94,6 +94,36 @@ static void finishMouseTracking(NSView *view)
 	}
 }
 
+static NSPoint menuLocation(NSMenu *menu, NSView *view,
+			   const QPoint &point, bool alignRight)
+{
+	NSPoint location = NSMakePoint(point.x(),
+		view.isFlipped ? point.y() : view.bounds.size.height-point.y());
+	NSPoint screenPoint = [view.window convertPointToScreen:
+		[view convertPoint:location toView:nil]];
+	NSScreen *screen = view.window.screen;
+	for (NSScreen *candidate in NSScreen.screens) {
+		if (NSPointInRect(screenPoint, candidate.frame)) {
+			screen = candidate;
+			break;
+		}
+	}
+	const NSSize size = menu.size;
+	if (alignRight)
+		screenPoint.x -= size.width;
+	if (screen) {
+		/* AppKit can shorten a menu at its requested top-left corner.
+		 * Move the entire menu above the Dock instead of hiding actions. */
+		const NSRect bounds = NSInsetRect(screen.visibleFrame, 8, 8);
+		screenPoint.x = qBound(NSMinX(bounds), screenPoint.x,
+			qMax(NSMinX(bounds), NSMaxX(bounds)-size.width));
+		screenPoint.y = qBound(qMin(NSMaxY(bounds), NSMinY(bounds)+size.height),
+			screenPoint.y, NSMaxY(bounds));
+	}
+	return [view convertPoint:[view.window convertPointFromScreen:screenPoint]
+		fromView:nil];
+}
+
 static bool popupNativeMenu(QMenu *menu, QWidget *owner,
 			    const QPoint &point, bool alignRight,
 			    QPointer<QAction> &chosen)
@@ -111,9 +141,7 @@ static bool popupNativeMenu(QMenu *menu, QWidget *owner,
 		PastesMenuSelection *selection = [[[PastesMenuSelection alloc] init]
 			autorelease];
 		NSMenu *popup = nativeMenu(menu, selection);
-		const NSPoint location = NSMakePoint(
-			point.x()-(alignRight ? popup.size.width : 0),
-			view.isFlipped ? point.y() : view.bounds.size.height-point.y());
+		const NSPoint location = menuLocation(popup, view, point, alignRight);
 		[popup popUpMenuPositioningItem:nil atLocation:location inView:view];
 		if (windowGuard)
 			finishMouseTracking(view);
