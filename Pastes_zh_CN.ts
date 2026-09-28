@@ -50,19 +50,19 @@
         <translation>托盘图标</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="118"/>
+        <location filename="pasteitem.cpp" line="119"/>
         <source>Image</source>
         <translation>图片</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="128"/>
-        <location filename="pasteitem.cpp" line="147"/>
+        <location filename="pasteitem.cpp" line="131"/>
+        <location filename="pasteitem.cpp" line="152"/>
         <source>Link</source>
         <translation>超链接</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="131"/>
-        <location filename="pasteitem.cpp" line="150"/>
+        <location filename="pasteitem.cpp" line="134"/>
+        <location filename="pasteitem.cpp" line="155"/>
         <source>Color</source>
         <translation>颜色</translation>
     </message>
@@ -75,23 +75,23 @@
         <translation type="vanished">富文本</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="166"/>
+        <location filename="pasteitem.cpp" line="185"/>
         <source>Files</source>
         <translation>个文件</translation>
     </message>
     <message>
-        <location filename="pasteitemcontext.cpp" line="233"/>
+        <location filename="pasteitemcontext.cpp" line="235"/>
         <source>px</source>
         <translation>像素</translation>
     </message>
     <message>
-        <location filename="pasteitemcontext.cpp" line="249"/>
-        <location filename="pasteitemcontext.cpp" line="265"/>
+        <location filename="pasteitemcontext.cpp" line="251"/>
+        <location filename="pasteitemcontext.cpp" line="267"/>
         <source>characters</source>
         <translation>字符</translation>
     </message>
     <message>
-        <location filename="pasteitemcontext.cpp" line="279"/>
+        <location filename="pasteitemcontext.cpp" line="283"/>
         <source>MultiPath</source>
         <translation>多个文件</translation>
     </message>
@@ -164,43 +164,48 @@
         <translation>剪贴板历史</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="136"/>
-        <location filename="pasteitem.cpp" line="153"/>
+        <location filename="pasteitem.cpp" line="139"/>
+        <location filename="pasteitem.cpp" line="158"/>
         <source>Text</source>
         <translation>文本</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="136"/>
+        <location filename="pasteitem.cpp" line="139"/>
         <source>Code</source>
         <translation>代码</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="188"/>
+        <location filename="previewdialog.cpp" line="201"/>
         <source>Paste</source>
         <translation>粘贴</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="248"/>
+        <location filename="pasteitem.cpp" line="267"/>
         <source>Copy as Plain Text</source>
         <translation>复制为纯文本</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="247"/>
-        <location filename="previewdialog.cpp" line="170"/>
-        <location filename="previewdialog.cpp" line="177"/>
+        <location filename="pasteitem.cpp" line="266"/>
+        <location filename="previewdialog.cpp" line="183"/>
+        <location filename="previewdialog.cpp" line="190"/>
         <source>Copy to Clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="252"/>
-        <location filename="previewdialog.cpp" line="70"/>
-        <location filename="previewdialog.cpp" line="102"/>
-        <location filename="previewdialog.cpp" line="152"/>
+        <location filename="pasteitem.cpp" line="173"/>
+        <source>File path</source>
+        <translation>文件路径</translation>
+    </message>
+    <message>
+        <location filename="pasteitem.cpp" line="271"/>
+        <location filename="previewdialog.cpp" line="72"/>
+        <location filename="previewdialog.cpp" line="104"/>
+        <location filename="previewdialog.cpp" line="164"/>
         <source>Preview</source>
         <translation>预览</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="253"/>
+        <location filename="pasteitem.cpp" line="272"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
@@ -245,49 +250,49 @@
         <translation type="vanished">← → 浏览   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="80"/>
+        <location filename="pasteitem.cpp" line="81"/>
         <source>Ctrl+%1 to paste</source>
         <translation>按 Ctrl+%1 粘贴</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="32"/>
+        <location filename="previewdialog.cpp" line="34"/>
         <source>Image preview</source>
         <translation>图片预览</translation>
     </message>
     <message>
         <location filename="appdialog.cpp" line="64"/>
-        <location filename="previewdialog.cpp" line="116"/>
+        <location filename="previewdialog.cpp" line="118"/>
         <source>Close (Esc)</source>
         <translation>关闭（Esc）</translation>
     </message>
     <message>
         <location filename="appdialog.cpp" line="65"/>
-        <location filename="previewdialog.cpp" line="117"/>
+        <location filename="previewdialog.cpp" line="119"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="159"/>
+        <location filename="previewdialog.cpp" line="171"/>
         <source>%1 files</source>
         <translation>%1 个文件</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="161"/>
+        <location filename="previewdialog.cpp" line="173"/>
         <source>%1 characters</source>
         <translation>%1 个字符</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="171"/>
+        <location filename="previewdialog.cpp" line="184"/>
         <source>Copy without closing the preview</source>
         <translation>仅复制，保留预览窗口</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="182"/>
+        <location filename="previewdialog.cpp" line="195"/>
         <source>Copied</source>
         <translation>已复制</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="189"/>
+        <location filename="previewdialog.cpp" line="202"/>
         <source>Paste into the previous application (Enter)</source>
         <translation>粘贴到原来的应用（Enter）</translation>
     </message>

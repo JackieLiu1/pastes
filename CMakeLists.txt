@@ -32,6 +32,7 @@ set(PASTES_SOURCES
     pasteitem.cpp pasteitem.h
     pasteitembarnner.cpp pasteitembarnner.h
     pasteitemcontext.cpp pasteitemcontext.h
+    filepreview.cpp filepreview.h
     searchbar.cpp searchbar.h
     sources.qrc
 )

@@ -2,9 +2,11 @@
 #include "pasteitem.h"
 #include "roundedwidgets.h"
 #include "platform/windowintegration.h"
+#include "filepreview.h"
 
 #include <QApplication>
 #include <QDateTime>
+#include <QFileInfo>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -137,10 +139,20 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	QVBoxLayout *body = new QVBoxLayout(content);
 	body->setContentsMargins(8, 8, 8, 8);
 	const QMimeData *mime = data.mimeData;
-	if (mime->hasImage() && !mime->hasUrls() && !(mime->hasHtml() && !mime->text().trimmed().isEmpty())) {
-		const QImage image = qvariant_cast<QImage>(mime->imageData());
+	const bool bitmap = mime->hasImage() && !mime->hasUrls() &&
+		!(mime->hasHtml() && !mime->text().trimmed().isEmpty());
+	const QUrl textFile = (mime->hasUrls() || bitmap) ? QUrl() : FilePreview::localUrl(mime->text());
+	const QList<QUrl> files = mime->hasUrls() ? mime->urls() :
+		(textFile.isEmpty() ? QList<QUrl>() : QList<QUrl>{textFile});
+	QImage image;
+	if (files.size() == 1)
+		image = FilePreview::loadImage(files.first(), 2048);
+	if (bitmap)
+		image = qvariant_cast<QImage>(mime->imageData());
+	if (!image.isNull()) {
 		body->addWidget(new PreviewImage(image, content));
-		m_detail->setText(QString("%1 × %2 px").arg(image.width()).arg(image.height()));
+		m_detail->setText(files.isEmpty() ? QString("%1 × %2 px").arg(image.width()).arg(image.height()) :
+			QFileInfo(files.first().toLocalFile()).fileName());
 	} else {
 		QPlainTextEdit *text = new QPlainTextEdit(content);
 		text->setObjectName("PreviewText");
@@ -165,6 +177,7 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	}
 	layout->addWidget(content, 1);
 	m_detail->setObjectName("PreviewMeta");
+	m_detail->setTextFormat(Qt::PlainText);
 	RoundedButton *copy = new RoundedButton(m_surface);
 	copy->setObjectName("PreviewAction");
 	copy->setText(QObject::tr("Copy to Clipboard"));

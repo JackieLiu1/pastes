@@ -81,6 +81,7 @@ protected:
 
 private:
 	void setCardKind(const char *kind);
+	bool setPathPreview(const QString &text);
 	QWidget				*m_frame;
 	QGraphicsDropShadowEffect	*m_frame_effect;
 

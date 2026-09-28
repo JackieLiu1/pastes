@@ -1,6 +1,7 @@
 #include "pasteitem.h"
 #include "roundedwidgets.h"
 #include "platform/menuintegration.h"
+#include "filepreview.h"
 
 #include <QClipboard>
 #include <QApplication>
@@ -121,6 +122,8 @@ void PasteItem::setImage(QImage &image)
 
 void PasteItem::setPlainText(QString s)
 {
+	if (this->setPathPreview(s))
+		return;
 	m_context->setText(s);
 	m_text = s;
 
@@ -140,6 +143,8 @@ void PasteItem::setPlainText(QString s)
 
 void PasteItem::setRichText(QString richText, QString plainText)
 {
+	if (this->setPathPreview(plainText))
+		return;
 	m_context->setRichText(richText, plainText);
 	m_text = plainText;
 
@@ -153,6 +158,20 @@ void PasteItem::setRichText(QString richText, QString plainText)
 		this->m_barnner->setTitle(QObject::tr("Text"));
 		this->setCardKind("text");
 	}
+}
+
+bool PasteItem::setPathPreview(const QString &text)
+{
+	const QUrl url = FilePreview::localUrl(text);
+	if (url.isEmpty())
+		return false;
+	QList<QUrl> urls{url};
+	if (!this->setUrls(urls))
+		return false;
+	/* A path preview must still search and paste as the copied text. */
+	this->m_text = text;
+	this->m_barnner->setTitle(QObject::tr("File path"));
+	return true;
 }
 
 bool PasteItem::setUrls(QList<QUrl> &urls)

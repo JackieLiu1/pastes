@@ -1,4 +1,5 @@
 #include "platform/fileicon.h"
+#include "filepreview.h"
 
 #include <algorithm>
 
@@ -115,8 +116,9 @@ bool FileFrame::setUrls(QList<QUrl> &urls)
 		QMimeDatabase db;
 		QMimeType mime = db.mimeTypeForUrl(url);
 		if (mime.name().startsWith("image/")) {
-			pixmap = QPixmap(url.toLocalFile());
-		} else {
+			pixmap = QPixmap::fromImage(FilePreview::loadImage(url, 512));
+		}
+		if (pixmap.isNull()) {
 			auto icon = Platform::fileIcon(url.toLocalFile());
 			pixmap = icon.pixmap(256, 256);
 		}
@@ -272,8 +274,10 @@ bool StackedWidget::setUrls(QList<QUrl> &urls)
 {
 	FileFrame *file_frame = new FileFrame(this);
 
-	if (!file_frame->setUrls(urls))
+	if (!file_frame->setUrls(urls)) {
+		delete file_frame;
 		return false;
+	}
 
 	if (urls.count() > 1)
 		file_frame->setMaskFrameText(QObject::tr("MultiPath"));
