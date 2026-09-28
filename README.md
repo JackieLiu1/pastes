@@ -2,6 +2,8 @@
 
 English | [简体中文](./README_cn.md)
 
+For macOS installers, see [the packaging guide](packaging/macos/README.md).
+
 ![Release-CI](https://github.com/JackieLiu1/pastes/workflows/Release-CI/badge.svg) ![C/C++ CI](https://github.com/JackieLiu1/pastes/workflows/C/C++%20CI/badge.svg)
 
 Thanks for choose pastes.

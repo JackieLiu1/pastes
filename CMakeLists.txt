@@ -91,6 +91,7 @@ if(APPLE)
             "${PASTES_MACOS_SIGNING_IDENTITY}" $<TARGET_BUNDLE_DIR:pastes>
         VERBATIM
     )
+    add_subdirectory(packaging/macos)
 endif()
 
 
