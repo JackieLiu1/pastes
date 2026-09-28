@@ -88,3 +88,8 @@ void ShortcutPrivate::stop(void)
 	if (id)
 		PostThreadMessage(static_cast<DWORD>(id), WM_QUIT, 0, 0);
 }
+
+QString GlobalShortcut::primaryShortcut(void) const
+{
+	return QStringLiteral("Win+V");
+}

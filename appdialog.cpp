@@ -1,9 +1,7 @@
 #include "appdialog.h"
 #include "platform/pastetarget.h"
 #include "roundedwidgets.h"
-#ifdef Q_OS_MACOS
-#include "window_mac.h"
-#endif
+#include "platform/windowintegration.h"
 
 #include <QApplication>
 #include <QDesktopServices>
@@ -17,22 +15,8 @@
 #include <QVBoxLayout>
 #include <QWindow>
 
-static Qt::WindowFlags dialogWindowFlags(void)
-{
-#ifdef Q_OS_MACOS
-	Qt::WindowFlags flags = Qt::Dialog | Qt::CustomizeWindowHint |
-		Qt::WindowTitleHint | Qt::WindowCloseButtonHint | Qt::NoDropShadowWindowHint;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
-	flags |= Qt::ExpandedClientAreaHint | Qt::NoTitleBarBackgroundHint;
-#endif
-	return flags;
-#else
-	return Qt::Dialog | Qt::FramelessWindowHint;
-#endif
-}
-
 AppDialog::AppDialog(const QString &title, int width, QWidget *parent) :
-	QDialog(parent, dialogWindowFlags()),
+	QDialog(parent, Platform::dialogAppearance().flags),
 	m_surface(new RoundedWidget(RoundedRole::Preview, this)),
 	m_header(new QWidget(m_surface)), m_subtitle(new QLabel(m_header)),
 	m_body(new QVBoxLayout)
@@ -40,36 +24,23 @@ AppDialog::AppDialog(const QString &title, int width, QWidget *parent) :
 	setObjectName("AppDialog");
 	setWindowTitle(title);
 	setAttribute(Qt::WA_TranslucentBackground);
-#if defined(Q_OS_MACOS) && QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
-	/* The surface fills the title bar; only its content needs an inset. */
-	setAttribute(Qt::WA_ContentsMarginsRespectsSafeArea, false);
-#endif
+	Platform::initializeDialog(this);
 	setModal(true);
 	setFixedWidth(width);
 	setFont(QFont(QStringLiteral("Segoe UI"), 10));
 	auto *outer = new QVBoxLayout(this);
-#ifdef Q_OS_MACOS
-	/* Paint the rounded surface at the native window edge, without a
-	 * transparent shadow gutter or a second AppKit outline. */
-	outer->setContentsMargins(0, 0, 0, 0);
-#else
-	outer->setContentsMargins(14, 14, 14, 18);
-#endif
+	outer->setContentsMargins(Platform::dialogAppearance().outerMargins);
 	outer->addWidget(m_surface);
 	m_surface->setObjectName("AppDialogSurface");
-#ifndef Q_OS_MACOS
-	auto *shadow = new QGraphicsDropShadowEffect(m_surface);
-	shadow->setOffset(0, 4);
-	shadow->setBlurRadius(24);
-	shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
-	m_surface->setGraphicsEffect(shadow);
-#endif
+	if (!Platform::dialogAppearance().nativeControls) {
+		auto *shadow = new QGraphicsDropShadowEffect(m_surface);
+		shadow->setOffset(0, 4);
+		shadow->setBlurRadius(24);
+		shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
+		m_surface->setGraphicsEffect(shadow);
+	}
 	auto *layout = new QVBoxLayout(m_surface);
-#ifdef Q_OS_MACOS
-	layout->setContentsMargins(24, 44, 24, 24);
-#else
-	layout->setContentsMargins(24, 20, 24, 24);
-#endif
+	layout->setContentsMargins(Platform::dialogAppearance().contentMargins);
 	layout->setSpacing(22);
 	auto *heading = new QLabel(title, m_header);
 	heading->setObjectName("AppDialogTitle");
@@ -80,23 +51,22 @@ AppDialog::AppDialog(const QString &title, int width, QWidget *parent) :
 	titles->setSpacing(5);
 	titles->addWidget(heading);
 	titles->addWidget(m_subtitle);
-#ifndef Q_OS_MACOS
-	auto *close = new RoundedButton(m_header);
-	close->setObjectName("PreviewClose");
-	close->setText(QStringLiteral("×"));
-	close->setFixedSize(32, 32);
-	close->setToolTip(QObject::tr("Close (Esc)"));
-	close->setAccessibleName(QObject::tr("Close"));
-	close->setAutoDefault(false);
-	QObject::connect(close, &QPushButton::clicked, this, &QDialog::reject);
-#endif
+
 	auto *header = new QHBoxLayout(m_header);
 	header->setContentsMargins(0, 0, 0, 0);
 	header->setSpacing(14);
 	header->addLayout(titles, 1);
-#ifndef Q_OS_MACOS
-	header->addWidget(close, 0, Qt::AlignTop);
-#endif
+	if (!Platform::dialogAppearance().nativeControls) {
+		auto *close = new RoundedButton(m_header);
+		close->setObjectName("PreviewClose");
+		close->setText(QStringLiteral("×"));
+		close->setFixedSize(32, 32);
+		close->setToolTip(QObject::tr("Close (Esc)"));
+		close->setAccessibleName(QObject::tr("Close"));
+		close->setAutoDefault(false);
+		QObject::connect(close, &QPushButton::clicked, this, &QDialog::reject);
+		header->addWidget(close, 0, Qt::AlignTop);
+	}
 	this->installEventFilter(this);
 	m_surface->installEventFilter(this);
 	m_header->installEventFilter(this);
@@ -140,9 +110,7 @@ bool AppDialog::eventFilter(QObject *object, QEvent *event)
 void AppDialog::showEvent(QShowEvent *event)
 {
 	QDialog::showEvent(event);
-#ifdef Q_OS_MACOS
-	prepareMacDialog(this);
-#endif
+	Platform::prepareDialog(this);
 	QScreen *screen = parentWidget() ? parentWidget()->screen() : QGuiApplication::primaryScreen();
 	if (!screen) return;
 	const QRect area = screen->availableGeometry();
@@ -152,10 +120,8 @@ void AppDialog::showEvent(QShowEvent *event)
 void AppDialog::changeEvent(QEvent *event)
 {
 	QDialog::changeEvent(event);
-#ifdef Q_OS_MACOS
 	if (event->type() == QEvent::StyleChange)
-		prepareMacDialog(this);
-#endif
+		Platform::prepareDialog(this);
 	if (event->type() == QEvent::StyleChange) {
 		if (auto *shadow = qobject_cast<QGraphicsDropShadowEffect *>(m_surface->graphicsEffect()))
 			shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));

@@ -40,6 +40,7 @@ class GlobalShortcut : public QObject
 public:
 	GlobalShortcut(QObject *parent = nullptr);
 	~GlobalShortcut();
+	QString primaryShortcut(void) const;
 
 signals:
 	void pasteActivated(void);

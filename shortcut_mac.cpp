@@ -71,3 +71,8 @@ void ShortcutPrivate::stop(void)
 		m_event_handler = nullptr;
 	}
 }
+
+QString GlobalShortcut::primaryShortcut(void) const
+{
+	return QStringLiteral("Shift+Cmd+V");
+}

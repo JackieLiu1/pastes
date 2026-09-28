@@ -1,4 +1,4 @@
-#include "window_mac.h"
+#include "platform/windowintegration.h"
 
 #include <QWidget>
 #include <QGuiApplication>
@@ -6,16 +6,9 @@
 #include <QScreen>
 #include <QCursor>
 #include <QTimer>
-#include <QMenu>
 #import <AppKit/AppKit.h>
 
-void configureMacApplication(void)
-{
-	if (QGuiApplication::platformName() == QStringLiteral("cocoa"))
-		[NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
-}
-
-QScreen *macPanelScreen(void)
+static QScreen *panelScreen(void)
 {
 	/* Pick the frontmost application's display before taking key focus.
 	 * Window bounds are available without requesting accessibility access. */
@@ -119,7 +112,7 @@ private:
 	id m_focusObserver;
 };
 
-void watchMacPanelDismissal(QWidget *widget, const std::function<void(bool)> &dismiss)
+void Platform::watchPanelDismissal(QWidget *widget, const std::function<void(bool)> &dismiss)
 {
 	if (QGuiApplication::platformName() == QStringLiteral("cocoa"))
 		new MacPanelObserver(widget, dismiss);
@@ -144,7 +137,7 @@ static NSImage *panelMask(void)
 	return mask;
 }
 
-void updateMacPanelBackdrop(QWidget *widget)
+void Platform::updatePanelBackdrop(QWidget *widget)
 {
 	NSView *view = nativeView(widget);
 	NSView *parent = view.superview;
@@ -175,11 +168,11 @@ void updateMacPanelBackdrop(QWidget *widget)
 	backdrop.appearance = [NSAppearance appearanceNamed:
 		qApp->property("pastesDark").toBool() ?
 		NSAppearanceNameDarkAqua : NSAppearanceNameAqua];
-	widget->setProperty("macPanelBackdrop", true);
+	widget->setProperty("pastesPanelBackdrop", true);
 	widget->update();
 }
 
-void prepareMacPanel(QWidget *widget)
+void Platform::preparePanel(QWidget *widget)
 {
 	/* Create the native window only when preparing to show it. */
 	widget->winId();
@@ -208,10 +201,10 @@ void prepareMacPanel(QWidget *widget)
 	window.collectionBehavior = behavior;
 	/* Stay above full-screen content as well as the Dock. */
 	window.level = CGWindowLevelForKey(kCGScreenSaverWindowLevelKey);
-	updateMacPanelBackdrop(widget);
+	Platform::updatePanelBackdrop(widget);
 }
 
-void activateMacPanel(QWidget *widget)
+void Platform::activatePanel(QWidget *widget)
 {
 	NSView *view = nativeView(widget);
 	NSWindow *window = view.window;
@@ -223,7 +216,7 @@ void activateMacPanel(QWidget *widget)
 	[window makeFirstResponder:view];
 }
 
-void prepareMacDialog(QWidget *widget)
+void Platform::prepareDialog(QWidget *widget)
 {
 	NSWindow *window = nativeView(widget).window;
 	if (!window)
@@ -249,24 +242,73 @@ void prepareMacDialog(QWidget *widget)
 	[window standardWindowButton:NSWindowZoomButton].enabled = NO;
 }
 
-bool popupMacMenu(QMenu *menu, QWidget *anchor)
+namespace Platform {
+
+const PanelAppearance &panelAppearance(void)
 {
-	NSView *view = nativeView(anchor->window());
-	if (!view)
-		return false;
-	NSMenu *nativeMenu = menu->toNSMenu();
-	if (!nativeMenu)
-		return false;
-	/* Keep Qt's delegate and action targets. AppKit supplies the rounded
-	 * material, selection, spacing and key-equivalent columns. */
-	nativeMenu.appearance = [NSAppearance appearanceNamed:
-		qApp->property("pastesDark").toBool() ?
-		NSAppearanceNameDarkAqua : NSAppearanceNameAqua];
-	nativeMenu.font = [NSFont menuFontOfSize:0];
-	const QPoint point = anchor->mapTo(anchor->window(),
-		QPoint(anchor->width(), anchor->height()+4));
-	const NSPoint location = NSMakePoint(point.x()-nativeMenu.size.width,
-		view.flipped ? point.y() : view.bounds.size.height-point.y());
-	[nativeMenu popUpMenuPositioningItem:nil atLocation:location inView:view];
-	return true;
+	static const PanelAppearance appearance = [] {
+		PanelAppearance value;
+		value.margins = QMargins(24, 12, 24, 12);
+		value.spacing = 8;
+		value.shadow = false;
+		value.nativeBackdrop = true;
+		value.hideForDialog = true;
+		return value;
+	}();
+	return appearance;
+}
+
+const DialogAppearance &dialogAppearance(void)
+{
+	static const DialogAppearance appearance = [] {
+		DialogAppearance value;
+		value.flags = Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint |
+			Qt::WindowCloseButtonHint | Qt::NoDropShadowWindowHint;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+		value.flags |= Qt::ExpandedClientAreaHint | Qt::NoTitleBarBackgroundHint;
+#endif
+		value.outerMargins = QMargins(0, 0, 0, 0);
+		value.contentMargins = QMargins(24, 44, 24, 24);
+		value.nativeControls = true;
+		value.scrollBar = Qt::ScrollBarAlwaysOff;
+		return value;
+	}();
+	return appearance;
+}
+
+QRect panelGeometry(QScreen *screen)
+{
+	if (!screen) screen = panelScreen();
+	if (!screen) return QRect();
+	const QRect area = screen->geometry();
+	const int height = qMin(area.height(), 414);
+	return QRect(area.x(), area.bottom()-height+1, area.width(), height);
+}
+
+QSize cardSize(const QSize &panelSize)
+{
+	/* Include the card's existing 4 px shadow gutter on each side. */
+	const int height = qMax(110, panelSize.height()-126);
+	return QSize(qMin(280, qRound(height*17.0/18.0)+8), height+8);
+}
+
+void initializePanel(QWidget *widget)
+{
+	/* A keyable NSPanel can join other applications' full-screen Spaces. */
+	widget->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
+		Qt::NoDropShadowWindowHint | Qt::Tool);
+	widget->setAttribute(Qt::WA_MacAlwaysShowToolWindow);
+}
+
+void enablePanelBlur(QWidget *) {}
+
+void initializeDialog(QWidget *widget)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+	widget->setAttribute(Qt::WA_ContentsMarginsRespectsSafeArea, false);
+#else
+	Q_UNUSED(widget);
+#endif
+}
+
 }

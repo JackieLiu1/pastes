@@ -11,20 +11,14 @@
 #include <QMimeData>
 #include <QCryptographicHash>
 #include <QImage>
-#include <QFileInfo>
-#include <QFileIconProvider>
 #include <QUrl>
-#include <QBuffer>
 #include <QMenu>
 #include <QAction>
-#include <QMutex>
-#include <QMutexLocker>
 #include <QShortcut>
 #include <QEvent>
 #include <QDebug>
 #include <QSystemTrayIcon>
 #include <QSettings>
-#include <QCursor>
 #include <QKeyEvent>
 #include <QResizeEvent>
 #include <QPointer>
@@ -41,101 +35,11 @@
 #include "cardswipe.h"
 #include "cardreflow.h"
 #include "elasticscroll.h"
-#ifdef Q_OS_MACOS
-#include "window_mac.h"
-#endif
+#include "platform/windowintegration.h"
+#include "platform/menuintegration.h"
 
 /* History older than this is dropped on startup and on every clipboard update */
 static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
-
-static int historyPanelHeight(const QRect &area)
-{
-#ifdef Q_OS_MACOS
-	/* Fit a 288 px card below the header, keeping the action hints. */
-	return qMin(area.height(), 414);
-#else
-	return qMin(area.height(), qBound(300, area.height()*38/100, 450));
-#endif
-}
-
-#ifdef Q_OS_WIN
-#include <windows.h>
-#include <windowsx.h>
-#include <winuser.h>
-#include <shellapi.h>
-#include <comdef.h>
-#include <commctrl.h>
-#include <objbase.h>
-#include <commoncontrols.h>
-#include <QOperatingSystemVersion>
-#endif
-
-#ifdef Q_OS_LINUX
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
-#include <X11/Xutil.h>
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-/* KWindowEffects only exists in the KF5 (Qt5) module */
-#include <KF5/KWindowSystem/KWindowEffects>
-#define PASTES_HAVE_KWINDOWEFFECTS 1
-#endif
-#endif
-
-#ifdef Q_OS_WIN
-typedef enum _WINDOWCOMPOSITIONATTRIB
-{
-	WCA_UNDEFINED = 0,
-	WCA_NCRENDERING_ENABLED = 1,
-	WCA_NCRENDERING_POLICY = 2,
-	WCA_TRANSITIONS_FORCEDISABLED = 3,
-	WCA_ALLOW_NCPAINT = 4,
-	WCA_CAPTION_BUTTON_BOUNDS = 5,
-	WCA_NONCLIENT_RTL_LAYOUT = 6,
-	WCA_FORCE_ICONIC_REPRESENTATION = 7,
-	WCA_EXTENDED_FRAME_BOUNDS = 8,
-	WCA_HAS_ICONIC_BITMAP = 9,
-	WCA_THEME_ATTRIBUTES = 10,
-	WCA_NCRENDERING_EXILED = 11,
-	WCA_NCADORNMENTINFO = 12,
-	WCA_EXCLUDED_FROM_LIVEPREVIEW = 13,
-	WCA_VIDEO_OVERLAY_ACTIVE = 14,
-	WCA_FORCE_ACTIVEWINDOW_APPEARANCE = 15,
-	WCA_DISALLOW_PEEK = 16,
-	WCA_CLOAK = 17,
-	WCA_CLOAKED = 18,
-	WCA_ACCENT_POLICY = 19,
-	WCA_FREEZE_REPRESENTATION = 20,
-	WCA_EVER_UNCLOAKED = 21,
-	WCA_VISUAL_OWNER = 22,
-	WCA_LAST = 23
-} WINDOWCOMPOSITIONATTRIB;
-
-typedef struct _WINDOWCOMPOSITIONATTRIBDATA
-{
-	WINDOWCOMPOSITIONATTRIB Attrib;
-	PVOID pvData;
-	SIZE_T cbData;
-} WINDOWCOMPOSITIONATTRIBDATA;
-
-typedef enum _ACCENT_STATE
-{
-	ACCENT_DISABLED = 0,
-	ACCENT_ENABLE_GRADIENT = 1,
-	ACCENT_ENABLE_TRANSPARENTGRADIENT = 2,
-	ACCENT_ENABLE_BLURBEHIND = 3,
-	ACCENT_INVALID_STATE = 4
-} ACCENT_STATE;
-
-typedef struct _ACCENT_POLICY
-{
-	ACCENT_STATE AccentState;
-	DWORD AccentFlags;
-	DWORD GradientColor;
-	DWORD AnimationId;
-} ACCENT_POLICY;
-
-typedef BOOL (WINAPI *pfnSetWindowCompositionAttribute)(HWND, WINDOWCOMPOSITIONATTRIBDATA*);
-#endif
 
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent),
@@ -146,42 +50,25 @@ MainWindow::MainWindow(QWidget *parent)
 	  __hide_state(true),
 	  __current_item(nullptr)
 {
-#ifdef Q_OS_MACOS
-	QRect rect = QApplication::primaryScreen()->geometry();
-#else
-	QRect rect = QApplication::primaryScreen()->availableGeometry();
-#endif
+	const QRect geometry = Platform::panelGeometry(QApplication::primaryScreen());
 	this->__recording_enabled = !QSettings().value("pauseRecording", false).toBool();
 
-	const int panelHeight = historyPanelHeight(rect);
-	this->setFixedHeight(panelHeight);
-	this->setGeometry(rect.x(), rect.bottom()-panelHeight+1, rect.width(), panelHeight);
-#ifdef Q_OS_MACOS
-	/* Qt::Tool supplies a keyable NSPanel for other apps' full-screen Spaces. */
-	this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
-		Qt::NoDropShadowWindowHint | Qt::Tool);
-	this->setAttribute(Qt::WA_MacAlwaysShowToolWindow);
-#else
-	this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint |
-			     Qt::BypassWindowManagerHint | Qt::SplashScreen);
-#endif
+	this->setFixedHeight(geometry.height());
+	this->setGeometry(geometry);
+	Platform::initializePanel(this);
 	this->setFocusPolicy(Qt::NoFocus);
 	this->setFont(QFont(QStringLiteral("Segoe UI"), 10));
 	this->applyTheme(QSettings().value("theme", "light").toString());
 	this->setCentralWidget(this->__main_frame);
-#if !defined Q_OS_LINUX && !defined Q_OS_WIN && !defined Q_OS_MACOS
-	this->setContentsMargins(0, 10, 0, 0);
-#endif
 	this->setAttribute(Qt::WA_TranslucentBackground, true);
-	this->enabledGlassEffect();
+	Platform::enablePanelBlur(this);
 
 	this->__main_frame->setGeometry(this->geometry());
 	this->__main_frame_shadow->setOffset(0, 0);
 	this->__main_frame_shadow->setColor(QColor(0, 0, 0, 130));
 	this->__main_frame_shadow->setBlurRadius(24);
-#ifndef Q_OS_MACOS
-	this->__main_frame->setGraphicsEffect(this->__main_frame_shadow);
-#endif
+	if (Platform::panelAppearance().shadow)
+		this->__main_frame->setGraphicsEffect(this->__main_frame_shadow);
 	/* Do not move focus before the pointer gesture decides it is a click. */
 	this->__main_frame->setFocusPolicy(Qt::TabFocus);
 	QObject::connect(this->__main_frame, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));
@@ -248,7 +135,7 @@ MainWindow::MainWindow(QWidget *parent)
 	});
 	this->__hide_animation->setDuration(200);
 	this->__hide_animation->setStartValue(this->pos());
-	this->__hide_animation->setEndValue(QPoint(rect.x(), rect.bottom()+1));
+	this->__hide_animation->setEndValue(QPoint(geometry.x(), geometry.bottom()+1));
 	this->__hide_animation->setEasingCurve(QEasingCurve::OutQuad);
 
 	QObject::connect(this->__shortcut, &GlobalShortcut::pasteActivated, [this](void) {
@@ -257,13 +144,7 @@ MainWindow::MainWindow(QWidget *parent)
 		else
 			this->show_window();
 	});
-#ifdef Q_OS_WIN
-	this->__primary_shortcut = QStringLiteral("Win+V");
-#elif defined(Q_OS_MACOS)
-	this->__primary_shortcut = QStringLiteral("Shift+Cmd+V");
-#else
-	this->__primary_shortcut = QStringLiteral("Ctrl+Shift+V");
-#endif
+	this->__primary_shortcut = this->__shortcut->primaryShortcut();
 	QObject::connect(this->__shortcut, &GlobalShortcut::primaryShortcutChanged, this,
 		[this](const QString &shortcut) {
 		this->__primary_shortcut = shortcut;
@@ -301,8 +182,7 @@ MainWindow::MainWindow(QWidget *parent)
 		PastePermissionDialog dialog(this);
 		this->execAppDialog(dialog);
 	}, Qt::QueuedConnection);
-#ifdef Q_OS_MACOS
-	watchMacPanelDismissal(this, [this](bool immediate) {
+	Platform::watchPanelDismissal(this, [this](bool immediate) {
 		if (immediate) {
 			this->__paste_target->cancel();
 			this->__hide_animation->stop();
@@ -312,7 +192,6 @@ MainWindow::MainWindow(QWidget *parent)
 			this->hide_window();
 		}
 	});
-#endif
 }
 
 bool MainWindow::event(QEvent *e)
@@ -550,9 +429,7 @@ void MainWindow::hideEvent(QHideEvent *event)
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
 	QMainWindow::resizeEvent(event);
-#ifdef Q_OS_MACOS
-	updateMacPanelBackdrop(this);
-#endif
+	Platform::updatePanelBackdrop(this);
 	if (!this->__scroll_widget)
 		return;
 	this->resetPointerGesture();
@@ -565,51 +442,30 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::show_window(void)
 {
-#ifdef Q_OS_MACOS
 	/* Re-activating an owned dialog must not summon the history panel. */
-	if (this->__app_dialog_open)
+	if (this->__app_dialog_open && Platform::panelAppearance().hideForDialog)
 		return;
-#endif
 	if (this->__hide_state)
 		this->__paste_target->captureTarget(this);
-#ifdef Q_OS_MACOS
 	/* A copy immediately followed by the hotkey may precede the next poll.
 	 * Populate the panel before showing it, keeping the native source. */
 	this->__clipboard_source->synchronize();
-	if (this->__clipboard_timer->isActive()) {
+	if (this->__clipboard_source->settleInterval() == 0 &&
+		this->__clipboard_timer->isActive()) {
 		this->__clipboard_timer->stop();
 		this->clipboard_later();
 	}
-	QScreen *screen = macPanelScreen();
-#else
-	QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
-	if (!screen)
-		screen = QApplication::primaryScreen();
-#endif
-#ifdef Q_OS_MACOS
-	const QRect area = screen->geometry();
-#else
-	const QRect area = screen->availableGeometry();
-#endif
-	const int panelHeight = historyPanelHeight(area);
-	this->setFixedHeight(panelHeight);
-	this->setGeometry(area.x(), area.bottom()-panelHeight+1, area.width(), panelHeight);
-#ifdef Q_OS_MACOS
-	/* Configure the panel before the animation moves it off screen. */
-	prepareMacPanel(this);
-#endif
+	const QRect geometry = Platform::panelGeometry();
+	this->setFixedHeight(geometry.height());
+	this->setGeometry(geometry);
+	Platform::preparePanel(this);
 	this->__hide_animation->setStartValue(this->pos());
-	this->__hide_animation->setEndValue(QPoint(area.x(), area.bottom()+1));
+	this->__hide_animation->setEndValue(QPoint(geometry.x(), geometry.bottom()+1));
 	this->__hide_animation->setDirection(QAbstractAnimation::Backward);
 	this->__hide_animation->start();
 	this->__hide_state = false;
 	this->show();
-#ifdef Q_OS_MACOS
-	activateMacPanel(this);
-#else
-	this->raise();
-	this->activateWindow();
-#endif
+	Platform::activatePanel(this);
 }
 
 void MainWindow::hide_window(void)
@@ -1081,13 +937,8 @@ void MainWindow::initUI(void)
 	footerWidget->setLayout(footer);
 
 	QVBoxLayout *vlayout = new QVBoxLayout();
-#ifdef Q_OS_MACOS
-	vlayout->setContentsMargins(24, 12, 24, 12);
-	vlayout->setSpacing(8);
-#else
-	vlayout->setContentsMargins(24, 16, 24, 12);
-	vlayout->setSpacing(10);
-#endif
+	vlayout->setContentsMargins(Platform::panelAppearance().margins);
+	vlayout->setSpacing(Platform::panelAppearance().spacing);
 	vlayout->addLayout(hlayout);
 	vlayout->addWidget(this->__scroll_widget, 1);
 	vlayout->addWidget(footerWidget);
@@ -1108,27 +959,21 @@ void MainWindow::setupTrayIcon(void)
 	QMenu *tray_menu = new QMenu(this);
 	QMenu *panel_menu = new QMenu(this->__menu_button);
 
-#ifndef Q_OS_MACOS
-	this->__show_action = new QAction(this);
-	QObject::connect(this->__show_action, &QAction::triggered, [this](void) {
-		this->show_window();
+	if (Platform::menuAppearance().showPanelAction) {
+		this->__show_action = new QAction(this);
+		QObject::connect(this->__show_action, &QAction::triggered, [this](void) {
+			this->show_window();
 	});
 	tray_menu->addAction(this->__show_action);
 	tray_menu->addSeparator();
-#endif
-	QAction *settings = new QAction(QObject::tr("Settings"), this);
-#ifdef Q_OS_MACOS
-	settings->setText(QObject::tr("Preferences…"));
-	settings->setShortcut(QKeySequence::Preferences);
-	this->addAction(settings);
-#endif
+	}
+	QAction *settings = Platform::createSettingsAction(this);
 	settings->setObjectName("SettingsAction");
 	QObject::connect(settings, &QAction::triggered, this, &MainWindow::showSettings);
 	tray_menu->addAction(settings);
 	panel_menu->addAction(settings);
-#ifdef Q_OS_MACOS
-	panel_menu->addSeparator();
-#endif
+	if (Platform::menuAppearance().preferencesSeparator)
+		panel_menu->addSeparator();
 
 	QAction *about_me = new QAction(QObject::tr("About Pastes"), this);
 	QObject::connect(about_me, &QAction::triggered, [this](void) {
@@ -1141,24 +986,14 @@ void MainWindow::setupTrayIcon(void)
 	tray_menu->addSeparator();
 	panel_menu->addSeparator();
 
-	QAction *quit_action = new QAction(QObject::tr("Quit"), this);
-#ifdef Q_OS_MACOS
-	quit_action->setText(QObject::tr("Quit Pastes"));
-	quit_action->setShortcut(QKeySequence::Quit);
-	this->addAction(quit_action);
-#endif
+	QAction *quit_action = Platform::createQuitAction(this);
 	QObject::connect(quit_action, &QAction::triggered, [](void) {
 		qApp->quit();
 	});
 	tray_menu->addAction(quit_action);
 	panel_menu->addAction(quit_action);
 	QObject::connect(this->__menu_button, &QPushButton::clicked, this, [this, panel_menu](void) {
-#ifdef Q_OS_MACOS
-		if (popupMacMenu(panel_menu, this->__menu_button))
-			return;
-#endif
-		panel_menu->exec(this->__menu_button->mapToGlobal(
-			QPoint(0, this->__menu_button->height())));
+		Platform::popupMenu(panel_menu, this->__menu_button);
 	});
 
 	this->__tray_icon = new QSystemTrayIcon(this);
@@ -1204,12 +1039,11 @@ void MainWindow::showSettings(void)
 
 void MainWindow::execAppDialog(AppDialog &dialog)
 {
-#ifdef Q_OS_MACOS
 	/* Cover the activation events dispatched by the modal event loop,
 	 * including those emitted before Qt registers the active dialog. */
 	QScopedValueRollback<bool> dialogOpen(this->__app_dialog_open, true);
-	this->hide_window();
-#endif
+	if (Platform::panelAppearance().hideForDialog)
+		this->hide_window();
 	dialog.exec();
 }
 
@@ -1315,9 +1149,7 @@ void MainWindow::applyTheme(const QString &name)
 
 	this->__theme = (name == "light") ? "light" : "dark";
 	QSettings().setValue("theme", this->__theme);
-#ifdef Q_OS_MACOS
-	updateMacPanelBackdrop(this);
-#endif
+	Platform::updatePanelBackdrop(this);
 }
 
 /* Insert a PasteItem into listwidget */
@@ -1368,14 +1200,7 @@ PasteItem *MainWindow::insertItemWidget(bool back, int row)
 
 QSize MainWindow::cardSize(void) const
 {
-#ifdef Q_OS_MACOS
-	/* Paste's reference card is 272x288 logical pixels; reserve the
-	 * existing 4 px shadow gutter on each side of the visible surface. */
-	const int height = qMax(110, this->height()-126);
-	return QSize(qMin(280, qRound(height*17.0/18.0)+8), height+8);
-#else
-	return QSize(qBound(210, this->width()/6, 280), qMax(110, this->height()-136));
-#endif
+	return Platform::cardSize(this->size());
 }
 
 void MainWindow::resetItemTabOrder(void)
@@ -1518,30 +1343,4 @@ void MainWindow::clipboard_later(void)
 	this->resetItemTabOrder();
 	this->updateQuickPasteNumbers();
 	this->updateTrayTooltip();
-}
-
-void MainWindow::enabledGlassEffect(void)
-{
-#ifdef Q_OS_WIN
-	if (QOperatingSystemVersion::current() >= QOperatingSystemVersion::Windows10) {
-		HWND hWnd = HWND(this->winId());
-		HMODULE hUser = GetModuleHandle(L"user32.dll");
-		if (hUser) {
-			pfnSetWindowCompositionAttribute setWindowCompositionAttribute =
-					(pfnSetWindowCompositionAttribute)GetProcAddress(hUser, "SetWindowCompositionAttribute");
-			if (setWindowCompositionAttribute) {
-				ACCENT_POLICY accent = { ACCENT_ENABLE_BLURBEHIND, 0, 0, 0 };
-				WINDOWCOMPOSITIONATTRIBDATA data;
-				data.Attrib = WCA_ACCENT_POLICY;
-				data.pvData = &accent;
-				data.cbData = sizeof(accent);
-				setWindowCompositionAttribute(hWnd, &data);
-			}
-		}
-	}
-#endif
-
-#ifdef PASTES_HAVE_KWINDOWEFFECTS
-	KWindowEffects::enableBlurBehind(this->winId(), true);
-#endif
 }

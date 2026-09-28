@@ -69,3 +69,8 @@ void ShortcutPrivate::stop()
 	XFlush(m_display);
 	XCloseDisplay(m_display);
 }
+
+QString GlobalShortcut::primaryShortcut(void) const
+{
+	return QStringLiteral("Ctrl+Shift+V");
+}

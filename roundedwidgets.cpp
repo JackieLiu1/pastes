@@ -1,4 +1,5 @@
 #include "roundedwidgets.h"
+#include "platform/windowintegration.h"
 
 #include <QApplication>
 #include <QImage>
@@ -25,19 +26,19 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 	style.border = Qt::transparent;
 	switch (role) {
 	case RoundedRole::Panel:
-#ifdef Q_OS_MACOS
-		style.fill = QColor(dark ? "#181818" : "#F4F4EF");
-		if (widget->window()->property("macPanelBackdrop").toBool())
-			style.fill.setAlpha(dark ? 72 : 52);
-		style.border = dark ? QColor(255, 255, 255, 76) : QColor(0, 0, 0, 64);
-		/* Keep the glass outline one physical pixel wide on Retina displays. */
-		style.borderWidth = 1/widget->devicePixelRatioF();
-		style.radius = 18; style.corners = 1;
-#else
-		style.fill = dark ? QColor("#181818") : QColor(244, 244, 239, 245);
-		style.border = dark ? QColor(190, 190, 190, 38) : QColor(66, 88, 75, 32);
-		style.radius = 18; style.borderWidth = 1; style.corners = 1;
-#endif
+		if (Platform::panelAppearance().nativeBackdrop) {
+			style.fill = QColor(dark ? "#181818" : "#F4F4EF");
+			if (widget->window()->property("pastesPanelBackdrop").toBool())
+				style.fill.setAlpha(dark ? 72 : 52);
+			style.border = dark ? QColor(255, 255, 255, 76) : QColor(0, 0, 0, 64);
+			/* Keep the glass outline one physical pixel wide on Retina displays. */
+			style.borderWidth = 1/widget->devicePixelRatioF();
+			style.radius = 18; style.corners = 1;
+		} else {
+			style.fill = dark ? QColor("#181818") : QColor(244, 244, 239, 245);
+			style.border = dark ? QColor(190, 190, 190, 38) : QColor(66, 88, 75, 32);
+			style.radius = 18; style.borderWidth = 1; style.corners = 1;
+		}
 		break;
 	case RoundedRole::Card:
 		style.fill = QColor(dark ? "#282828" : "#FFFDF8");
@@ -99,10 +100,8 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 	case RoundedRole::Preview:
 		style.fill = QColor(dark ? "#1F1F1F" : "#F4F4EF");
 		style.border = QColor(dark ? "#414141" : "#DADFD4");
-#ifdef Q_OS_MACOS
-		if (!dark)
+		if (!dark && Platform::dialogAppearance().nativeControls)
 			style.border = QColor(0, 0, 0, 64);
-#endif
 		style.radius = 18; style.borderWidth = 1;
 		break;
 	case RoundedRole::PreviewContent:

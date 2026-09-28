@@ -35,22 +35,30 @@ set(PASTES_SOURCES
     pasteitemcontext.cpp pasteitemcontext.h
     searchbar.cpp searchbar.h
     platform/clipboardsource.h platform/pastetarget.h
+    platform/windowintegration.h platform/menuintegration.h
+    platform/menuintegration.cpp platform/applicationintegration.h
     shortcut.cpp shortcut.h
     sources.qrc
 )
 
 if(WIN32)
     list(APPEND PASTES_SOURCES shortcut_win.cpp shortcut_win_state.h
-        platform/windows/clipboardsource.cpp platform/windows/pastetarget.cpp)
+        platform/windows/clipboardsource.cpp platform/windows/pastetarget.cpp
+        platform/windows/windowblur.cpp platform/desktop/windowintegration.cpp
+        platform/desktop/menuintegration.cpp platform/desktop/applicationintegration.cpp)
 elseif(APPLE)
     enable_language(OBJCXX)
     set(CMAKE_OBJCXX_STANDARD 17)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
-    list(APPEND PASTES_SOURCES shortcut_mac.cpp window_mac.mm window_mac.h
-        platform/macos/clipboardsource.mm platform/macos/pastetarget.mm)
+    list(APPEND PASTES_SOURCES shortcut_mac.cpp
+        platform/macos/clipboardsource.mm platform/macos/pastetarget.mm
+        platform/macos/windowintegration.mm platform/macos/menuintegration.mm
+        platform/macos/applicationintegration.mm)
 elseif(UNIX AND NOT APPLE)
     list(APPEND PASTES_SOURCES shortcut_x11.cpp
-        platform/linux/clipboardsource.cpp platform/linux/pastetarget.cpp)
+        platform/linux/clipboardsource.cpp platform/linux/pastetarget.cpp
+        platform/linux/windowblur.cpp platform/desktop/windowintegration.cpp
+        platform/desktop/menuintegration.cpp platform/desktop/applicationintegration.cpp)
 endif()
 
 qt_add_executable(pastes ${PASTES_SOURCES})

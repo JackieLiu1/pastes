@@ -70,7 +70,6 @@ private:
 	void resetPointerGesture(bool cancelSwipe = true, bool cancelReflow = true, bool cancelScroll = true);
 	PasteItem *currentPasteItem(void);
 	void pasteToPreviousWindow(bool hasUrls);
-	void enabledGlassEffect(void);
 
 public slots:
 	void hide_window(void);
@@ -86,9 +85,7 @@ private:
 	GlobalShortcut			*__shortcut;
 	/* That is a workaround for hide window */
 	bool				__hide_state;
-#ifdef Q_OS_MACOS
 	bool				__app_dialog_open = false;
-#endif
 	Database			__db;
 	/* Defers snapshots; macOS does not debounce separate native copies. */
 	QTimer				*__clipboard_timer;

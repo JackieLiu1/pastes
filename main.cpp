@@ -4,12 +4,9 @@
 #include <QTranslator>
 #include <QLocale>
 #include <QTimer>
-#include <QIcon>
 
 #include "mainwindow.h"
-#ifdef Q_OS_MACOS
-#include "window_mac.h"
-#endif
+#include "platform/applicationintegration.h"
 
 #ifndef QM_FILES_INSTALL_PATH
 #define QM_FILES_INSTALL_PATH "."
@@ -43,29 +40,24 @@ int main(int argc, char *argv[])
 #endif
 
 	SingleApplication a(argc, argv);
-#ifdef Q_OS_MACOS
-	a.setWindowIcon(QIcon(":/resources/pastes.svg"));
-	configureMacApplication();
-#endif
+	Platform::configureApplication();
 	LoadTranlateFile(&a);
 
 	MainWindow w;
-#ifdef Q_OS_MACOS
-	QObject::connect(&a, &SingleApplication::instanceStarted,
-			 &w, &MainWindow::show_window);
-	QObject::connect(&a, &QGuiApplication::applicationStateChanged, &w,
-		[&w](Qt::ApplicationState state) {
-		if (state == Qt::ApplicationActive && !w.isVisible())
-			w.show_window();
+	const auto &behavior = Platform::applicationBehavior();
+	QObject::connect(&a, &SingleApplication::instanceStarted, &w, [&w, behavior](void) {
+		if (behavior.showOnSecondInstance) w.show_window();
+		else w.hide();
 	});
-	QTimer::singleShot(0, &w, &MainWindow::show_window);
-#else
-	QObject::connect(&a, &SingleApplication::instanceStarted, [&w](void) {
-		w.hide();
-	});
-	if (a.arguments().contains(QStringLiteral("--show")))
+	if (behavior.showOnActivation) {
+		QObject::connect(&a, &QGuiApplication::applicationStateChanged, &w,
+			[&w](Qt::ApplicationState state) {
+			if (state == Qt::ApplicationActive && !w.isVisible())
+				w.show_window();
+		});
+	}
+	if (behavior.showOnLaunch || a.arguments().contains(QStringLiteral("--show")))
 		QTimer::singleShot(0, &w, &MainWindow::show_window);
-#endif
 
 	a.setQuitOnLastWindowClosed(false);
 	return a.exec();
