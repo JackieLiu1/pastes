@@ -1129,12 +1129,14 @@ void MainWindow::setupTrayIcon(void)
 	QMenu *tray_menu = new QMenu(this);
 	QMenu *panel_menu = new QMenu(this->__menu_button);
 
+#ifndef Q_OS_MACOS
 	this->__show_action = new QAction(this);
 	QObject::connect(this->__show_action, &QAction::triggered, [this](void) {
 		this->show_window();
 	});
 	tray_menu->addAction(this->__show_action);
 	tray_menu->addSeparator();
+#endif
 	QAction *settings = new QAction(QObject::tr("Settings"), this);
 #ifdef Q_OS_MACOS
 	settings->setText(QObject::tr("Preferences…"));
