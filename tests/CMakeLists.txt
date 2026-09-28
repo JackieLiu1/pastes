@@ -1,0 +1,34 @@
+add_executable(history_test history_test.cpp)
+target_link_libraries(history_test PRIVATE pastes_application)
+add_test(NAME history_contract COMMAND history_test)
+
+add_executable(database_test database_test.cpp)
+target_link_libraries(database_test PRIVATE pastes_storage)
+add_test(NAME database_contract COMMAND database_test)
+
+add_executable(clipboard_test clipboard_test.cpp)
+target_link_libraries(clipboard_test PRIVATE pastes_application)
+add_test(NAME clipboard_contract COMMAND clipboard_test)
+
+add_executable(historyview_test historyview_test.cpp ../sources.qrc)
+target_link_libraries(historyview_test PRIVATE pastes_ui)
+add_test(NAME historyview_contract COMMAND historyview_test)
+
+# These test injected adapters and widget commands, not native window focus.
+set_tests_properties(clipboard_contract historyview_contract PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+set_tests_properties(history_contract database_contract clipboard_contract
+    historyview_contract PROPERTIES TIMEOUT 30)
+
+if(WIN32)
+    # CTest child processes need the Qt/compiler runtime directory even when
+    # launched from an IDE or a shell without the toolchain on its PATH.
+    set(test_path "$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}")
+    string(REPLACE ";" "\\;" test_path "${test_path}")
+    set_property(TEST history_contract database_contract clipboard_contract
+        historyview_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
+endif()
+
+add_test(NAME architecture_dependencies
+    COMMAND ${CMAKE_COMMAND} -DPASTES_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+        -P ${PROJECT_SOURCE_DIR}/cmake/check-dependencies.cmake)

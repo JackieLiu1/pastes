@@ -1,0 +1,20 @@
+# Fail on outward dependencies instead of relying on directory names alone.
+set(core_forbidden "ui/|storage/|application/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
+set(application_forbidden "ui/|storage/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
+set(storage_forbidden "ui/|platform/|QWidget|QApplication|QPixmap|QtWidgets|windows.h|X11/|AppKit|Carbon")
+set(ui_forbidden "storage/|QSql|QtSql|windows.h|X11/|AppKit|Carbon")
+set(platform_forbidden "ui/|storage/")
+
+foreach(layer core application storage ui platform)
+    file(GLOB_RECURSE sources "${PASTES_SOURCE_DIR}/${layer}/*.h"
+        "${PASTES_SOURCE_DIR}/${layer}/*.cpp" "${PASTES_SOURCE_DIR}/${layer}/*.mm")
+    foreach(source IN LISTS sources)
+        file(STRINGS "${source}" includes REGEX "^[ \t]*#[ \t]*include")
+        foreach(include IN LISTS includes)
+            if(include MATCHES "${${layer}_forbidden}")
+                message(FATAL_ERROR "Forbidden ${layer} dependency in ${source}: ${include}")
+            endif()
+        endforeach()
+    endforeach()
+endforeach()
+message(STATUS "Architecture dependency boundaries verified")
