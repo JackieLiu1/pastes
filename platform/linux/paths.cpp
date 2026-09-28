@@ -15,9 +15,3 @@ QString Platform::translationDirectory(void)
 {
 	return QStringLiteral(QM_FILES_INSTALL_PATH);
 }
-
-bool Platform::prepareDatabaseDirectory(const QString &path)
-{
-	Q_UNUSED(path);
-	return true;
-}

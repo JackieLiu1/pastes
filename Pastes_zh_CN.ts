@@ -34,12 +34,12 @@
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="1106"/>
+        <location filename="ui/historyview.cpp" line="445"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="1109"/>
+        <location filename="ui/mainwindow.cpp" line="191"/>
         <source>Show (%1)</source>
         <translation>显示（%1）</translation>
     </message>
@@ -50,19 +50,19 @@
         <translation>托盘图标</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="121"/>
+        <location filename="ui/pasteitem.cpp" line="120"/>
         <source>Image</source>
         <translation>图片</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="142"/>
-        <location filename="ui/pasteitem.cpp" line="163"/>
+        <location filename="ui/pasteitem.cpp" line="141"/>
+        <location filename="ui/pasteitem.cpp" line="162"/>
         <source>Link</source>
         <translation>超链接</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="145"/>
-        <location filename="ui/pasteitem.cpp" line="166"/>
+        <location filename="ui/pasteitem.cpp" line="144"/>
+        <location filename="ui/pasteitem.cpp" line="165"/>
         <source>Color</source>
         <translation>颜色</translation>
     </message>
@@ -75,7 +75,7 @@
         <translation type="vanished">富文本</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="196"/>
+        <location filename="ui/pasteitem.cpp" line="195"/>
         <source>Files</source>
         <translation>个文件</translation>
     </message>
@@ -97,7 +97,7 @@
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="161"/>
-        <location filename="ui/mainwindow.cpp" line="1018"/>
+        <location filename="ui/mainwindow.cpp" line="216"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
     </message>
@@ -154,69 +154,69 @@
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="1064"/>
+        <location filename="ui/mainwindow.cpp" line="184"/>
         <source>records</source>
         <translation>条记录</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="918"/>
+        <location filename="ui/historyview.cpp" line="296"/>
         <source>Clipboard</source>
         <translation>剪贴板历史</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="150"/>
-        <location filename="ui/pasteitem.cpp" line="169"/>
+        <location filename="ui/pasteitem.cpp" line="149"/>
+        <location filename="ui/pasteitem.cpp" line="168"/>
         <source>Text</source>
         <translation>文本</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="150"/>
+        <location filename="ui/pasteitem.cpp" line="149"/>
         <source>Code</source>
         <translation>代码</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="201"/>
+        <location filename="ui/previewdialog.cpp" line="202"/>
         <source>Paste</source>
         <translation>粘贴</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="278"/>
+        <location filename="ui/pasteitem.cpp" line="277"/>
         <source>Copy as Plain Text</source>
         <translation>复制为纯文本</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="277"/>
-        <location filename="ui/previewdialog.cpp" line="183"/>
-        <location filename="ui/previewdialog.cpp" line="190"/>
+        <location filename="ui/pasteitem.cpp" line="276"/>
+        <location filename="ui/previewdialog.cpp" line="184"/>
+        <location filename="ui/previewdialog.cpp" line="191"/>
         <source>Copy to Clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="184"/>
+        <location filename="ui/pasteitem.cpp" line="183"/>
         <source>File path</source>
         <translation>文件路径</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="282"/>
-        <location filename="ui/previewdialog.cpp" line="72"/>
-        <location filename="ui/previewdialog.cpp" line="104"/>
-        <location filename="ui/previewdialog.cpp" line="164"/>
+        <location filename="ui/pasteitem.cpp" line="281"/>
+        <location filename="ui/previewdialog.cpp" line="73"/>
+        <location filename="ui/previewdialog.cpp" line="105"/>
+        <location filename="ui/previewdialog.cpp" line="165"/>
         <source>Preview</source>
         <translation>预览</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="283"/>
+        <location filename="ui/pasteitem.cpp" line="282"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="916"/>
+        <location filename="ui/historyview.cpp" line="294"/>
         <source>Pastes</source>
         <translation>Pastes</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="874"/>
-        <location filename="ui/mainwindow.cpp" line="875"/>
+        <location filename="ui/historyview.cpp" line="252"/>
+        <location filename="ui/historyview.cpp" line="253"/>
         <source>Menu</source>
         <translation>菜单</translation>
     </message>
@@ -226,22 +226,22 @@
         <translation>输入即可搜索</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="569"/>
+        <location filename="ui/historyview.cpp" line="144"/>
         <source>%1 items</source>
         <translation>%1 条记录</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="570"/>
+        <location filename="ui/historyview.cpp" line="145"/>
         <source>%1 of %2 items</source>
         <translation>%2 条记录中找到 %1 条</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="574"/>
+        <location filename="ui/historyview.cpp" line="149"/>
         <source>Copy something to get started</source>
         <translation>复制一段文字或一张图片，从这里开始</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="574"/>
+        <location filename="ui/historyview.cpp" line="149"/>
         <source>No matching items</source>
         <translation>没有找到匹配的内容</translation>
     </message>
@@ -250,49 +250,49 @@
         <translation type="vanished">← → 浏览   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="81"/>
+        <location filename="ui/pasteitem.cpp" line="80"/>
         <source>Ctrl+%1 to paste</source>
         <translation>按 Ctrl+%1 粘贴</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="34"/>
+        <location filename="ui/previewdialog.cpp" line="35"/>
         <source>Image preview</source>
         <translation>图片预览</translation>
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="65"/>
-        <location filename="ui/previewdialog.cpp" line="118"/>
+        <location filename="ui/previewdialog.cpp" line="119"/>
         <source>Close (Esc)</source>
         <translation>关闭（Esc）</translation>
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="66"/>
-        <location filename="ui/previewdialog.cpp" line="119"/>
+        <location filename="ui/previewdialog.cpp" line="120"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="171"/>
+        <location filename="ui/previewdialog.cpp" line="172"/>
         <source>%1 files</source>
         <translation>%1 个文件</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="173"/>
+        <location filename="ui/previewdialog.cpp" line="174"/>
         <source>%1 characters</source>
         <translation>%1 个字符</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="184"/>
+        <location filename="ui/previewdialog.cpp" line="185"/>
         <source>Copy without closing the preview</source>
         <translation>仅复制，保留预览窗口</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="195"/>
+        <location filename="ui/previewdialog.cpp" line="196"/>
         <source>Copied</source>
         <translation>已复制</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="202"/>
+        <location filename="ui/previewdialog.cpp" line="203"/>
         <source>Paste into the previous application (Enter)</source>
         <translation>粘贴到原来的应用（Enter）</translation>
     </message>
@@ -305,17 +305,17 @@
         <translation type="vanished">预览（Space）</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="943"/>
+        <location filename="ui/historyview.cpp" line="321"/>
         <source>Removed from history</source>
         <translation>已从历史记录移除</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="947"/>
+        <location filename="ui/historyview.cpp" line="325"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="948"/>
+        <location filename="ui/historyview.cpp" line="326"/>
         <source>Undo deletion (Ctrl+Z)</source>
         <translation>撤销删除（Ctrl+Z）</translation>
     </message>
@@ -376,8 +376,8 @@
         <translation>偏好设置…</translation>
     </message>
     <message>
-        <location filename="platform/menuintegration.cpp" line="9"/>
         <location filename="ui/settingsdialog.cpp" line="110"/>
+        <location filename="platform/menuintegration.cpp" line="9"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
@@ -498,8 +498,8 @@
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="926"/>
-        <location filename="ui/mainwindow.cpp" line="1065"/>
+        <location filename="ui/historyview.cpp" line="304"/>
+        <location filename="ui/mainwindow.cpp" line="185"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
     </message>

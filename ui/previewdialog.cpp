@@ -1,5 +1,6 @@
 #include "ui/previewdialog.h"
-#include "ui/pasteitem.h"
+#include "core/itemdata.h"
+#include "core/clipboarddata.h"
 #include "ui/roundedwidgets.h"
 #include "platform/windowintegration.h"
 #include "ui/filepreview.h"

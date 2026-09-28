@@ -125,7 +125,7 @@ public:
 	QCache<QString, QImage> icons{64};
 };
 
-ClipboardSource::ClipboardSource(QObject *parent) : QObject(parent),
+ClipboardSource::ClipboardSource(QObject *parent) : ClipboardFeed(parent),
 	m_private(std::make_unique<Private>())
 {
 	m_private->worker->moveToThread(&m_private->thread);

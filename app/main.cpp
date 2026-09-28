@@ -4,8 +4,13 @@
 #include <QTranslator>
 #include <QLocale>
 #include <QTimer>
+#include <QSettings>
+#include <QDebug>
 
 #include "ui/mainwindow.h"
+#include "application/clipboardcontroller.h"
+#include "storage/database.h"
+#include "platform/clipboardsource.h"
 #include "platform/applicationintegration.h"
 #include "platform/paths.h"
 
@@ -26,17 +31,22 @@ int main(int argc, char *argv[])
 	QCoreApplication::setOrganizationName("JackieLiu");
 	QCoreApplication::setApplicationName("Pastes");
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-	/* On Qt6 high-DPI scaling is always on and these attributes are gone */
-	QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-	QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-#endif
-
 	SingleApplication a(argc, argv);
 	Platform::configureApplication();
 	LoadTranlateFile(&a);
 
-	MainWindow w;
+	/* Construction order is the lifetime graph: views disappear before
+	 * services, then the repository drains its independent worker queue. */
+	Database repository(Platform::databasePath());
+	QObject::connect(&repository, &HistoryRepository::failed, &a, [](const QString &message) {
+		qWarning() << "Pastes database:" << message;
+	});
+	HistoryService history(repository);
+	ClipboardSource source;
+	ClipboardController clipboard(history, source, *QGuiApplication::clipboard(),
+		!QSettings().value("pauseRecording", false).toBool());
+	MainWindow w(history, clipboard);
+	history.load();
 	const auto &behavior = Platform::applicationBehavior();
 	QObject::connect(&a, &SingleApplication::instanceStarted, &w, [&w, behavior](void) {
 		if (behavior.showOnSecondInstance) w.show_window();

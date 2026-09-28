@@ -3,7 +3,6 @@
 #include "platform/menuintegration.h"
 #include "ui/filepreview.h"
 
-#include <QClipboard>
 #include <QApplication>
 #include <QVBoxLayout>
 #include <QMimeData>
@@ -276,7 +275,7 @@ void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 	QMenu menu(this->window());
 	QAction *copyAction = menu.addAction(QObject::tr("Copy to Clipboard"));
 	QAction *plainAction = menu.addAction(QObject::tr("Copy as Plain Text"));
-	ItemData *data = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
+	const HistoryEntry data = m_entry;
 	plainAction->setEnabled(data && data->mimeData->hasText());
 	menu.addSeparator();
 	QAction *previewAction = menu.addAction(QObject::tr("Preview"));
@@ -294,34 +293,40 @@ void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 		emit this->deleteRequested();
 }
 
-void copyItemDataToClipboard(const ItemData &data, bool plainText)
-{
-	if (!data.mimeData || (plainText && !data.mimeData->hasText()))
-		return;
-
-	QClipboard *clipboard = QApplication::clipboard();
-
-	QMimeData *mime = plainText ? new QMimeData : dup_mimedata(data.mimeData);
-	if (plainText)
-		mime->setText(data.mimeData->text());
-	/* This in-process property preserves source identity without exporting
-	 * private metadata as a clipboard format or retaining the old item. */
-	mime->setProperty("pastesSourceIcon", data.icon);
-	clipboard->setMimeData(mime, QClipboard::Clipboard);
-
-	if (clipboard->supportsSelection())
-		clipboard->setMimeData(dup_mimedata(mime), QClipboard::Selection);
-}
-
 void PasteItem::copyData(bool plainText, bool paste)
 {
-	ItemData *itemData = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
-	if (!itemData || (plainText && !itemData->mimeData->hasText()))
-		return;
-	if (paste)
-		emit this->hideWindow();
-	copyItemDataToClipboard(*itemData, plainText);
-	emit this->clipboardUpdated();
-	if (paste)
-		emit this->copied(itemData->mimeData->hasUrls());
+	if (!m_entry || (plainText && !m_entry->mimeData->hasText())) return;
+	emit copyRequested(m_entry, plainText, paste);
+}
+
+bool PasteItem::setEntry(const HistoryEntry &entry, bool loaded)
+{
+	m_entry = entry;
+	const QMimeData *mime = entry->mimeData;
+	QList<QUrl> urls = mime->urls();
+	bool hasContent = false;
+	if (loaded) {
+		bool localFiles = !urls.isEmpty();
+		for (const QUrl &url : urls) localFiles &= url.isLocalFile();
+		if (localFiles && setUrls(urls)) hasContent = true;
+		else if (mime->hasHtml() && !mime->text().isEmpty()) {
+			setRichText(mime->html(), mime->text());
+			hasContent = true;
+		} else if (mime->hasImage() && setImage(mime)) hasContent = true;
+		else if (mime->hasUrls()) hasContent = !localFiles && setUrls(urls);
+		else if (mime->hasText() && !mime->text().isEmpty()) {
+			setPlainText(mime->text().trimmed());
+			hasContent = true;
+		}
+	} else {
+		if (mime->hasUrls() && !urls.isEmpty()) setUrls(urls);
+		else if (mime->hasHtml() && !mime->text().trimmed().isEmpty())
+			setRichText(mime->html(), mime->text().trimmed());
+		else if (mime->hasImage()) setImage(mime);
+		else setPlainText(mime->text().trimmed());
+		hasContent = true;
+	}
+	setTime(entry->time);
+	setIcon(QPixmap::fromImage(entry->icon));
+	return hasContent;
 }

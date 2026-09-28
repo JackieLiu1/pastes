@@ -4,6 +4,7 @@
 #include "ui/pasteitemcontext.h"
 #include "ui/pasteitembarnner.h"
 #include "core/clipboarddata.h"
+#include "core/itemdata.h"
 
 #include <QListWidgetItem>
 #include <QWidget>
@@ -14,31 +15,13 @@
 #include <QMimeData>
 #include <QDebug>
 
-static inline QMimeData *dup_mimedata(const QMimeData *mimeData)
-{
-	return ClipboardData::duplicate(mimeData);
-}
-
-struct ItemData
-{
-	QMimeData	*mimeData;
-	/* QImage (not QPixmap) so the value can safely cross threads */
-	QImage		icon;
-	QByteArray	md5;
-
-	/* The time of data create */
-	QDateTime	time;
-};
-Q_DECLARE_METATYPE(ItemData);
-
-/* GUI-thread writes shared by cards and owned preview snapshots. */
-void copyItemDataToClipboard(const ItemData &data, bool plainText = false);
-
 class PasteItem : public QWidget
 {
 	Q_OBJECT
 public:
 	explicit PasteItem(QWidget *parent = nullptr, QListWidgetItem *item = nullptr);
+	bool setEntry(const HistoryEntry &entry, bool loaded = false);
+	const HistoryEntry &entry(void) const { return m_entry; }
 	void setImage(const QImage &, const QSize &originalSize = QSize());
 	bool setImage(const QMimeData *mime);
 	void setPlainText(QString);
@@ -86,11 +69,11 @@ private:
 
 	/* text for search */
 	QString				m_text;
+	HistoryEntry m_entry;
 
 Q_SIGNALS:
 	void hideWindow(void);
-	void copied(bool hasUrls);
-	void clipboardUpdated(void);
+	void copyRequested(HistoryEntry entry, bool plainText, bool paste);
 	void moveFocusPrevNext(bool prev, bool wrap);
 	void previewRequested(void);
 	void deleteRequested(void);

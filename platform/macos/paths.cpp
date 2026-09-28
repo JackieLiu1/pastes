@@ -1,8 +1,6 @@
 #include "platform/paths.h"
 
 #include <QCoreApplication>
-#include <QDir>
-#include <QFileInfo>
 #include <QStandardPaths>
 
 QString Platform::databasePath(void)
@@ -14,9 +12,4 @@ QString Platform::databasePath(void)
 QString Platform::translationDirectory(void)
 {
 	return QCoreApplication::applicationDirPath() + QStringLiteral("/../Resources");
-}
-
-bool Platform::prepareDatabaseDirectory(const QString &path)
-{
-	return QDir().mkpath(QFileInfo(path).absolutePath());
 }

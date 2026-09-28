@@ -1,5 +1,7 @@
-# Public contracts and Qt-only facades belong to the application target.
-target_sources(pastes PRIVATE
+# Native adapters depend on application ports, never on application widgets.
+add_library(pastes_platform STATIC)
+target_link_libraries(pastes_platform PUBLIC pastes_application Qt6::Widgets)
+target_sources(pastes_platform PRIVATE
     clipboardsource.h pastetarget.h windowintegration.h windowintegration.cpp
     applicationintegration.h menuintegration.h menuintegration.cpp
     fileicon.h paths.h startupintegration.h startupintegration.cpp
@@ -9,7 +11,7 @@ target_sources(pastes PRIVATE
 # Exactly one native backend is compiled; shared desktop behavior has no SDK
 # dependency and can be reused by Windows and Linux.
 if(WIN32)
-    target_sources(pastes PRIVATE
+    target_sources(pastes_platform PRIVATE
         windows/clipboardsource.cpp windows/pastetarget.cpp
         windows/shortcut.cpp windows/shortcutstate.h windows/windowblur.cpp
         windows/fileicon.cpp windows/paths.cpp windows/startupintegration.cpp
@@ -17,14 +19,14 @@ if(WIN32)
         desktop/applicationintegration.cpp
     )
 elseif(APPLE)
-    target_sources(pastes PRIVATE
+    target_sources(pastes_platform PRIVATE
         macos/clipboardsource.mm macos/pastetarget.mm macos/shortcut.cpp
         macos/windowintegration.mm macos/menuintegration.mm
         macos/applicationintegration.mm macos/fileicon.cpp macos/paths.cpp
         macos/startupintegration.mm
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_sources(pastes PRIVATE
+    target_sources(pastes_platform PRIVATE
         linux/clipboardsource.cpp linux/pastetarget.cpp linux/shortcut.cpp
         linux/windowblur.cpp linux/fileicon.cpp linux/paths.cpp
         linux/startupintegration.cpp desktop/windowintegration.cpp
@@ -36,14 +38,14 @@ endif()
 
 if(WIN32)
     set_target_properties(pastes PROPERTIES WIN32_EXECUTABLE TRUE)
-    target_link_libraries(pastes PRIVATE psapi gdi32 shell32)
+    target_link_libraries(pastes_platform PRIVATE psapi gdi32 shell32)
 elseif(APPLE)
     find_library(CARBON_FRAMEWORK Carbon REQUIRED)
     find_library(APPKIT_FRAMEWORK AppKit REQUIRED)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
     find_library(APPLICATIONSERVICES_FRAMEWORK ApplicationServices REQUIRED)
     find_library(SERVICEMANAGEMENT_FRAMEWORK ServiceManagement REQUIRED)
-    target_link_libraries(pastes PRIVATE ${CARBON_FRAMEWORK}
+    target_link_libraries(pastes_platform PRIVATE ${CARBON_FRAMEWORK}
         ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK}
         ${APPLICATIONSERVICES_FRAMEWORK} ${SERVICEMANAGEMENT_FRAMEWORK})
     set_target_properties(pastes PROPERTIES
@@ -58,7 +60,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(X11 REQUIRED)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0 glib-2.0 gio-unix-2.0)
-    target_link_libraries(pastes PRIVATE
+    target_link_libraries(pastes_platform PRIVATE
         X11::X11
         ${X11_Xtst_LIB}
         PkgConfig::GIO
@@ -67,7 +69,7 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # Linux resolves installed translations through the paths service
-    target_compile_definitions(pastes PRIVATE
+    target_compile_definitions(pastes_platform PRIVATE
         QM_FILES_INSTALL_PATH="${CMAKE_INSTALL_FULL_DATADIR}/pastes/translations/"
     )
     install(FILES "${PROJECT_SOURCE_DIR}/pastes.desktop" DESTINATION /etc/xdg/autostart)

@@ -11,7 +11,7 @@
 
 class ClipboardSource::Private {};
 
-ClipboardSource::ClipboardSource(QObject *parent) : QObject(parent),
+ClipboardSource::ClipboardSource(QObject *parent) : ClipboardFeed(parent),
 	m_private(std::make_unique<Private>())
 {
 	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged,

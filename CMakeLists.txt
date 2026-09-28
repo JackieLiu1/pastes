@@ -17,26 +17,62 @@ find_package(Qt6 6.3 REQUIRED COMPONENTS Core Gui Widgets Sql Network LinguistTo
 set(QAPPLICATION_CLASS QApplication)
 add_subdirectory(3rd/SingleApplication)
 
-set(PASTES_SOURCES
-    app/main.cpp
-    ui/mainframe.cpp ui/mainframe.h
-    ui/roundedwidgets.cpp ui/roundedwidgets.h
-    ui/previewdialog.cpp ui/previewdialog.h
-    ui/appdialog.cpp ui/appdialog.h
-    ui/settingsdialog.cpp ui/settingsdialog.h
-    ui/cardswipe.cpp ui/cardswipe.h
-    ui/cardreflow.cpp ui/cardreflow.h
-    ui/elasticscroll.cpp ui/elasticscroll.h
-    ui/mainwindow.cpp ui/mainwindow.h
-    core/historypolicy.h
-    storage/database.cpp storage/database.h
+# Dependencies point inward: core <- application <- adapters / UI.
+add_library(pastes_core STATIC
+    core/itemdata.cpp core/itemdata.h
     core/clipboarddata.cpp core/clipboarddata.h
-    ui/pasteitem.cpp ui/pasteitem.h
-    ui/pasteitembarnner.cpp ui/pasteitembarnner.h
-    ui/pasteitemcontext.cpp ui/pasteitemcontext.h
-    ui/filepreview.cpp ui/filepreview.h
-    ui/searchbar.cpp ui/searchbar.h
-    sources.qrc
+    core/clipboardcontent.cpp core/clipboardcontent.h
+    core/historypolicy.h
+)
+target_include_directories(pastes_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(pastes_core PUBLIC Qt6::Core Qt6::Gui)
+
+add_library(pastes_application STATIC
+    application/historyrepository.h application/clipboardfeed.h
+    application/historyservice.cpp application/historyservice.h
+    application/clipboardcontroller.cpp application/clipboardcontroller.h
+)
+target_link_libraries(pastes_application PUBLIC pastes_core)
+
+add_library(pastes_storage STATIC
+    storage/database.cpp storage/database.h
+    storage/storedentry.cpp storage/storedentry.h
+)
+target_link_libraries(pastes_storage PUBLIC pastes_application PRIVATE Qt6::Sql)
+
+set(PASTES_UI_SOURCES
+    ui/appdialog.cpp
+    ui/appdialog.h
+    ui/cardinteraction.cpp
+    ui/cardinteraction.h
+    ui/cardreflow.cpp
+    ui/cardreflow.h
+    ui/cardswipe.cpp
+    ui/cardswipe.h
+    ui/elasticscroll.cpp
+    ui/elasticscroll.h
+    ui/filepreview.cpp
+    ui/filepreview.h
+    ui/historyview.cpp
+    ui/historyview.h
+    ui/mainframe.cpp
+    ui/mainframe.h
+    ui/mainwindow.cpp
+    ui/mainwindow.h
+    ui/pasteitem.cpp
+    ui/pasteitem.h
+    ui/pasteitembarnner.cpp
+    ui/pasteitembarnner.h
+    ui/pasteitemcontext.cpp
+    ui/pasteitemcontext.h
+    ui/previewdialog.cpp
+    ui/previewdialog.h
+    ui/roundedwidgets.cpp
+    ui/roundedwidgets.h
+    ui/searchbar.cpp
+    ui/searchbar.h
+    ui/settingsdialog.cpp
+    ui/settingsdialog.h
 )
 
 if(APPLE)
@@ -48,19 +84,15 @@ if(APPLE)
         MACOSX_PACKAGE_LOCATION Resources)
 endif()
 
-qt_add_executable(pastes ${PASTES_SOURCES} ${PASTES_MACOS_ICON})
+qt_add_executable(pastes app/main.cpp sources.qrc ${PASTES_MACOS_ICON})
 target_include_directories(pastes PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_compile_definitions(pastes PRIVATE PASTES_VERSION="${PROJECT_VERSION}")
-
-target_link_libraries(pastes PRIVATE
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
-    Qt6::Sql
-    SingleApplication::SingleApplication
-)
-
 add_subdirectory(platform)
+
+add_library(pastes_ui STATIC ${PASTES_UI_SOURCES})
+target_link_libraries(pastes_ui PUBLIC pastes_application pastes_platform Qt6::Widgets)
+target_compile_definitions(pastes_ui PRIVATE PASTES_VERSION="${PROJECT_VERSION}")
+target_link_libraries(pastes PRIVATE pastes_ui pastes_storage SingleApplication::SingleApplication)
+
 
 # translations: Pastes_zh_CN.ts -> Pastes_zh_CN.qm
 qt_add_translation(QM_FILES Pastes_zh_CN.ts)
