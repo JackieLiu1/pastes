@@ -30,12 +30,8 @@ class AppDialog;
 class CardSwipeOverlay;
 class CardReflowOverlay;
 class ElasticScrollController;
-#ifdef Q_OS_MACOS
-class MacPasteController;
-#endif
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+class PasteTarget;
 class ClipboardSource;
-#endif
 class MainWindow : public QMainWindow
 {
 	Q_OBJECT
@@ -73,8 +69,7 @@ private:
 	bool handlePointerEvent(QObject *object, QEvent *event);
 	void resetPointerGesture(bool cancelSwipe = true, bool cancelReflow = true, bool cancelScroll = true);
 	PasteItem *currentPasteItem(void);
-	void pasteToPreviousWindow(void);
-	QPixmap getClipboardOwnerIcon(void);
+	void pasteToPreviousWindow(bool hasUrls);
 	void enabledGlassEffect(void);
 
 public slots:
@@ -93,7 +88,6 @@ private:
 	bool				__hide_state;
 #ifdef Q_OS_MACOS
 	bool				__app_dialog_open = false;
-	MacPasteController		*__mac_paste = nullptr;
 #endif
 	Database			__db;
 	/* Defers snapshots; macOS does not debounce separate native copies. */
@@ -107,7 +101,7 @@ private:
 	QLabel				*__empty_state = nullptr;
 	QPushButton			*__menu_button;
 	QListWidget			*__scroll_widget = nullptr;
-	quintptr			__paste_target = 0;
+	PasteTarget			*__paste_target = nullptr;
 	QString				__primary_shortcut;
 	QPointer<PasteItem>		__pressed_item;
 	QPointer<PasteItem>		__last_clicked_item;
@@ -147,11 +141,9 @@ private:
 	QString				__theme;
 	bool				__recording_enabled = true;
 
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	ClipboardSource			*__clipboard_source;
 	quint64				__source_request = 0;
 	QImage				__source_icon;
-#endif
 
 	/* Use for store current row when searching. Not a QObject, so it can't
 	 * be a QPointer: clipboard_later() resets it when it deletes the item. */

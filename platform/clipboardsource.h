@@ -1,21 +1,23 @@
-#ifndef CLIPBOARDSOURCE_MAC_H
-#define CLIPBOARDSOURCE_MAC_H
+#ifndef CLIPBOARDSOURCE_H
+#define CLIPBOARDSOURCE_H
 
 #include <QObject>
 #include <QImage>
 #include <memory>
 
-/* Observe native changes while Qt is inactive, keeping the source tied
- * to the copy rather than the later activation of the history panel. */
+/* Notifications and source icons share one contract on every platform.
+ * Native handles and worker state stay private to the selected backend. */
 class ClipboardSource : public QObject
 {
 	Q_OBJECT
 public:
 	explicit ClipboardSource(QObject *parent = nullptr);
 	~ClipboardSource();
+	int settleInterval(void) const;
 	void capture(quint64 request);
-	/* Return true when the native pasteboard changed since the last check. */
+	/* True when a newer native copy invalidates the pending snapshot. */
 	bool synchronize(void);
+	QImage snapshotIcon(void);
 
 signals:
 	void clipboardChanged(void);
@@ -27,4 +29,4 @@ private:
 	std::unique_ptr<Private> m_private;
 };
 
-#endif // CLIPBOARDSOURCE_MAC_H
+#endif

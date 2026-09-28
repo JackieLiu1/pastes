@@ -1,4 +1,4 @@
-#include "clipboardsource_mac.h"
+#include "platform/clipboardsource.h"
 
 #include <QCache>
 #include <QClipboard>
@@ -142,4 +142,14 @@ bool ClipboardSource::synchronize(void)
 void ClipboardSource::capture(quint64 request)
 {
 	emit iconReady(request, m_private->icon);
+}
+
+int ClipboardSource::settleInterval(void) const
+{
+	return 0;
+}
+
+QImage ClipboardSource::snapshotIcon(void)
+{
+	return m_private->icon;
 }

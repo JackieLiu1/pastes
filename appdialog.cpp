@@ -1,8 +1,8 @@
 #include "appdialog.h"
+#include "platform/pastetarget.h"
 #include "roundedwidgets.h"
 #ifdef Q_OS_MACOS
 #include "window_mac.h"
-#include "paste_mac.h"
 #endif
 
 #include <QApplication>
@@ -162,7 +162,6 @@ void AppDialog::changeEvent(QEvent *event)
 	}
 }
 
-#ifdef Q_OS_MACOS
 PastePermissionDialog::PastePermissionDialog(QWidget *parent) :
 	AppDialog(QObject::tr("Allow direct paste"), 492, parent)
 {
@@ -185,13 +184,12 @@ PastePermissionDialog::PastePermissionDialog(QWidget *parent) :
 	allow->setObjectName("PreviewAction"); allow->setProperty("primary", true);
 	allow->setText(QObject::tr("Open System Settings"));
 	QObject::connect(allow, &QPushButton::clicked, this, [this](void) {
-		requestMacPastePermission();
+		PasteTarget::requestPermission();
 		accept();
 	});
 	buttons->addWidget(allow);
 	bodyLayout()->addLayout(buttons);
 }
-#endif
 
 AboutDialog::AboutDialog(QWidget *parent) : AppDialog(QObject::tr("About Pastes"), 492, parent)
 {

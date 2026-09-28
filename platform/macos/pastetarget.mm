@@ -1,4 +1,4 @@
-#include "paste_mac.h"
+#include "platform/pastetarget.h"
 
 #include <QDebug>
 #include <QElapsedTimer>
@@ -58,7 +58,7 @@ void sendPasteShortcut(pid_t target)
 
 }
 
-class MacPasteController::Private
+class PasteTarget::Private
 {
 public:
 	~Private()
@@ -84,23 +84,24 @@ public:
 	bool permissionNotified = false;
 };
 
-MacPasteController::MacPasteController(QObject *parent) : QObject(parent),
+PasteTarget::PasteTarget(QObject *parent) : QObject(parent),
 	m_private(std::make_unique<Private>())
 {
 	m_private->timer.setInterval(20);
-	QObject::connect(&m_private->timer, &QTimer::timeout, this, &MacPasteController::tryPaste);
+	QObject::connect(&m_private->timer, &QTimer::timeout, this, &PasteTarget::tryPaste);
 }
 
-MacPasteController::~MacPasteController() = default;
+PasteTarget::~PasteTarget() = default;
 
-void MacPasteController::cancel(void)
+void PasteTarget::cancel(void)
 {
 	m_private->timer.stop();
 	m_private->panel.clear();
 }
 
-void MacPasteController::captureTarget(void)
+void PasteTarget::captureTarget(QWidget *panel)
 {
+	Q_UNUSED(panel);
 	cancel();
 	m_private->clearTarget();
 	NSRunningApplication *application = NSWorkspace.sharedWorkspace.frontmostApplication;
@@ -118,7 +119,7 @@ void MacPasteController::captureTarget(void)
 	}
 }
 
-void MacPasteController::notifyPermissionRequired(void)
+void PasteTarget::notifyPermissionRequired(void)
 {
 	if (m_private->permissionNotified)
 		return;
@@ -126,8 +127,9 @@ void MacPasteController::notifyPermissionRequired(void)
 	emit permissionRequired();
 }
 
-void MacPasteController::paste(QWidget *panel)
+void PasteTarget::paste(QWidget *panel, bool hasUrls)
 {
+	Q_UNUSED(hasUrls);
 	cancel();
 	if (!m_private->application || m_private->application.terminated)
 		return;
@@ -141,7 +143,7 @@ void MacPasteController::paste(QWidget *panel)
 	m_private->timer.start();
 }
 
-void MacPasteController::tryPaste(void)
+void PasteTarget::tryPaste(void)
 {
 	NSRunningApplication *target = m_private->application;
 	if (!m_private->panel || !target || target.terminated ||
@@ -205,7 +207,7 @@ void MacPasteController::tryPaste(void)
 	sendPasteShortcut(target.processIdentifier);
 }
 
-void requestMacPastePermission(void)
+void PasteTarget::requestPermission(void)
 {
 	const NSDictionary *options = @{(__bridge NSString *)kAXTrustedCheckOptionPrompt: @YES};
 	if (AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)options)) {

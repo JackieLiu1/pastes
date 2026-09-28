@@ -94,7 +94,7 @@ private:
 
 Q_SIGNALS:
 	void hideWindow(void);
-	void copied(void);
+	void copied(bool hasUrls);
 	void clipboardUpdated(void);
 	void moveFocusPrevNext(bool prev);
 	void previewRequested(void);

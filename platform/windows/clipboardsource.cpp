@@ -1,5 +1,9 @@
-#include "clipboardsource_win.h"
+#include "platform/clipboardsource.h"
 
+#include <QApplication>
+#include <QClipboard>
+#include <QThread>
+#include <QCache>
 #include <windows.h>
 #include <shellapi.h>
 
@@ -113,25 +117,36 @@ QImage executableIcon(const QString &path)
 
 }
 
-ClipboardSource::ClipboardSource(QObject *parent) : QObject(parent), m_worker(new QObject)
+class ClipboardSource::Private
 {
-	m_worker->moveToThread(&m_thread);
-	QObject::connect(&m_thread, &QThread::finished, m_worker, &QObject::deleteLater);
-	m_thread.start();
+public:
+	QObject *worker = new QObject;
+	QThread thread;
+	QCache<QString, QImage> icons{64};
+};
+
+ClipboardSource::ClipboardSource(QObject *parent) : QObject(parent),
+	m_private(std::make_unique<Private>())
+{
+	m_private->worker->moveToThread(&m_private->thread);
+	QObject::connect(&m_private->thread, &QThread::finished, m_private->worker, &QObject::deleteLater);
+	m_private->thread.start();
+	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged,
+		this, &ClipboardSource::clipboardChanged);
 }
 
 ClipboardSource::~ClipboardSource()
 {
-	m_thread.requestInterruption();
-	m_thread.quit();
-	m_thread.wait();
+	m_private->thread.requestInterruption();
+	m_private->thread.quit();
+	m_private->thread.wait();
 }
 
 void ClipboardSource::capture(quint64 request)
 {
 	const Source source = captureSource();
-	QMetaObject::invokeMethod(m_worker, [this, source, request](void) {
-		if (m_thread.isInterruptionRequested())
+	QMetaObject::invokeMethod(m_private->worker, [this, source, request](void) {
+		if (m_private->thread.isInterruptionRequested())
 			return;
 		QImage image = source.icon;
 		if (image.isNull() && source.processId) {
@@ -140,14 +155,29 @@ void ClipboardSource::capture(quint64 request)
 			image = search.icon;
 		}
 		if (image.isNull() && !source.executable.isEmpty()) {
-			if (const QImage *cached = m_icons.object(source.executable))
+			if (const QImage *cached = m_private->icons.object(source.executable))
 				image = *cached;
 			else {
 				image = executableIcon(source.executable);
 				if (!image.isNull())
-					m_icons.insert(source.executable, new QImage(image));
+					m_private->icons.insert(source.executable, new QImage(image));
 			}
 		}
 		emit iconReady(request, image);
 	}, Qt::QueuedConnection);
+}
+
+int ClipboardSource::settleInterval(void) const
+{
+	return 1000;
+}
+
+bool ClipboardSource::synchronize(void)
+{
+	return false;
+}
+
+QImage ClipboardSource::snapshotIcon(void)
+{
+	return QImage();
 }

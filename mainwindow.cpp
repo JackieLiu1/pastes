@@ -32,6 +32,8 @@
 #include <QScopedValueRollback>
 
 #include "mainwindow.h"
+#include "platform/clipboardsource.h"
+#include "platform/pastetarget.h"
 #include "pasteitem.h"
 #include "previewdialog.h"
 #include "appdialog.h"
@@ -41,19 +43,10 @@
 #include "elasticscroll.h"
 #ifdef Q_OS_MACOS
 #include "window_mac.h"
-#include "paste_mac.h"
 #endif
 
 /* History older than this is dropped on startup and on every clipboard update */
 static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
-/* Native macOS polling already observes published pasteboard contents.
- * Snapshot on the next event-loop turn so another copy cannot postpone it. */
-#ifdef Q_OS_MACOS
-static const int CLIPBOARD_SETTLE_MS = 0;
-#else
-/* Collapse rapid format updates from one copy on the other platforms. */
-static const int CLIPBOARD_SETTLE_MS = 1000;
-#endif
 
 static int historyPanelHeight(const QRect &area)
 {
@@ -74,12 +67,7 @@ static int historyPanelHeight(const QRect &area)
 #include <commctrl.h>
 #include <objbase.h>
 #include <commoncontrols.h>
-#include "clipboardsource_win.h"
 #include <QOperatingSystemVersion>
-#endif
-
-#ifdef Q_OS_MACOS
-#include "clipboardsource_mac.h"
 #endif
 
 #ifdef Q_OS_LINUX
@@ -215,10 +203,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 	this->__clipboard_timer = new QTimer(this);
 	this->__clipboard_timer->setSingleShot(true);
-	this->__clipboard_timer->setInterval(CLIPBOARD_SETTLE_MS);
-	QObject::connect(this->__clipboard_timer, &QTimer::timeout, this, &MainWindow::clipboard_later);
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	this->__clipboard_source = new ClipboardSource(this);
+	this->__clipboard_timer->setInterval(this->__clipboard_source->settleInterval());
+	QObject::connect(this->__clipboard_timer, &QTimer::timeout, this, &MainWindow::clipboard_later);
 	QObject::connect(this->__clipboard_source, &ClipboardSource::iconReady, this,
 		[this](quint64 request, const QImage &icon) {
 		if (request == this->__source_request)
@@ -241,25 +228,18 @@ MainWindow::MainWindow(QWidget *parent)
 			break;
 		}
 	}, Qt::QueuedConnection);
-#endif
 	auto clipboardChanged = [this](void) {
 		if (!this->__recording_enabled)
 			return;
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 		const QVariant copiedIcon = QApplication::clipboard()->mimeData()->property("pastesSourceIcon");
 		++this->__source_request;
 		this->__source_icon = copiedIcon.value<QImage>();
 		if (!copiedIcon.isValid())
 			this->__clipboard_source->capture(this->__source_request);
-#endif
 		/* Defer the snapshot until this change notification has returned. */
 		this->__clipboard_timer->start();
 	};
-#ifdef Q_OS_MACOS
 	QObject::connect(this->__clipboard_source, &ClipboardSource::clipboardChanged, this, clipboardChanged);
-#else
-	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, this, clipboardChanged);
-#endif
 	QObject::connect(this->__hide_animation, &QPropertyAnimation::finished, [this](void) {
 		if (this->__hide_animation->direction() == QAbstractAnimation::Forward) {
 			/* Hidden stage */
@@ -315,16 +295,16 @@ MainWindow::MainWindow(QWidget *parent)
 	});
 
 	this->initUI();
-#ifdef Q_OS_MACOS
-	this->__mac_paste = new MacPasteController(this);
+	this->__paste_target = new PasteTarget(this);
 	/* The caller may still hold the copied item until its signal returns. */
-	QObject::connect(this->__mac_paste, &MacPasteController::permissionRequired, this, [this](void) {
+	QObject::connect(this->__paste_target, &PasteTarget::permissionRequired, this, [this](void) {
 		PastePermissionDialog dialog(this);
 		this->execAppDialog(dialog);
 	}, Qt::QueuedConnection);
+#ifdef Q_OS_MACOS
 	watchMacPanelDismissal(this, [this](bool immediate) {
 		if (immediate) {
-			this->__mac_paste->cancel();
+			this->__paste_target->cancel();
 			this->__hide_animation->stop();
 			this->__hide_state = true;
 			this->hide();
@@ -589,8 +569,10 @@ void MainWindow::show_window(void)
 	/* Re-activating an owned dialog must not summon the history panel. */
 	if (this->__app_dialog_open)
 		return;
+#endif
 	if (this->__hide_state)
-		this->__mac_paste->captureTarget();
+		this->__paste_target->captureTarget(this);
+#ifdef Q_OS_MACOS
 	/* A copy immediately followed by the hotkey may precede the next poll.
 	 * Populate the panel before showing it, keeping the native source. */
 	this->__clipboard_source->synchronize();
@@ -618,11 +600,6 @@ void MainWindow::show_window(void)
 #endif
 	this->__hide_animation->setStartValue(this->pos());
 	this->__hide_animation->setEndValue(QPoint(area.x(), area.bottom()+1));
-#ifdef Q_OS_WIN
-	HWND target = GetForegroundWindow();
-	this->__paste_target = (target && target != reinterpret_cast<HWND>(this->winId()))
-				 ? reinterpret_cast<quintptr>(target) : 0;
-#endif
 	this->__hide_animation->setDirection(QAbstractAnimation::Backward);
 	this->__hide_animation->start();
 	this->__hide_state = false;
@@ -648,38 +625,9 @@ void MainWindow::hide_window(void)
 	this->__hide_state = true;
 }
 
-void MainWindow::pasteToPreviousWindow(void)
+void MainWindow::pasteToPreviousWindow(bool hasUrls)
 {
-#ifdef Q_OS_MACOS
-	this->__mac_paste->paste(this);
-#endif
-#ifdef Q_OS_WIN
-	const HWND target = reinterpret_cast<HWND>(this->__paste_target);
-	if (!target || !IsWindow(target))
-		return;
-	DWORD owner = 0;
-	GetWindowThreadProcessId(target, &owner);
-	if (owner == GetCurrentProcessId())
-		return;
-	wchar_t className[64] = {};
-	GetClassNameW(target, className, 64);
-	if (lstrcmpW(className, L"Shell_TrayWnd") == 0 ||
-	    lstrcmpW(className, L"NotifyIconOverflowWindow") == 0)
-		return;
-	QTimer::singleShot(300, this, [target](void) {
-		if (!IsWindow(target) || !SetForegroundWindow(target) || GetForegroundWindow() != target)
-			return;
-		INPUT input[4] = {};
-		input[0].type = input[1].type = input[2].type = input[3].type = INPUT_KEYBOARD;
-		input[0].ki.wVk = VK_CONTROL;
-		input[1].ki.wVk = 'V';
-		input[2].ki.wVk = 'V';
-		input[2].ki.dwFlags = KEYEVENTF_KEYUP;
-		input[3].ki.wVk = VK_CONTROL;
-		input[3].ki.dwFlags = KEYEVENTF_KEYUP;
-		SendInput(4, input, sizeof(INPUT));
-	});
-#endif
+	this->__paste_target->paste(this, hasUrls);
 }
 
 void MainWindow::move_to_prev_next_focus_widget(bool prev)
@@ -1267,17 +1215,13 @@ void MainWindow::execAppDialog(AppDialog &dialog)
 
 void MainWindow::setHistoryRecording(bool enabled)
 {
-#ifdef Q_OS_MACOS
 	/* Consume any copy under the old recording state. In particular, a
 	 * paused copy awaiting the next poll must not be recorded on resume. */
 	this->__clipboard_source->synchronize();
-#endif
 	this->__recording_enabled = enabled;
 	this->__clipboard_timer->stop();
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	++this->__source_request;
 	this->__source_icon = QImage();
-#endif
 	this->__recording_status->setVisible(!enabled);
 	this->updateTrayTooltip();
 }
@@ -1393,8 +1337,8 @@ PasteItem *MainWindow::insertItemWidget(bool back, int row)
 		if (this->__recording_enabled)
 			this->__clipboard_timer->start();
 	});
-	QObject::connect(widget, &PasteItem::copied, this, [this](void) {
-		this->pasteToPreviousWindow();
+	QObject::connect(widget, &PasteItem::copied, this, [this](bool hasUrls) {
+		this->pasteToPreviousWindow(hasUrls);
 	});
 	QObject::connect(widget, &PasteItem::previewRequested, this, [this, widget](void) {
 		this->__scroll_widget->setCurrentItem(widget->widgetItem());
@@ -1449,17 +1393,13 @@ void MainWindow::clipboard_later(void)
 {
 	if (!this->__recording_enabled)
 		return;
-#ifdef Q_OS_MACOS
 	/* A newer native copy schedules its own snapshot with its own source. */
 	if (this->__clipboard_source->synchronize())
 		return;
-#endif
 	this->resetPointerGesture();
 	this->__last_clicked_item.clear();
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	const quint64 sourceRequest = this->__source_request;
 	const QImage sourceIcon = this->__source_icon;
-#endif
 	const QMimeData *mime_data = QApplication::clipboard()->mimeData();
 	const QVariant copiedIcon = mime_data->property("pastesSourceIcon");
 	PasteItem *widget = nullptr;
@@ -1467,7 +1407,6 @@ void MainWindow::clipboard_later(void)
 	ItemData *itemData = new ItemData;
 
 	itemData->mimeData = dup_mimedata(mime_data);
-#ifdef Q_OS_MACOS
 	/* Reading a promised flavor can change the pasteboard. Retry through
 	 * the new notification instead of saving a mixed or outdated snapshot. */
 	if (this->__clipboard_source->synchronize()) {
@@ -1475,7 +1414,6 @@ void MainWindow::clipboard_later(void)
 		delete itemData;
 		return;
 	}
-#endif
 	widget = this->insertItemWidget(false);
 
 	do {
@@ -1536,12 +1474,7 @@ void MainWindow::clipboard_later(void)
 	if (copiedIcon.isValid()) {
 		itemData->icon = copiedIcon.value<QImage>();
 	} else {
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
-		itemData->icon = sourceIcon;
-#else
-		itemData->icon = this->getClipboardOwnerIcon().scaled(32, 32,
-			Qt::KeepAspectRatio, Qt::SmoothTransformation).toImage();
-#endif
+		itemData->icon = sourceIcon.isNull() ? this->__clipboard_source->snapshotIcon() : sourceIcon;
 	}
 	/* Remove dup item */
 	for (int i = 1; i < this->__scroll_widget->count(); i++) {
@@ -1575,11 +1508,9 @@ void MainWindow::clipboard_later(void)
 	itemData->time = QDateTime::currentDateTime();
 	widget->setTime(itemData->time);
 
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 	/* Internal copies have their original icon and must not be overwritten
 	 * by a late lookup for the Pastes window that performed the copy. */
 	widget->setProperty("sourceRequest", QVariant::fromValue(copiedIcon.isValid() ? quint64(0) : sourceRequest));
-#endif
 	QPixmap icon = QPixmap::fromImage(itemData->icon);
 	widget->setIcon(icon);
 	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
@@ -1587,152 +1518,6 @@ void MainWindow::clipboard_later(void)
 	this->resetItemTabOrder();
 	this->updateQuickPasteNumbers();
 	this->updateTrayTooltip();
-}
-
-#ifdef Q_OS_LINUX
-static bool get_window_name2(Display* dpy, Window window, char* buf)
-{
-	XTextProperty tp;
-
-	XGetTextProperty(dpy, window, &tp, XInternAtom(dpy, "WM_NAME", False));
-	if (tp.nitems > 0) {
-		int count = 0, i, ret;
-		char **list = NULL;
-
-		ret = XmbTextPropertyToTextList(dpy, &tp, &list, &count);
-		if((ret == Success || ret > 0) && list != NULL){
-			for(i=0; i<count; i++)
-				snprintf(buf, 1024, "%s", list[i]);
-			XFreeStringList(list);
-		} else {
-			snprintf(buf, 1024, "%s", tp.value);
-		}
-
-		return true;
-	} else {
-		return false;
-	}
-}
-
-static QString strip_cmd(QString window_title)
-{
-	if (window_title.contains("Qt Selection Owner")) {
-		return window_title.mid(23);
-	} else if (window_title.contains("Chromium ")) {
-		return "chrome";
-	}
-
-	return window_title;
-}
-#endif
-
-QPixmap MainWindow::getClipboardOwnerIcon(void)
-{
-	QPixmap pixmap;
-
-#ifdef Q_OS_LINUX
-	int i = 0;
-	Display *display = XOpenDisplay(NULL);
-	Atom clipboard_atom = XInternAtom(display, "CLIPBOARD", False);
-	Window clipboard_owner_win = XGetSelectionOwner(display, clipboard_atom);
-	char buf[1024] = {0};
-	unsigned long nitems, bytesafter;
-	unsigned char *ret;
-	int format;
-	Atom type;
-	Atom wm_icon_atom = XInternAtom(display, "_NET_WM_ICON", True);
-	qDebug() << clipboard_owner_win;
-	/* Get clipboard owner title name */
-	get_window_name2(display, clipboard_owner_win, buf);
-	QString command = strip_cmd(buf);
-	qDebug() << buf << command;
-
-	/* Search from [-100, 100] */
-	clipboard_owner_win -= 100;
-again:
-	/* Get the width of the icon */
-	XGetWindowProperty(display,
-			   clipboard_owner_win,
-			   wm_icon_atom,
-			   0, 1, 0,
-			   XA_CARDINAL,
-			   &type,
-			   &format,
-			   &nitems,
-			   &bytesafter,
-			   &ret);
-	if (!ret) {
-		/* FIXME: In fact, Get clipboard window id from XLIB is not the
-		 * actual window id, but it is strange that his actual ID is
-		 * near this, between -100 and +100.
-		 *
-		 * I didn't find out what happened, but he seems to be working.
-		 * if anyone finds a good way, please let me know.
-		 */
-		clipboard_owner_win++;
-		if (i++ > 200) {
-			XCloseDisplay(display);
-			qDebug() << "Not found icon, Use default Linux logo";
-			pixmap.convertFromImage(QImage(":/resources/ubuntu.png"));
-			return pixmap;
-		}
-
-		goto again;
-	}
-
-	int width = *(int *)ret;
-	XFree(ret);
-
-	/* Get the height of the Icon */
-	XGetWindowProperty(display,
-			   clipboard_owner_win,
-			   wm_icon_atom,
-			   1, 1, 0,
-			   XA_CARDINAL,
-			   &type,
-			   &format,
-			   &nitems,
-			   &bytesafter,
-			   &ret);
-	if (!ret) {
-		qDebug() << "No X11 Icon height Found.";
-		return pixmap;
-	}
-
-	int height = *(int *)ret;
-	XFree(ret);
-
-	/* Get data from Icon */
-	int size = width * height;
-	XGetWindowProperty(display,
-			   clipboard_owner_win,
-			   wm_icon_atom,
-			   2, size, 0,
-			   XA_CARDINAL,
-			   &type,
-			   &format,
-			   &nitems,
-			   &bytesafter,
-			   &ret);
-	if (!ret) {
-		qDebug() << "No X11 Icon Data Found.";
-		return pixmap;
-	}
-
-	unsigned long *imgArr = (unsigned long*)(ret);
-	std::vector<uint32_t> imgARGB32(size);
-	for(int i=0; i<size; ++i)
-		imgARGB32[i] = (uint32_t)(imgArr[i]);
-
-	QImage *image = new QImage((uchar*)imgARGB32.data(), width, height, QImage::Format_ARGB32);
-	pixmap.convertFromImage(*image);
-
-	XFree(ret);
-	delete image;
-	XCloseDisplay(display);
-#endif
-
-	return pixmap;
 }
 
 void MainWindow::enabledGlassEffect(void)

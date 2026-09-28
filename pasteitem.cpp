@@ -258,40 +258,6 @@ void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 		emit this->deleteRequested();
 }
 
-#ifdef Q_OS_LINUX
-#include <X11/Xlib.h>
-#include <X11/Intrinsic.h>
-#include <X11/extensions/XTest.h>
-
-#include <QTimer>
-#include <QThread>
-
-static void SendKey(Display * disp, KeySym keysym, KeySym modsym)
-{
-	KeyCode keycode = 0, modcode = 0;
-	keycode = XKeysymToKeycode (disp, keysym);
-	if (keycode == 0)
-		return;
-
-	XTestGrabControl (disp, True);
-	/* Generate modkey press */
-	if (modsym != 0) {
-		modcode = XKeysymToKeycode(disp, modsym);
-		XTestFakeKeyEvent (disp, modcode, True, 0);
-	}
-	/* Generate regular key press and release */
-	XTestFakeKeyEvent (disp, keycode, True, 0);
-	XTestFakeKeyEvent (disp, keycode, False, 0);
-
-	/* Generate modkey release */
-	if (modsym != 0)
-		XTestFakeKeyEvent (disp, modcode, False, 0);
-
-	XSync (disp, False);
-	XTestGrabControl (disp, False);
-}
-#endif
-
 void PasteItem::copyData(bool plainText, bool paste)
 {
 	ItemData *itemData = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
@@ -310,24 +276,9 @@ void PasteItem::copyData(bool plainText, bool paste)
 	mime->setProperty("pastesSourceIcon", itemData->icon);
 	clipboard->setMimeData(mime, QClipboard::Clipboard);
 
-#ifdef Q_OS_LINUX
-	if (plainText && itemData->mimeData->hasText())
-		clipboard->setText(itemData->mimeData->text(), QClipboard::Selection);
-	else
-		clipboard->setMimeData(dup_mimedata(itemData->mimeData), QClipboard::Selection);
-#endif
+	if (clipboard->supportsSelection())
+		clipboard->setMimeData(dup_mimedata(mime), QClipboard::Selection);
 	emit this->clipboardUpdated();
 	if (paste)
-		emit this->copied();
-	if (itemData->mimeData->hasUrls())
-		return;
-
-#ifdef Q_OS_LINUX
-	/* Send keypress event 'Ctrl +v' for direct paste */
-	if (paste) QTimer::singleShot(1000, [](void) {
-		Display *disp = XOpenDisplay(nullptr);
-		SendKey(disp, XK_Insert, XK_Shift_L);
-		XCloseDisplay(disp);
-	});
-#endif
+		emit this->copied(itemData->mimeData->hasUrls());
 }

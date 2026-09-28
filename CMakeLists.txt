@@ -34,24 +34,27 @@ set(PASTES_SOURCES
     pasteitembarnner.cpp pasteitembarnner.h
     pasteitemcontext.cpp pasteitemcontext.h
     searchbar.cpp searchbar.h
+    platform/clipboardsource.h platform/pastetarget.h
     shortcut.cpp shortcut.h
     sources.qrc
 )
 
 if(WIN32)
     list(APPEND PASTES_SOURCES shortcut_win.cpp shortcut_win_state.h
-        clipboardsource_win.cpp clipboardsource_win.h)
+        platform/windows/clipboardsource.cpp platform/windows/pastetarget.cpp)
 elseif(APPLE)
     enable_language(OBJCXX)
     set(CMAKE_OBJCXX_STANDARD 17)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
     list(APPEND PASTES_SOURCES shortcut_mac.cpp window_mac.mm window_mac.h
-        clipboardsource_mac.mm clipboardsource_mac.h paste_mac.mm paste_mac.h)
+        platform/macos/clipboardsource.mm platform/macos/pastetarget.mm)
 elseif(UNIX AND NOT APPLE)
-    list(APPEND PASTES_SOURCES shortcut_x11.cpp)
+    list(APPEND PASTES_SOURCES shortcut_x11.cpp
+        platform/linux/clipboardsource.cpp platform/linux/pastetarget.cpp)
 endif()
 
 qt_add_executable(pastes ${PASTES_SOURCES})
+target_include_directories(pastes PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_definitions(pastes PRIVATE PASTES_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(pastes PRIVATE
