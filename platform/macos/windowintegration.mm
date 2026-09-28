@@ -204,8 +204,8 @@ static void prepareFloatingWindow(QWidget *widget)
 	if (@available(macOS 13.0, *))
 		behavior |= NSWindowCollectionBehaviorCanJoinAllApplications;
 	window.collectionBehavior = behavior;
-	/* Stay above full-screen content as well as the Dock. */
-	window.level = CGWindowLevelForKey(kCGScreenSaverWindowLevelKey);
+	/* Stay above app content and the Dock, below capture tools and menus. */
+	window.level = CGWindowLevelForKey(kCGStatusWindowLevelKey);
 }
 
 void Platform::preparePanel(QWidget *widget)
@@ -223,7 +223,7 @@ void Platform::preparePreview(QWidget *widget)
 	prepareFloatingWindow(widget);
 	Platform::prepareDialog(widget);
 	/* Keep the modal preview above its bottom panel. */
-	nativeView(widget).window.level = CGWindowLevelForKey(kCGScreenSaverWindowLevelKey)+1;
+	nativeView(widget).window.level = CGWindowLevelForKey(kCGStatusWindowLevelKey)+1;
 }
 
 void Platform::activatePanel(QWidget *widget)

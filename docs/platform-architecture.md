@@ -39,6 +39,7 @@ UI 使用有明确名称的能力与布局配置，例如 `nativeControls`、`na
 
 - macOS 使用 Shift+Cmd+V，运行时没有 Dock 项；面板贴屏幕底部，使用 AppKit 背板和菜单。
   全屏空间切换通知、弹窗激活保护、原生关闭按钮和高分辨率来源图标仍由 macOS 实现处理。
+  面板使用状态窗口层级，预览仅高一级，覆盖 Dock 但位于标准菜单和截图遮罩之下。
 - Windows 保留 Win+V 及注册失败时的回退、来源图标工作线程、窗口模糊和目标窗口粘贴。
 - Linux 保留 Ctrl+Shift+V、X11 来源查询、Selection 写入、Shift+Insert 注入以及用户 autostart 文件。
 - 数据库位置、schema、历史保留期限和 Qt 信号的队列化 SQL 执行方式没有迁移。
