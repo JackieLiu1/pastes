@@ -227,7 +227,34 @@ bool FileFrame::setUrls(QList<QUrl> &urls)
 		this->m_labels.push_back(pair);
 	}
 
+	m_last_label_size = -1;
+	this->update();
 	return ret;
+}
+
+void FileFrame::updatePreviewPixmaps(void)
+{
+	if (m_labels.isEmpty())
+		return;
+	const int size = m_labels.first().first->width();
+	const qreal ratio = this->devicePixelRatioF();
+	if (size <= 0 || (m_last_label_size == size && m_last_label_ratio == ratio))
+		return;
+	m_last_label_size = size;
+	m_last_label_ratio = ratio;
+	const int pixels = qRound(size*ratio);
+	for (const auto &pair : m_labels) {
+		QPixmap pixmap = pair.second.scaled(pixels, pixels,
+			Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		pixmap.setDevicePixelRatio(ratio);
+		pair.first->setPixmap(pixmap);
+	}
+}
+
+void FileFrame::paintEvent(QPaintEvent *event)
+{
+	this->updatePreviewPixmaps();
+	TextFrame::paintEvent(event);
 }
 
 void FileFrame::resizeEvent(QResizeEvent *event)
@@ -244,16 +271,8 @@ void FileFrame::resizeEvent(QResizeEvent *event)
 			label->setGeometry(start_x, start_y, label_size, label_size);
 		}
 
-		/* Only rescale the pixmaps when the size really changed; resize
-		 * storms used to run SmoothTransformation for every event. */
-		if (label_size > 0 && m_last_label_size != label_size) {
-			m_last_label_size = label_size;
-			for (auto pair : this->m_labels) {
-				QLabel *label = pair.first;
-				QPixmap pixmap = pair.second.scaled(label_size, label_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-				label->setPixmap(pixmap);
-			}
-		}
+		/* Cache the physical pixel size, including the display's scale. */
+		this->updatePreviewPixmaps();
 
 		if (this->m_labels.count() == 2) {
 			this->m_labels[0].first->move(this->m_labels[0].first->pos()-QPoint(15, 10));

@@ -85,6 +85,7 @@ public:
 
 protected:
 	void resizeEvent(QResizeEvent *event);
+	void paintEvent(QPaintEvent *event) override;
 
 #ifdef Q_OS_WIN
 	static QIcon getFileIcon(const QString &filename);
@@ -93,10 +94,12 @@ protected:
 #endif
 
 private:
+	void updatePreviewPixmaps(void);
 	QList<QPair<QLabel *, QPixmap>> m_labels;
 	QString				m_filename;
-	/* label size the pixmaps were last scaled to (skip redundant rescales) */
+	/* Cache by logical size and display scale to skip redundant resizes. */
 	int				m_last_label_size = -1;
+	qreal			m_last_label_ratio = 0;
 };
 
 class StackedWidget : public QStackedWidget
