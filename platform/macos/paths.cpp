@@ -13,7 +13,7 @@ QString Platform::databasePath(void)
 
 QString Platform::translationDirectory(void)
 {
-	return QCoreApplication::applicationDirPath();
+	return QCoreApplication::applicationDirPath() + QStringLiteral("/../Resources");
 }
 
 bool Platform::prepareDatabaseDirectory(const QString &path)

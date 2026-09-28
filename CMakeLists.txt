@@ -68,9 +68,26 @@ qt_add_translation(QM_FILES Pastes_zh_CN.ts)
 add_custom_target(translations ALL DEPENDS ${QM_FILES})
 if(APPLE)
     add_dependencies(pastes translations)
+    set_source_files_properties(${QM_FILES} PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
+    target_sources(pastes PRIVATE ${QM_FILES})
+    set_property(TARGET pastes APPEND PROPERTY LINK_DEPENDS ${QM_FILES})
     add_custom_command(TARGET pastes POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${QM_FILES} $<TARGET_FILE_DIR:pastes>
+        COMMAND ${CMAKE_COMMAND} -E remove -f
+            $<TARGET_FILE_DIR:pastes>/Pastes_zh_CN.qm
+        VERBATIM
+    )
+    # ServiceManagement requires a signed bundle, including its final resources.
+    set(PASTES_MACOS_SIGNING_IDENTITY "-" CACHE STRING
+        "macOS signing identity (- for local development)")
+    find_program(PASTES_CODESIGN_EXECUTABLE codesign)
+    if(NOT PASTES_CODESIGN_EXECUTABLE)
+        message(FATAL_ERROR "codesign is required for macOS login items")
+    endif()
+    add_custom_command(TARGET pastes POST_BUILD
+        COMMAND ${PASTES_CODESIGN_EXECUTABLE} --force --sign
+            "${PASTES_MACOS_SIGNING_IDENTITY}" $<TARGET_BUNDLE_DIR:pastes>
+        VERBATIM
     )
 endif()
 
