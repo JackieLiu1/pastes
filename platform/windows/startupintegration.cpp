@@ -9,6 +9,11 @@ bool StartupIntegration::supported(void) const
 	return true;
 }
 
+QString StartupIntegration::statusMessage(void) const
+{
+	return QString();
+}
+
 bool StartupIntegration::enabled(void) const
 {
 	QSettings user(QStringLiteral("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"), QSettings::NativeFormat);

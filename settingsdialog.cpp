@@ -5,6 +5,7 @@
 #include <QAbstractButton>
 #include <QApplication>
 #include <QButtonGroup>
+#include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -15,6 +16,7 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QStyle>
+#include <QTimer>
 #include <QVariantAnimation>
 #include <QVBoxLayout>
 
@@ -80,7 +82,7 @@ static QVBoxLayout *section(QVBoxLayout *parent, const QString &title, QWidget *
 	return rows;
 }
 
-static void settingRow(QVBoxLayout *parent, const QString &title, const QString &description, QWidget *control)
+static QLabel *settingRow(QVBoxLayout *parent, const QString &title, const QString &description, QWidget *control)
 {
 	auto *row = new QHBoxLayout;
 	row->setSpacing(16);
@@ -94,6 +96,7 @@ static void settingRow(QVBoxLayout *parent, const QString &title, const QString 
 	texts->addWidget(label); texts->addWidget(detail);
 	row->addLayout(texts, 1); row->addWidget(control, 0, Qt::AlignVCenter);
 	parent->addLayout(row);
+	return detail;
 }
 
 static void divider(QVBoxLayout *rows)
@@ -151,15 +154,19 @@ SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
 	});
 	auto *general = section(groups, QObject::tr("General"), content);
 	auto *startup = new SettingsSwitch(QObject::tr("Launch at sign-in"), m_startup.enabled(), content);
+	m_startup_switch = startup;
 	startup->setObjectName("StartupSwitch"); startup->setEnabled(m_startup.supported());
-	settingRow(general, QObject::tr("Launch at sign-in"), m_startup.supported() ?
+	m_startup_detail = settingRow(general, QObject::tr("Launch at sign-in"), m_startup.supported() ?
 		QObject::tr("Ready in the tray when you need it.") : QObject::tr("Startup is not available on this platform yet."), startup);
-	QObject::connect(startup, &QAbstractButton::toggled, this, [this,startup](bool checked) {
+	QObject::connect(startup, &QAbstractButton::toggled, this, [this](bool checked) {
 		QString error;
 		if (!m_startup.setEnabled(checked, &error)) {
-			startup->restoreChecked(m_startup.enabled());
+			updateStartupState();
 			showError(error);
-		} else showError(QString());
+		} else {
+			updateStartupState();
+			showError(QString());
+		}
 	});
 	divider(general);
 	auto *pause = new SettingsSwitch(QObject::tr("Pause clipboard recording"), preferences.value("pauseRecording", false).toBool(), content);
@@ -197,7 +204,35 @@ SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
 	auto *footer = new QHBoxLayout;
 	footer->setSpacing(16); footer->addWidget(m_status, 1); footer->addWidget(done);
 	bodyLayout()->addLayout(footer);
+	updateStartupState();
 	adjustSize();
+}
+
+bool SettingsDialog::event(QEvent *event)
+{
+	const bool result = AppDialog::event(event);
+	if (event->type() == QEvent::ActivationChange && isActiveWindow())
+		QTimer::singleShot(0, this, [this](void) {
+			if (isActiveWindow()) updateStartupState();
+		});
+	return result;
+}
+
+void SettingsDialog::updateStartupState(void)
+{
+	if (!m_startup_switch)
+		return;
+	m_startup_switch->setEnabled(m_startup.supported());
+	m_startup_switch->restoreChecked(m_startup.enabled());
+	const QString message = m_startup.statusMessage();
+	m_startup_detail->setText(message.isEmpty() ?
+		(m_startup.supported() ? QObject::tr("Ready in the tray when you need it.") :
+		QObject::tr("Startup is not available on this platform yet.")) : message);
+	if (!message.isEmpty())
+		showError(message);
+	else if (!m_startup_status.isEmpty() && m_status->text() == m_startup_status)
+		showError(QString());
+	m_startup_status = message;
 }
 
 void SettingsDialog::setPrimaryShortcut(const QString &shortcut)

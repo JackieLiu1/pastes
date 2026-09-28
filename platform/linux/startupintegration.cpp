@@ -11,6 +11,11 @@ bool StartupIntegration::supported(void) const
 	return true;
 }
 
+QString StartupIntegration::statusMessage(void) const
+{
+	return QString();
+}
+
 bool StartupIntegration::enabled(void) const
 {
 	const QString relative = QStringLiteral("autostart/")+m_entry_name.toLower()+QStringLiteral(".desktop");

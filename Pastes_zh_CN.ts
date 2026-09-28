@@ -366,7 +366,7 @@
     </message>
     <message>
         <location filename="appdialog.cpp" line="209"/>
-        <location filename="settingsdialog.cpp" line="195"/>
+        <location filename="settingsdialog.cpp" line="202"/>
         <source>Done</source>
         <translation>完成</translation>
     </message>
@@ -377,122 +377,123 @@
     </message>
     <message>
         <location filename="platform/menuintegration.cpp" line="9"/>
-        <location filename="settingsdialog.cpp" line="107"/>
+        <location filename="settingsdialog.cpp" line="110"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="110"/>
+        <location filename="settingsdialog.cpp" line="113"/>
         <source>Appearance, startup and clipboard history.</source>
         <translation>外观、开机启动与剪贴板记录。</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="123"/>
+        <location filename="settingsdialog.cpp" line="126"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="131"/>
+        <location filename="settingsdialog.cpp" line="134"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="131"/>
+        <location filename="settingsdialog.cpp" line="134"/>
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="143"/>
+        <location filename="settingsdialog.cpp" line="146"/>
         <source>Color theme</source>
         <translation>界面主题</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="143"/>
+        <location filename="settingsdialog.cpp" line="146"/>
         <source>For the panel and its windows.</source>
         <translation>适用于主面板和弹窗。</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="145"/>
-        <location filename="settingsdialog.cpp" line="147"/>
+        <location filename="settingsdialog.cpp" line="148"/>
+        <location filename="settingsdialog.cpp" line="150"/>
         <source>Keyboard hints</source>
         <translation>快捷键提示</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="147"/>
+        <location filename="settingsdialog.cpp" line="150"/>
         <source>Show the controls below your cards.</source>
         <translation>在卡片下方显示操作提示。</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="152"/>
+        <location filename="settingsdialog.cpp" line="155"/>
         <source>General</source>
         <translation>常规</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="153"/>
-        <location filename="settingsdialog.cpp" line="155"/>
+        <location filename="settingsdialog.cpp" line="156"/>
+        <location filename="settingsdialog.cpp" line="159"/>
         <source>Launch at sign-in</source>
         <translation>开机启动</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="156"/>
+        <location filename="settingsdialog.cpp" line="160"/>
+        <location filename="settingsdialog.cpp" line="229"/>
         <source>Ready in the tray when you need it.</source>
         <translation>登录后在托盘待命，随时可用。</translation>
     </message>
     <message>
-        <location filename="platform/macos/startupintegration.cpp" line="11"/>
-        <location filename="settingsdialog.cpp" line="156"/>
+        <location filename="settingsdialog.cpp" line="160"/>
+        <location filename="settingsdialog.cpp" line="230"/>
         <source>Startup is not available on this platform yet.</source>
         <translation>此平台暂不支持开机启动。</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="165"/>
-        <location filename="settingsdialog.cpp" line="167"/>
+        <location filename="settingsdialog.cpp" line="172"/>
+        <location filename="settingsdialog.cpp" line="174"/>
         <source>Pause clipboard recording</source>
         <translation>暂停记录剪贴板</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="167"/>
+        <location filename="settingsdialog.cpp" line="174"/>
         <source>Keep existing history; skip new copies.</source>
         <translation>保留已有历史，不记录新复制的内容。</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="172"/>
+        <location filename="settingsdialog.cpp" line="179"/>
         <source>Shortcuts</source>
         <translation>快捷键</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="180"/>
+        <location filename="settingsdialog.cpp" line="187"/>
         <source>Open history</source>
         <translation>打开历史面板</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="181"/>
+        <location filename="settingsdialog.cpp" line="188"/>
         <source>Paste selected item</source>
         <translation>粘贴选中条目</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="181"/>
+        <location filename="settingsdialog.cpp" line="188"/>
         <source>Enter / Double-click</source>
         <translation>Enter / 双击</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="182"/>
+        <location filename="settingsdialog.cpp" line="189"/>
         <source>Preview selected item</source>
         <translation>预览选中条目</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="183"/>
+        <location filename="settingsdialog.cpp" line="190"/>
         <source>Search history</source>
         <translation>搜索历史记录</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="192"/>
-        <location filename="settingsdialog.cpp" line="222"/>
+        <location filename="settingsdialog.cpp" line="199"/>
+        <location filename="settingsdialog.cpp" line="257"/>
         <source>Changes are saved automatically.</source>
         <translation>修改立即生效并自动保存。</translation>
     </message>
     <message>
-        <location filename="settingsdialog.cpp" line="213"/>
+        <location filename="settingsdialog.cpp" line="248"/>
         <source>Could not save settings. Check your account permissions and try again.</source>
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
@@ -503,30 +504,55 @@
         <translation>记录已暂停</translation>
     </message>
     <message>
-        <location filename="platform/windows/startupintegration.cpp" line="33"/>
+        <location filename="platform/windows/startupintegration.cpp" line="38"/>
         <source>An older installation enabled startup for all users. Reinstall the current version to manage startup for your account.</source>
         <translation>旧版安装程序为所有用户启用了开机启动。请重新安装当前版本，再管理此账户的启动设置。</translation>
     </message>
     <message>
         <location filename="platform/startupintegration.cpp" line="15"/>
-        <location filename="platform/windows/startupintegration.cpp" line="42"/>
+        <location filename="platform/windows/startupintegration.cpp" line="47"/>
         <source>This application path cannot be used for startup.</source>
         <translation>当前程序路径无法用于开机启动。</translation>
     </message>
     <message>
-        <location filename="platform/windows/startupintegration.cpp" line="51"/>
+        <location filename="platform/windows/startupintegration.cpp" line="56"/>
         <source>Could not update startup. Check your account permissions and try again.</source>
         <translation>无法修改开机启动，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="platform/linux/startupintegration.cpp" line="29"/>
+        <location filename="platform/linux/startupintegration.cpp" line="34"/>
         <source>Could not create the startup folder.</source>
         <translation>无法创建开机启动目录。</translation>
     </message>
     <message>
-        <location filename="platform/linux/startupintegration.cpp" line="42"/>
+        <location filename="platform/linux/startupintegration.cpp" line="47"/>
         <source>Could not save startup: %1</source>
         <translation>无法保存开机启动设置：%1</translation>
+    </message>
+    <message>
+        <location filename="platform/macos/startupintegration.mm" line="35"/>
+        <source>Open the Pastes application to manage launch at sign-in.</source>
+        <translation>请运行完整的 Pastes 应用，再设置开机启动。</translation>
+    </message>
+    <message>
+        <location filename="platform/macos/startupintegration.mm" line="37"/>
+        <source>Allow Pastes in System Settings &gt; General &gt; Login Items to launch at sign-in.</source>
+        <translation>请在「系统设置 → 通用 → 登录项」中允许 Pastes 开机启动。</translation>
+    </message>
+    <message>
+        <location filename="platform/macos/startupintegration.mm" line="40"/>
+        <source>Launch at sign-in requires macOS 13 or later.</source>
+        <translation>开机启动需要 macOS 13 或更新版本。</translation>
+    </message>
+    <message>
+        <location filename="platform/macos/startupintegration.mm" line="67"/>
+        <source>Could not update launch at sign-in: %1</source>
+        <translation>无法修改开机启动：%1</translation>
+    </message>
+    <message>
+        <location filename="platform/macos/startupintegration.mm" line="69"/>
+        <source>The system did not apply the launch at sign-in change. Try again.</source>
+        <translation>系统未应用开机启动设置，请重试。</translation>
     </message>
 </context>
 </TS>

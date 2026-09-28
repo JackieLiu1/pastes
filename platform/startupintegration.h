@@ -4,13 +4,15 @@
 #include <QString>
 
 /* Startup state comes from the OS entry, rather than a preference that can
- * drift from the actual registration. The entry name allows isolated QA. */
+ * drift from actual registration. macOS manages the calling app bundle;
+ * desktop entry names allow isolated QA on Windows and Linux. */
 class StartupIntegration
 {
 public:
 	explicit StartupIntegration(const QString &executable = QString(), const QString &entryName = QStringLiteral("Pastes"));
 	bool supported(void) const;
 	bool enabled(void) const;
+	QString statusMessage(void) const;
 	bool setEnabled(bool enabled, QString *error);
 
 private:
