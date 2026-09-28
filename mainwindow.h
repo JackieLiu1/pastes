@@ -3,7 +3,7 @@
 
 #include "mainframe.h"
 #include "pasteitem.h"
-#include "shortcut.h"
+#include "platform/globalshortcut.h"
 #include "searchbar.h"
 #include "database.h"
 

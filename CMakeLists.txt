@@ -24,7 +24,7 @@ set(PASTES_SOURCES
     previewdialog.cpp previewdialog.h
     appdialog.cpp appdialog.h
     settingsdialog.cpp settingsdialog.h
-    startupintegration.cpp startupintegration.h
+    platform/startupintegration.cpp platform/startupintegration.h
     cardswipe.cpp cardswipe.h
     cardreflow.cpp cardreflow.h
     elasticscroll.cpp elasticscroll.h
@@ -34,29 +34,35 @@ set(PASTES_SOURCES
     pasteitembarnner.cpp pasteitembarnner.h
     pasteitemcontext.cpp pasteitemcontext.h
     searchbar.cpp searchbar.h
-    platform/clipboardsource.h platform/pastetarget.h
+    platform/clipboardsource.h platform/pastetarget.h platform/fileicon.h platform/paths.h
     platform/windowintegration.h platform/menuintegration.h
     platform/menuintegration.cpp platform/applicationintegration.h
-    shortcut.cpp shortcut.h
+    platform/globalshortcut.cpp platform/globalshortcut.h platform/shortcut_p.h
     sources.qrc
 )
 
 if(WIN32)
-    list(APPEND PASTES_SOURCES shortcut_win.cpp shortcut_win_state.h
+    list(APPEND PASTES_SOURCES platform/windows/shortcut.cpp platform/windows/shortcutstate.h
         platform/windows/clipboardsource.cpp platform/windows/pastetarget.cpp
+        platform/windows/fileicon.cpp platform/windows/paths.cpp
+        platform/windows/startupintegration.cpp
         platform/windows/windowblur.cpp platform/desktop/windowintegration.cpp
         platform/desktop/menuintegration.cpp platform/desktop/applicationintegration.cpp)
 elseif(APPLE)
     enable_language(OBJCXX)
     set(CMAKE_OBJCXX_STANDARD 17)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
-    list(APPEND PASTES_SOURCES shortcut_mac.cpp
+    list(APPEND PASTES_SOURCES platform/macos/shortcut.cpp
         platform/macos/clipboardsource.mm platform/macos/pastetarget.mm
+        platform/macos/fileicon.cpp platform/macos/paths.cpp
+        platform/macos/startupintegration.cpp
         platform/macos/windowintegration.mm platform/macos/menuintegration.mm
         platform/macos/applicationintegration.mm)
 elseif(UNIX AND NOT APPLE)
-    list(APPEND PASTES_SOURCES shortcut_x11.cpp
+    list(APPEND PASTES_SOURCES platform/linux/shortcut.cpp
         platform/linux/clipboardsource.cpp platform/linux/pastetarget.cpp
+        platform/linux/fileicon.cpp platform/linux/paths.cpp
+        platform/linux/startupintegration.cpp
         platform/linux/windowblur.cpp platform/desktop/windowintegration.cpp
         platform/desktop/menuintegration.cpp platform/desktop/applicationintegration.cpp)
 endif()

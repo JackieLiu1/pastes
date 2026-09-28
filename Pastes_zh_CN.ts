@@ -44,8 +44,8 @@
         <translation>显示（%1）</translation>
     </message>
     <message>
-        <location filename="shortcut_mac.cpp" line="28"/>
-        <location filename="shortcut_win.cpp" line="67"/>
+        <location filename="platform/macos/shortcut.cpp" line="36"/>
+        <location filename="platform/windows/shortcut.cpp" line="69"/>
         <source>Tray icon</source>
         <translation>托盘图标</translation>
     </message>
@@ -80,18 +80,18 @@
         <translation>个文件</translation>
     </message>
     <message>
-        <location filename="pasteitemcontext.cpp" line="328"/>
+        <location filename="pasteitemcontext.cpp" line="233"/>
         <source>px</source>
         <translation>像素</translation>
     </message>
     <message>
-        <location filename="pasteitemcontext.cpp" line="344"/>
-        <location filename="pasteitemcontext.cpp" line="360"/>
+        <location filename="pasteitemcontext.cpp" line="249"/>
+        <location filename="pasteitemcontext.cpp" line="265"/>
         <source>characters</source>
         <translation>字符</translation>
     </message>
     <message>
-        <location filename="pasteitemcontext.cpp" line="374"/>
+        <location filename="pasteitemcontext.cpp" line="279"/>
         <source>MultiPath</source>
         <translation>多个文件</translation>
     </message>
@@ -419,7 +419,7 @@
     </message>
     <message>
         <location filename="settingsdialog.cpp" line="156"/>
-        <location filename="startupintegration.cpp" line="108"/>
+        <location filename="platform/macos/startupintegration.cpp" line="11"/>
         <source>Startup is not available on this platform yet.</source>
         <translation>此平台暂不支持开机启动。</translation>
     </message>
@@ -482,28 +482,28 @@
         <translation>记录已暂停</translation>
     </message>
     <message>
-        <location filename="startupintegration.cpp" line="64"/>
+        <location filename="platform/windows/startupintegration.cpp" line="33"/>
         <source>An older installation enabled startup for all users. Reinstall the current version to manage startup for your account.</source>
         <translation>旧版安装程序为所有用户启用了开机启动。请重新安装当前版本，再管理此账户的启动设置。</translation>
     </message>
     <message>
-        <location filename="startupintegration.cpp" line="52"/>
-        <location filename="startupintegration.cpp" line="73"/>
+        <location filename="platform/startupintegration.cpp" line="15"/>
+        <location filename="platform/windows/startupintegration.cpp" line="42"/>
         <source>This application path cannot be used for startup.</source>
         <translation>当前程序路径无法用于开机启动。</translation>
     </message>
     <message>
-        <location filename="startupintegration.cpp" line="82"/>
+        <location filename="platform/windows/startupintegration.cpp" line="51"/>
         <source>Could not update startup. Check your account permissions and try again.</source>
         <translation>无法修改开机启动，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="startupintegration.cpp" line="89"/>
+        <location filename="platform/linux/startupintegration.cpp" line="29"/>
         <source>Could not create the startup folder.</source>
         <translation>无法创建开机启动目录。</translation>
     </message>
     <message>
-        <location filename="startupintegration.cpp" line="102"/>
+        <location filename="platform/linux/startupintegration.cpp" line="42"/>
         <source>Could not save startup: %1</source>
         <translation>无法保存开机启动设置：%1</translation>
     </message>

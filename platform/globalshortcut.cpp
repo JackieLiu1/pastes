@@ -1,4 +1,5 @@
-#include "shortcut.h"
+#include "platform/globalshortcut.h"
+#include "platform/shortcut_p.h"
 
 GlobalShortcut::GlobalShortcut(QObject *parent) : QObject(parent)
 {

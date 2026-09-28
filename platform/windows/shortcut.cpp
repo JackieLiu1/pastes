@@ -1,5 +1,5 @@
-#include "shortcut.h"
-#include "shortcut_win_state.h"
+#include "platform/shortcut_p.h"
+#include "shortcutstate.h"
 
 #include <windows.h>
 #include <winuser.h>
@@ -36,6 +36,8 @@ static LRESULT CALLBACK keyboardHook(int code, WPARAM message, LPARAM parameter)
 	}
 	return CallNextHookEx(nullptr, code, message, parameter);
 }
+
+class ShortcutPrivate::NativeState {};
 
 ShortcutPrivate::ShortcutPrivate(QObject *parent) : QThread(parent) {}
 

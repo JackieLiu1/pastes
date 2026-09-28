@@ -14,6 +14,7 @@ public:
 	bool setEnabled(bool enabled, QString *error);
 
 private:
+	bool setEnabledNative(bool enabled, QString *error);
 	QString m_executable;
 	QString m_entry_name;
 };

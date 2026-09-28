@@ -6,10 +6,10 @@
 #include <X11/Xlibint.h>
 #include <X11/keysym.h>
 
-#include "shortcut.h"
+#include "platform/shortcut_p.h"
 
-Display		*m_display;
-XRecordContext	m_context;
+static Display		*m_display;
+static XRecordContext	m_context;
 static KeyCode m_paste_keycode;
 
 static void callback(XPointer ptr, XRecordInterceptData *data)
@@ -32,6 +32,8 @@ static void callback(XPointer ptr, XRecordInterceptData *data)
 
 	XRecordFreeData(data);
 }
+
+class ShortcutPrivate::NativeState {};
 
 ShortcutPrivate::ShortcutPrivate(QObject *parent) : QThread(parent)
 {
@@ -63,7 +65,7 @@ void ShortcutPrivate::run(void)
 	XRecordEnableContext(m_display, m_context, &callback, reinterpret_cast<XPointer>(this));
 }
 
-void ShortcutPrivate::stop()
+void ShortcutPrivate::stop(void)
 {
 	XRecordDisableContext(m_display, m_context);
 	XFlush(m_display);

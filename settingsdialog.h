@@ -2,7 +2,7 @@
 #define SETTINGSDIALOG_H
 
 #include "appdialog.h"
-#include "startupintegration.h"
+#include "platform/startupintegration.h"
 
 class QLabel;
 class QButtonGroup;

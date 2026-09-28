@@ -9,24 +9,7 @@
 #include <QStyleOption>
 #include "roundedwidgets.h"
 
-#ifdef Q_OS_WIN
-#include <windows.h>
-#include <windowsx.h>
-#include <winuser.h>
-#include <shellapi.h>
-#include <comdef.h>
-#include <commctrl.h>
-#include <objbase.h>
-#include <commoncontrols.h>
-#endif
-
 #define LABEL_HEIGHT	30
-
-#ifdef Q_OS_WIN
-/* Replaces QtWinExtras (removed in Qt6): converts a native HICON to a QPixmap */
-QPixmap pixmapFromHICON(HICON icon);
-QPixmap pixmapFromShellImageList(int iImageList, const SHFILEINFO &info);
-#endif
 
 class TextFrame : public RoundedLabel
 {
@@ -75,7 +58,6 @@ public:
 	FileFrame(QWidget *parent = nullptr);
 	~FileFrame();
 
-	QIcon getIcon(const QString &uri);
 	bool setUrls(QList<QUrl> &);
 
 	void setFilename(QString filename)
@@ -86,12 +68,6 @@ public:
 protected:
 	void resizeEvent(QResizeEvent *event);
 	void paintEvent(QPaintEvent *event) override;
-
-#ifdef Q_OS_WIN
-	static QIcon getFileIcon(const QString &filename);
-	static QIcon getDirIcon(const QString &filename);
-	static QIcon getExecutableIcon(const QString &filename);
-#endif
 
 private:
 	void updatePreviewPixmaps(void);

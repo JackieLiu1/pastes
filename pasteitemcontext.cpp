@@ -1,8 +1,4 @@
-#include <qsystemdetection.h>
-
-#ifdef Q_OS_LINUX
-#include <gio/gdesktopappinfo.h>
-#endif
+#include "platform/fileicon.h"
 
 #include <algorithm>
 
@@ -102,97 +98,6 @@ FileFrame::~FileFrame()
 	}
 }
 
-#ifdef Q_OS_WIN
-/* Qt6's native conversion also handles legacy masks and icons without alpha. */
-QPixmap pixmapFromHICON(HICON icon)
-{
-	return icon ? QPixmap::fromImage(QImage::fromHICON(icon)) : QPixmap();
-}
-
-QPixmap pixmapFromShellImageList(int iImageList, const SHFILEINFO &info)
-{
-	QPixmap result;
-	// For MinGW:
-	static const IID iID_IImageList = {0x46eb5926, 0x582e, 0x4017, {0x9f, 0xdf, 0xe8, 0x99, 0x8d, 0xaa, 0x9, 0x50}};
-
-	IImageList *imageList = nullptr;
-	if (FAILED(SHGetImageList(iImageList, iID_IImageList, reinterpret_cast<void **>(&imageList))))
-		return result;
-
-	HICON hIcon = 0;
-	if (SUCCEEDED(imageList->GetIcon(info.iIcon, ILD_TRANSPARENT, &hIcon))) {
-		result = pixmapFromHICON(hIcon);
-		DestroyIcon(hIcon);
-	}
-	imageList->Release();
-
-	return result;
-}
-#endif
-
-QIcon FileFrame::getIcon(const QString &uri)
-{
-	QString icon_name;
-
-#ifdef Q_OS_LINUX
-	if (uri.endsWith(".desktop")) {
-		auto _desktop_file = g_desktop_app_info_new_from_filename(uri.toUtf8().constData());
-		auto _icon_string = g_desktop_app_info_get_string(_desktop_file, "Icon");
-		QIcon icon = QIcon::fromTheme(_icon_string, QIcon::fromTheme("text-x-generic"));
-		g_free(_icon_string);
-		g_object_unref(_desktop_file);
-		return icon;
-	} else {
-		auto file = g_file_new_for_path(uri.toLocal8Bit());
-		auto info = g_file_query_info(file,
-					      G_FILE_ATTRIBUTE_THUMBNAIL_PATH ","
-					      G_FILE_ATTRIBUTE_THUMBNAILING_FAILED ","
-					      G_FILE_ATTRIBUTE_STANDARD_ICON,
-					      G_FILE_QUERY_INFO_NONE,
-					      nullptr,
-					      nullptr);
-		if (!G_IS_FILE_INFO (info))
-			return QIcon();
-		GIcon *g_icon = g_file_info_get_icon (info);
-		//do not unref the GIcon from info.
-		if (G_IS_ICON(g_icon)) {
-			const gchar* const* icon_names = g_themed_icon_get_names(G_THEMED_ICON (g_icon));
-			if (icon_names)
-				icon_name = QString (*icon_names);
-		}
-
-		g_object_unref(info);
-		g_object_unref(file);
-		return QIcon::fromTheme(icon_name, QIcon::fromTheme("text-x-generic"));
-	}
-#endif
-#ifdef Q_OS_WIN
-	if (!uri.isEmpty()) {
-		const QString nativeName = QDir::toNativeSeparators(uri);
-		const wchar_t *sourceFileC = reinterpret_cast<const wchar_t *>(nativeName.utf16());
-
-		SHFILEINFO  info;
-		if(SHGetFileInfo(sourceFileC,
-				 0,
-				 &info,
-				 sizeof(info),
-				 SHGFI_SYSICONINDEX| SHGFI_ICON |  SHGFI_LARGEICON))
-		{
-			QIcon icon;
-
-			const QPixmap extraLarge = pixmapFromShellImageList(0x4, info);
-			icon.addPixmap(extraLarge);
-			if (info.hIcon)
-				DestroyIcon(info.hIcon);
-
-			return icon;
-		}
-	}
-
-#endif
-	return QIcon();
-}
-
 bool FileFrame::setUrls(QList<QUrl> &urls)
 {
 	bool ret = false;
@@ -212,7 +117,7 @@ bool FileFrame::setUrls(QList<QUrl> &urls)
 		if (mime.name().startsWith("image/")) {
 			pixmap = QPixmap(url.toLocalFile());
 		} else {
-			auto icon = this->getIcon(url.toLocalFile());
+			auto icon = Platform::fileIcon(url.toLocalFile());
 			pixmap = icon.pixmap(256, 256);
 		}
 		QLabel *label = new QLabel(this);
