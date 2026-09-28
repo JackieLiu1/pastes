@@ -211,6 +211,10 @@ static void prepareFloatingWindow(QWidget *widget)
 void Platform::preparePanel(QWidget *widget)
 {
 	prepareFloatingWindow(widget);
+	/* The history shelf stays anchored; only its cards can be dragged. */
+	NSWindow *window = nativeView(widget).window;
+	window.movable = NO;
+	window.movableByWindowBackground = NO;
 	Platform::updatePanelBackdrop(widget);
 }
 
