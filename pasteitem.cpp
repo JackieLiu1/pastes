@@ -141,7 +141,7 @@ void PasteItem::setPlainText(QString s)
 	if (s.startsWith("http://") || s.startsWith("ftp://") || s.startsWith("https://")) {
 		this->m_barnner->setTitle(QObject::tr("Link"));
 		this->setCardKind("link");
-	} else if (QColor::isValidColor(s)) {
+	} else if (QColor(s).isValid()) {
 		this->m_barnner->setTitle(QObject::tr("Color"));
 		this->setCardKind("color");
 	} else {
@@ -162,7 +162,7 @@ void PasteItem::setRichText(QString richText, QString plainText)
 	if (plainText.startsWith("http://") || plainText.startsWith("ftp://") || plainText.startsWith("https://")) {
 		this->m_barnner->setTitle(QObject::tr("Link"));
 		this->setCardKind("link");
-	} else if (QColor::isValidColor(plainText.simplified().trimmed())) {
+	} else if (QColor(plainText.simplified().trimmed()).isValid()) {
 		this->m_barnner->setTitle(QObject::tr("Color"));
 		this->setCardKind("color");
 	} else {

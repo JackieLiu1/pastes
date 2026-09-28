@@ -242,13 +242,13 @@ void StackedWidget::setText(QString &s)
 {
 	TextFrame *text_frame = new TextFrame(this);
 
-	if (QColor::isValidColor(s)) {
+	if (QColor(s).isValid()) {
 		text_frame->setBackgroundColor(s);
 		text_frame->setMaskFrameText(s);
 	} else {
 		text_frame->setText(s);
 		text_frame->setIndent(4);
-		text_frame->setMaskFrameText(QString("%1 ").arg(s.count()) + QObject::tr("characters"));
+		text_frame->setMaskFrameText(QString("%1 ").arg(s.size()) + QObject::tr("characters"));
 	}
 
 	this->addWidget(text_frame);
@@ -258,13 +258,13 @@ void StackedWidget::setRichText(QString &richText, QString &plainText)
 {
 	TextFrame *richtext_frame = new TextFrame(this);
 
-	if (QColor::isValidColor(plainText.simplified().trimmed())) {
+	if (QColor(plainText.simplified().trimmed()).isValid()) {
 		richtext_frame->setBackgroundColor(plainText);
 		richtext_frame->setMaskFrameText(plainText);
 	} else {
 		richtext_frame->setText(richText);
 		richtext_frame->setTextFormat(Qt::RichText);
-		richtext_frame->setMaskFrameText(QString("%1 ").arg(plainText.count()) + QObject::tr("characters"));
+		richtext_frame->setMaskFrameText(QString("%1 ").arg(plainText.size()) + QObject::tr("characters"));
 	}
 
 	this->addWidget(richtext_frame);

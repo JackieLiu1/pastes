@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QMimeData>
 #include <QCryptographicHash>
+#include <QByteArrayView>
 #include <QImage>
 #include <QUrl>
 #include <QMenu>
@@ -1182,8 +1183,7 @@ void MainWindow::applyTheme(const QString &name)
 					 : ":/resources/theme-dark.qss";
 
 	QFile qss(file);
-	qss.open(QFile::ReadOnly);
-	if (qss.isOpen()) {
+	if (qss.open(QFile::ReadOnly)) {
 		/* replace (not append) so switching themes at runtime works */
 		this->setStyleSheet(QString::fromUtf8(qss.readAll()));
 		qss.close();
@@ -1310,8 +1310,8 @@ void MainWindow::clipboard_later(void)
 				 * time and only covered a quarter of the row (one channel of
 				 * each ARGB pixel), which was both slow and a weak digest. */
 				for (int row = 0; row < image.height(); ++row) {
-					hash.addData(reinterpret_cast<const char *>(image.constScanLine(row)),
-						     image.bytesPerLine());
+					hash.addData(QByteArrayView(reinterpret_cast<const char *>(image.constScanLine(row)),
+							   image.bytesPerLine()));
 				}
 
 				widget->setImage(image);
