@@ -9,8 +9,8 @@
 	font-size: 12px; font-weight: 600; color: #237B68;
 	padding: 7px 13px;
 }
-#HistoryCount, #KeyboardHint { color: #77827A; font-size: 11px; }
-#EmptyState { color: #77827A; font-size: 14px; background: transparent; }
+#HistoryCount, #KeyboardHint { color: #303735; font-size: 11px; }
+#EmptyState { color: #303735; font-size: 14px; background: transparent; }
 QListWidget { background: transparent; border: 0; }
 QListWidget::item, QListWidget::item:hover, QListWidget::item:selected {
 	background: transparent; border: 0;
@@ -74,7 +74,7 @@ QListWidget::item, QListWidget::item:hover, QListWidget::item:selected {
 }
 #PanelMenu {
 	background: transparent; border: 0;
-	font-size: 24px; color: #66776B;
+	font-size: 24px; color: #303735;
 }
 QMenu { background: #FFFDF8; color: #293A35; border: 1px solid #D8DED2; padding: 6px; }
 QMenu::item { padding: 7px 22px 7px 12px; border-radius: 5px; }
@@ -83,7 +83,7 @@ QMenu::separator { height: 1px; background: #E5E8DF; margin: 5px 8px; }
 
 #PreviewDialog, #PreviewSurface, #PreviewContent { background: transparent; border: 0; }
 #PreviewTitle { color: #273E35; font-size: 18px; font-weight: 600; }
-#PreviewMeta { color: #77827A; font-size: 11px; }
+#PreviewMeta { color: #58615D; font-size: 11px; }
 #PreviewText {
 	background: transparent; border: 0; padding: 10px;
 	font-size: 14px; color: #293A35;
@@ -94,28 +94,28 @@ QMenu::separator { height: 1px; background: #E5E8DF; margin: 5px 8px; }
 	font-size: 12px; font-weight: 600; color: #237B68;
 }
 #PreviewAction[primary="true"] { color: #FFFFFF; }
-#PreviewClose { background: transparent; border: 0; color: #66776B; font-size: 23px; }
+#PreviewClose { background: transparent; border: 0; color: #43514B; font-size: 23px; }
 #PreviewScroll:vertical { background: transparent; width: 8px; margin: 2px; }
 #PreviewScroll::handle:vertical { background: #CED7CC; min-height: 24px; border-radius: 3px; }
 #PreviewScroll::add-line:vertical, #PreviewScroll::sub-line:vertical { height: 0; }
 #PreviewScroll::add-page:vertical, #PreviewScroll::sub-page:vertical { background: transparent; }
-#UndoHint { color: #77827A; font-size: 11px; }
-#UndoButton { background: transparent; border: 0; color: #237B68; font-size: 11px; font-weight: 600; padding: 2px 10px; }
+#UndoHint { color: #303735; font-size: 11px; }
+#UndoButton { background: transparent; border: 0; color: #124C3D; font-size: 11px; font-weight: 600; padding: 2px 10px; }
 
 #AppDialog, #AppDialogSurface, #AppDialogCard { background: transparent; border: 0; }
 #AppDialog, #AppDialog QWidget { font-family: "Microsoft YaHei UI", "Segoe UI", "Noto Sans CJK SC", sans-serif; }
 #AppDialogTitle { font-size: 20px; font-weight: 600; color: #273E35; }
-#AppDialogMuted { font-size: 12px; color: #77827A; background: transparent; }
+#AppDialogMuted { font-size: 12px; color: #58615D; background: transparent; }
 #AppDialogValue { font-size: 12px; color: #293A35; background: transparent; }
 #AboutBrand { font-size: 28px; font-weight: 600; color: #273E35; }
 #AboutVersion { font-size: 11px; color: #237B68; padding: 5px 11px; background: transparent; }
 #SettingsScroll, #SettingsBody { background: transparent; border: 0; }
-#SettingsSectionTitle { font-size: 12px; font-weight: 600; color: #66776B; }
+#SettingsSectionTitle { font-size: 12px; font-weight: 600; color: #43514B; }
 #SettingsRowTitle { font-size: 13px; font-weight: 600; color: #293A35; }
 #SettingsDivider { background: #E5E8DF; border: 0; }
-#SettingsChoice { background: transparent; border: 0; color: #66776B; font-size: 12px; }
+#SettingsChoice { background: transparent; border: 0; color: #43514B; font-size: 12px; }
 #SettingsChoice[primary="true"] { color: #FFFFFF; font-weight: 600; }
-#SettingsKey { background: transparent; border: 0; padding: 4px 8px; color: #61766C; font-size: 11px; }
-#SettingsStatus { font-size: 11px; color: #77827A; }
+#SettingsKey { background: transparent; border: 0; padding: 4px 8px; color: #43514B; font-size: 11px; }
+#SettingsStatus { font-size: 11px; color: #58615D; }
 #SettingsStatus[error="true"] { color: #AD4C35; }
 #RecordingStatus { font-size: 11px; color: #AD4C35; }

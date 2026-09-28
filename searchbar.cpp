@@ -45,8 +45,19 @@ void LineEdit::updateIcon(void)
 void LineEdit::changeEvent(QEvent *event)
 {
 	QLineEdit::changeEvent(event);
-	if (event->type() == QEvent::PaletteChange)
+	if (event->type() == QEvent::PaletteChange) {
+		QPalette colors = this->palette();
+		QColor placeholder = colors.color(QPalette::Text);
+		placeholder.setAlpha(128);
+		if (!qApp->property("pastesDark").toBool())
+			placeholder = QColor("#58615D");
+		/* Do not fade light-theme hints into the paper-colored field. */
+		if (colors.color(QPalette::PlaceholderText) != placeholder) {
+			colors.setColor(QPalette::PlaceholderText, placeholder);
+			this->setPalette(colors);
+		}
 		this->updateIcon();
+	}
 }
 
 void LineEdit::paintEvent(QPaintEvent *event)
