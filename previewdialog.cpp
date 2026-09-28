@@ -71,17 +71,21 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	setAttribute(Qt::WA_TranslucentBackground);
 	setModal(true);
 	if (parent) parent->installEventFilter(this);
+	const auto &appearance = Platform::dialogAppearance();
 	QVBoxLayout *outer = new QVBoxLayout(this);
-	outer->setContentsMargins(14, 14, 14, 18);
+	outer->setContentsMargins(appearance.outerMargins);
 	outer->addWidget(m_surface);
-	auto *shadow = new QGraphicsDropShadowEffect(m_surface);
-	shadow->setOffset(0, 4);
-	shadow->setBlurRadius(24);
-	shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
-	m_surface->setGraphicsEffect(shadow);
+	if (!appearance.nativeControls) {
+		auto *shadow = new QGraphicsDropShadowEffect(m_surface);
+		shadow->setOffset(0, 4);
+		shadow->setBlurRadius(24);
+		shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
+		m_surface->setGraphicsEffect(shadow);
+	}
 	m_surface->setObjectName("PreviewSurface");
 	QVBoxLayout *layout = new QVBoxLayout(m_surface);
-	layout->setContentsMargins(20, 16, 20, 16);
+	layout->setContentsMargins(appearance.nativeControls ? appearance.contentMargins :
+		QMargins(20, 16, 20, 16));
 	layout->setSpacing(16);
 
 	QLabel *icon = new QLabel(m_header);
@@ -104,21 +108,26 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	titles->setSpacing(3);
 	titles->addWidget(title);
 	titles->addWidget(time);
-	RoundedButton *close = new RoundedButton(m_header);
-	close->setObjectName("PreviewClose");
-	close->setText(QStringLiteral("×"));
-	close->setFixedSize(32, 32);
-	close->setToolTip(QObject::tr("Close (Esc)"));
-	close->setAccessibleName(QObject::tr("Close"));
-	close->setAutoDefault(false);
-	QObject::connect(close, &QPushButton::clicked, this, &QDialog::reject);
+	RoundedButton *close = nullptr;
+	if (!appearance.nativeControls) {
+		close = new RoundedButton(m_header);
+		close->setObjectName("PreviewClose");
+		close->setText(QStringLiteral("×"));
+		close->setFixedSize(32, 32);
+		close->setToolTip(QObject::tr("Close (Esc)"));
+		close->setAccessibleName(QObject::tr("Close"));
+		close->setAutoDefault(false);
+		QObject::connect(close, &QPushButton::clicked, this, &QDialog::reject);
+	}
 	QHBoxLayout *header = new QHBoxLayout(m_header);
 	header->setContentsMargins(0, 0, 0, 0);
 	header->setSpacing(10);
 	header->addWidget(icon);
 	header->addLayout(titles);
 	header->addStretch();
-	header->addWidget(close);
+	if (close) header->addWidget(close);
+	this->installEventFilter(this);
+	m_surface->installEventFilter(this);
 	m_header->installEventFilter(this);
 	for (QLabel *label : m_header->findChildren<QLabel *>())
 		label->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -187,7 +196,7 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	}
 	auto *space = new QShortcut(QKeySequence(Qt::Key_Space), this);
 	QObject::connect(space, &QShortcut::activated, this, &QDialog::reject);
-	setTabOrder(close, copy);
+	if (close) setTabOrder(close, copy);
 	setTabOrder(copy, paste);
 }
 
@@ -196,9 +205,14 @@ bool PreviewDialog::eventFilter(QObject *object, QEvent *event)
 	/* A workspace switch must also end the preview's modal event loop. */
 	if (object == parentWidget() && event->type() == QEvent::Hide)
 		reject();
-	if (object == m_header && event->type() == QEvent::MouseButtonPress) {
+	if ((object == this || object == m_surface || object == m_header) &&
+		event->type() == QEvent::MouseButtonPress) {
 		QMouseEvent *mouse = static_cast<QMouseEvent *>(event);
-		if (mouse->button() == Qt::LeftButton && windowHandle()) {
+		const QPoint point = mapFromGlobal(mouse->globalPosition().toPoint());
+		const int bottom = m_header->mapTo(this, QPoint(0, m_header->height())).y()
+			+ m_surface->layout()->spacing()/2;
+		if (mouse->button() == Qt::LeftButton && rect().contains(point) &&
+			point.y() < bottom && windowHandle()) {
 			windowHandle()->startSystemMove();
 			return true;
 		}

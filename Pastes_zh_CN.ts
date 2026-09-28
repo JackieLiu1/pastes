@@ -175,7 +175,7 @@
         <translation>代码</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="168"/>
+        <location filename="previewdialog.cpp" line="177"/>
         <source>Paste</source>
         <translation>粘贴</translation>
     </message>
@@ -186,15 +186,15 @@
     </message>
     <message>
         <location filename="pasteitem.cpp" line="243"/>
-        <location filename="previewdialog.cpp" line="162"/>
+        <location filename="previewdialog.cpp" line="171"/>
         <source>Copy to Clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
     <message>
         <location filename="pasteitem.cpp" line="248"/>
         <location filename="previewdialog.cpp" line="70"/>
-        <location filename="previewdialog.cpp" line="99"/>
-        <location filename="previewdialog.cpp" line="144"/>
+        <location filename="previewdialog.cpp" line="103"/>
+        <location filename="previewdialog.cpp" line="153"/>
         <source>Preview</source>
         <translation>预览</translation>
     </message>
@@ -255,23 +255,23 @@
     </message>
     <message>
         <location filename="appdialog.cpp" line="64"/>
-        <location filename="previewdialog.cpp" line="111"/>
+        <location filename="previewdialog.cpp" line="117"/>
         <source>Close (Esc)</source>
         <translation>关闭（Esc）</translation>
     </message>
     <message>
         <location filename="appdialog.cpp" line="65"/>
-        <location filename="previewdialog.cpp" line="112"/>
+        <location filename="previewdialog.cpp" line="118"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="151"/>
+        <location filename="previewdialog.cpp" line="160"/>
         <source>%1 files</source>
         <translation>%1 个文件</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="153"/>
+        <location filename="previewdialog.cpp" line="162"/>
         <source>%1 characters</source>
         <translation>%1 个字符</translation>
     </message>

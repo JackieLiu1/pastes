@@ -217,6 +217,7 @@ void Platform::preparePanel(QWidget *widget)
 void Platform::preparePreview(QWidget *widget)
 {
 	prepareFloatingWindow(widget);
+	Platform::prepareDialog(widget);
 	/* Keep the modal preview above its bottom panel. */
 	nativeView(widget).window.level = CGWindowLevelForKey(kCGScreenSaverWindowLevelKey)+1;
 }
@@ -338,8 +339,9 @@ void initializeDialog(QWidget *widget)
 
 void initializePreview(QWidget *widget)
 {
-	widget->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
-		Qt::NoDropShadowWindowHint);
+	/* Share dialog chrome while retaining a nonactivating, keyable NSPanel. */
+	widget->setWindowFlags((dialogAppearance().flags & ~Qt::WindowType_Mask) | Qt::Tool);
+	initializeDialog(widget);
 	widget->setAttribute(Qt::WA_MacAlwaysShowToolWindow);
 }
 
