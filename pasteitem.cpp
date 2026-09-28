@@ -213,7 +213,7 @@ bool PasteItem::event(QEvent *event)
 		QKeyEvent *key = static_cast<QKeyEvent *>(event);
 		if (key->key() == Qt::Key_Tab || key->key() == Qt::Key_Backtab) {
 			emit this->moveFocusPrevNext(key->key() == Qt::Key_Backtab ||
-						     key->modifiers().testFlag(Qt::ShiftModifier));
+						     key->modifiers().testFlag(Qt::ShiftModifier), true);
 			return true;
 		}
 	}
@@ -236,10 +236,10 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 		emit this->hideWindow();
 		return;
 	case Qt::Key_Left:
-		emit this->moveFocusPrevNext(true);
+		emit this->moveFocusPrevNext(true, false);
 		return;
 	case Qt::Key_Right:
-		emit this->moveFocusPrevNext(false);
+		emit this->moveFocusPrevNext(false, false);
 		return;
 	case Qt::Key_Space:
 		emit this->previewRequested();

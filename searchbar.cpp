@@ -94,14 +94,14 @@ bool LineEdit::event(QEvent *event)
 			emit this->hideWindow();
 			return true;
 		case Qt::Key_Tab:
-			emit this->moveFocusPrevNext(ke->modifiers().testFlag(Qt::ShiftModifier));
+			emit this->moveFocusPrevNext(ke->modifiers().testFlag(Qt::ShiftModifier), true);
 			return true;
 		case Qt::Key_Backtab:
-			emit this->moveFocusPrevNext(true);
+			emit this->moveFocusPrevNext(true, true);
 			return true;
 		case Qt::Key_Right:
 		case Qt::Key_Down:
-			emit this->moveFocusPrevNext(false);
+			emit this->moveFocusPrevNext(false, false);
 			return true;
 		}
 	}
@@ -138,9 +138,8 @@ SearchBar::SearchBar(QWidget *parent, int width, int height) : QWidget(parent)
 	});
 	QObject::connect(m_search_edit, &LineEdit::selectPlainTextItem, this,
 			 &SearchBar::selectPlainTextItem);
-	QObject::connect(m_search_edit, &LineEdit::moveFocusPrevNext, [this](bool prev) {
-		emit this->moveFocusPrevNext(prev);
-	});
+	QObject::connect(m_search_edit, &LineEdit::moveFocusPrevNext,
+			 this, &SearchBar::moveFocusPrevNext);
 
 	QHBoxLayout *layout = new QHBoxLayout();
 	layout->addStretch();

@@ -14,7 +14,7 @@ protected:
 	bool event(QEvent *event);
 
 signals:
-	void moveFocusPrevNext(bool);
+	void moveFocusPrevNext(bool prev, bool wrap);
 	void selectItem(void);
 	void selectPlainTextItem(void);
 	void hideWindow(void);

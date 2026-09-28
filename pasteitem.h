@@ -100,7 +100,7 @@ Q_SIGNALS:
 	void hideWindow(void);
 	void copied(bool hasUrls);
 	void clipboardUpdated(void);
-	void moveFocusPrevNext(bool prev);
+	void moveFocusPrevNext(bool prev, bool wrap);
 	void previewRequested(void);
 	void deleteRequested(void);
 };

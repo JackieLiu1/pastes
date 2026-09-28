@@ -71,7 +71,8 @@ MainWindow::MainWindow(QWidget *parent)
 		this->__main_frame->setGraphicsEffect(this->__main_frame_shadow);
 	/* Do not move focus before the pointer gesture decides it is a click. */
 	this->__main_frame->setFocusPolicy(Qt::TabFocus);
-	QObject::connect(this->__main_frame, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));
+	QObject::connect(this->__main_frame, &MainFrame::moveFocusPrevNext,
+			 this, &MainWindow::move_to_prev_next_focus_widget);
 	QObject::connect(this->__main_frame, &MainFrame::hideWindow, [this](void) {
 		this->hide_window();
 	});
@@ -489,7 +490,7 @@ void MainWindow::pasteToPreviousWindow(bool hasUrls)
 	this->__paste_target->paste(this, hasUrls);
 }
 
-void MainWindow::move_to_prev_next_focus_widget(bool prev)
+void MainWindow::move_to_prev_next_focus_widget(bool prev, bool wrap)
 {
 	this->__elastic_scroll->cancel();
 	if (this->__card_swipe->sourceCard()) this->__card_swipe->cancel();
@@ -500,21 +501,22 @@ void MainWindow::move_to_prev_next_focus_widget(bool prev)
 
 	int row = this->__scroll_widget->currentRow();
 	if (row < 0)
-		row = prev ? 0 : -1;
+		row = prev ? count : -1;
 	const bool fromSearch = this->__searchbar->findChild<LineEdit *>("", Qt::FindDirectChildrenOnly)->hasFocus();
 
 	/* Bounded by the item count: if every item is hidden (search filtered
 	 * everything out) this gives up instead of looping forever. */
 	PasteItem *widget = nullptr;
 	for (int i = 0; i < count; i++) {
-		if (prev) {
-			/* Get prev focus widget and isn't hidden */
-			if (--row < 0)
-				row = count - 1;
-		} else if (i > 0 || !fromSearch || row < 0) {
-			/* Get next focus widget and isn't hidden */
-			if (++row > count - 1)
-				row = 0;
+		if (prev)
+			--row;
+		else if (i > 0 || !fromSearch || row < 0)
+			++row;
+		if (row < 0 || row >= count) {
+			/* Arrow navigation stops at the edge; Tab may wrap around. */
+			if (!wrap)
+				return;
+			row = prev ? count - 1 : 0;
 		}
 
 		QListWidgetItem *item = this->__scroll_widget->item(row);
@@ -851,7 +853,8 @@ void MainWindow::initUI(void)
 		if (widget)
 			widget->copyData(true);
 	});
-	QObject::connect(this->__searchbar, SIGNAL(moveFocusPrevNext(bool)), this, SLOT(move_to_prev_next_focus_widget(bool)));
+	QObject::connect(this->__searchbar, &SearchBar::moveFocusPrevNext,
+			 this, &MainWindow::move_to_prev_next_focus_widget);
 
 	this->__menu_button = new RoundedButton(this->__main_frame);
 	this->__menu_button->setObjectName("PanelMenu");

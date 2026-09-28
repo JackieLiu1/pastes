@@ -75,7 +75,7 @@ public slots:
 	void hide_window(void);
 	void show_window(void);
 	void clipboard_later(void);
-	void move_to_prev_next_focus_widget(bool);
+	void move_to_prev_next_focus_widget(bool prev, bool wrap);
 	void parsingData(QList<ItemData *> list);
 
 private:

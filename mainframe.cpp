@@ -26,16 +26,16 @@ bool MainFrame::event(QEvent *event)
 			emit this->hideWindow();
 			return true;
 		case Qt::Key_Tab:
-			emit this->moveFocusPrevNext(ke->modifiers().testFlag(Qt::ShiftModifier));
+			emit this->moveFocusPrevNext(ke->modifiers().testFlag(Qt::ShiftModifier), true);
 			return true;
 		case Qt::Key_Backtab:
-			emit this->moveFocusPrevNext(true);
+			emit this->moveFocusPrevNext(true, true);
 			return true;
 		case Qt::Key_Left:
-			emit this->moveFocusPrevNext(true);
+			emit this->moveFocusPrevNext(true, false);
 			return true;
 		case Qt::Key_Right:
-			emit this->moveFocusPrevNext(false);
+			emit this->moveFocusPrevNext(false, false);
 			return true;
 		}
 	}

@@ -29,7 +29,7 @@ Q_SIGNALS:
 	void hideWindow(void);
 	void selectItem(void);
 	void selectPlainTextItem(void);
-	void moveFocusPrevNext(bool);
+	void moveFocusPrevNext(bool prev, bool wrap);
 
 private:
 	QAction			*m_searchAction;
@@ -46,7 +46,7 @@ private:
 	LineEdit		*m_search_edit;
 
 Q_SIGNALS:
-	void moveFocusPrevNext(bool);
+	void moveFocusPrevNext(bool prev, bool wrap);
 	void selectItem(void);
 	void selectPlainTextItem(void);
 	void hideWindow(void);
