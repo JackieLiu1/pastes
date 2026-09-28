@@ -30,6 +30,9 @@ class AppDialog;
 class CardSwipeOverlay;
 class CardReflowOverlay;
 class ElasticScrollController;
+#ifdef Q_OS_MACOS
+class MacPasteController;
+#endif
 #if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
 class ClipboardSource;
 #endif
@@ -90,6 +93,7 @@ private:
 	bool				__hide_state;
 #ifdef Q_OS_MACOS
 	bool				__app_dialog_open = false;
+	MacPasteController		*__mac_paste = nullptr;
 #endif
 	Database			__db;
 	/* Defers snapshots; macOS does not debounce separate native copies. */

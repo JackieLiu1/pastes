@@ -41,6 +41,7 @@
 #include "elasticscroll.h"
 #ifdef Q_OS_MACOS
 #include "window_mac.h"
+#include "paste_mac.h"
 #endif
 
 /* History older than this is dropped on startup and on every clipboard update */
@@ -315,8 +316,15 @@ MainWindow::MainWindow(QWidget *parent)
 
 	this->initUI();
 #ifdef Q_OS_MACOS
+	this->__mac_paste = new MacPasteController(this);
+	/* The caller may still hold the copied item until its signal returns. */
+	QObject::connect(this->__mac_paste, &MacPasteController::permissionRequired, this, [this](void) {
+		PastePermissionDialog dialog(this);
+		this->execAppDialog(dialog);
+	}, Qt::QueuedConnection);
 	watchMacPanelDismissal(this, [this](bool immediate) {
 		if (immediate) {
+			this->__mac_paste->cancel();
 			this->__hide_animation->stop();
 			this->__hide_state = true;
 			this->hide();
@@ -574,6 +582,8 @@ void MainWindow::show_window(void)
 	/* Re-activating an owned dialog must not summon the history panel. */
 	if (this->__app_dialog_open)
 		return;
+	if (this->__hide_state)
+		this->__mac_paste->captureTarget();
 	/* A copy immediately followed by the hotkey may precede the next poll.
 	 * Populate the panel before showing it, keeping the native source. */
 	this->__clipboard_source->synchronize();
@@ -633,6 +643,9 @@ void MainWindow::hide_window(void)
 
 void MainWindow::pasteToPreviousWindow(void)
 {
+#ifdef Q_OS_MACOS
+	this->__mac_paste->paste(this);
+#endif
 #ifdef Q_OS_WIN
 	const HWND target = reinterpret_cast<HWND>(this->__paste_target);
 	if (!target || !IsWindow(target))

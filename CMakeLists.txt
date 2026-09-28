@@ -46,7 +46,7 @@ elseif(APPLE)
     set(CMAKE_OBJCXX_STANDARD 17)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
     list(APPEND PASTES_SOURCES shortcut_mac.cpp window_mac.mm window_mac.h
-        clipboardsource_mac.mm clipboardsource_mac.h)
+        clipboardsource_mac.mm clipboardsource_mac.h paste_mac.mm paste_mac.h)
 elseif(UNIX AND NOT APPLE)
     list(APPEND PASTES_SOURCES shortcut_x11.cpp)
 endif()
@@ -69,8 +69,10 @@ elseif(APPLE)
     find_library(CARBON_FRAMEWORK Carbon REQUIRED)
     find_library(APPKIT_FRAMEWORK AppKit REQUIRED)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
+    find_library(APPLICATIONSERVICES_FRAMEWORK ApplicationServices REQUIRED)
     target_link_libraries(pastes PRIVATE ${CARBON_FRAMEWORK}
-        ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK})
+        ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK}
+        ${APPLICATIONSERVICES_FRAMEWORK})
     set(PASTES_MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/pastes.icns")
     target_sources(pastes PRIVATE ${PASTES_MACOS_ICON})
     set_source_files_properties(${PASTES_MACOS_ICON} PROPERTIES

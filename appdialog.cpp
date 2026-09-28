@@ -2,6 +2,7 @@
 #include "roundedwidgets.h"
 #ifdef Q_OS_MACOS
 #include "window_mac.h"
+#include "paste_mac.h"
 #endif
 
 #include <QApplication>
@@ -160,6 +161,37 @@ void AppDialog::changeEvent(QEvent *event)
 			shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
 	}
 }
+
+#ifdef Q_OS_MACOS
+PastePermissionDialog::PastePermissionDialog(QWidget *parent) :
+	AppDialog(QObject::tr("Allow direct paste"), 492, parent)
+{
+	auto *description = new QLabel(QObject::tr("To paste into the previous app, allow Pastes in System Settings → Privacy & Security → Accessibility."), this);
+	description->setObjectName("AppDialogValue");
+	description->setWordWrap(true);
+	bodyLayout()->addWidget(description);
+	auto *fallback = new QLabel(QObject::tr("The selected item is on the clipboard. You can press ⌘V to paste it."), this);
+	fallback->setObjectName("AppDialogMuted");
+	fallback->setWordWrap(true);
+	bodyLayout()->addWidget(fallback);
+	auto *buttons = new QHBoxLayout;
+	buttons->addStretch();
+	auto *later = new RoundedButton(this);
+	later->setObjectName("PreviewAction"); later->setText(QObject::tr("Not now"));
+	later->setAutoDefault(false);
+	QObject::connect(later, &QPushButton::clicked, this, &QDialog::reject);
+	buttons->addWidget(later);
+	auto *allow = new RoundedButton(this);
+	allow->setObjectName("PreviewAction"); allow->setProperty("primary", true);
+	allow->setText(QObject::tr("Open System Settings"));
+	QObject::connect(allow, &QPushButton::clicked, this, [this](void) {
+		requestMacPastePermission();
+		accept();
+	});
+	buttons->addWidget(allow);
+	bodyLayout()->addLayout(buttons);
+}
+#endif
 
 AboutDialog::AboutDialog(QWidget *parent) : AppDialog(QObject::tr("About Pastes"), 492, parent)
 {

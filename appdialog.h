@@ -33,4 +33,12 @@ public:
 	explicit AboutDialog(QWidget *parent = nullptr);
 };
 
+#ifdef Q_OS_MACOS
+class PastePermissionDialog : public AppDialog
+{
+public:
+	explicit PastePermissionDialog(QWidget *parent = nullptr);
+};
+#endif
+
 #endif

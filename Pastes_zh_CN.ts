@@ -4,6 +4,26 @@
 <context>
     <name>QObject</name>
     <message>
+        <source>Allow direct paste</source>
+        <translation>允许直接粘贴</translation>
+    </message>
+    <message>
+        <source>To paste into the previous app, allow Pastes in System Settings → Privacy &amp; Security → Accessibility.</source>
+        <translation>要直接粘贴到原来的应用，请在“系统设置 → 隐私与安全性 → 辅助功能”中允许 Pastes。</translation>
+    </message>
+    <message>
+        <source>The selected item is on the clipboard. You can press ⌘V to paste it.</source>
+        <translation>选中的条目已放入剪贴板，你也可以按 ⌘V 手动粘贴。</translation>
+    </message>
+    <message>
+        <source>Not now</source>
+        <translation>暂不</translation>
+    </message>
+    <message>
+        <source>Open System Settings</source>
+        <translation>打开系统设置</translation>
+    </message>
+    <message>
         <source>Source unavailable</source>
         <translation>未能识别来源应用</translation>
     </message>
