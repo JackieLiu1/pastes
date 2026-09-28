@@ -1,4 +1,4 @@
-#include "filepreview.h"
+#include "ui/filepreview.h"
 
 #include <QDir>
 #include <QFileInfo>

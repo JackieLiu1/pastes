@@ -1,11 +1,11 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "mainframe.h"
-#include "pasteitem.h"
+#include "ui/mainframe.h"
+#include "ui/pasteitem.h"
 #include "platform/globalshortcut.h"
-#include "searchbar.h"
-#include "database.h"
+#include "ui/searchbar.h"
+#include "storage/database.h"
 
 #include <QMainWindow>
 #include <QPropertyAnimation>

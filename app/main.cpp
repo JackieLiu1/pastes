@@ -5,7 +5,7 @@
 #include <QLocale>
 #include <QTimer>
 
-#include "mainwindow.h"
+#include "ui/mainwindow.h"
 #include "platform/applicationintegration.h"
 #include "platform/paths.h"
 

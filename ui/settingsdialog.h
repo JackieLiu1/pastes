@@ -1,7 +1,7 @@
 #ifndef SETTINGSDIALOG_H
 #define SETTINGSDIALOG_H
 
-#include "appdialog.h"
+#include "ui/appdialog.h"
 #include "platform/startupintegration.h"
 
 class QLabel;

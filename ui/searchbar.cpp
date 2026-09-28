@@ -1,4 +1,4 @@
-#include "searchbar.h"
+#include "ui/searchbar.h"
 
 #include <QHBoxLayout>
 #include <QResizeEvent>

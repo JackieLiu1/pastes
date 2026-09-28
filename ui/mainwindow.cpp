@@ -26,17 +26,17 @@
 #include <QHash>
 #include <QScopedValueRollback>
 
-#include "mainwindow.h"
-#include "historypolicy.h"
+#include "ui/mainwindow.h"
+#include "core/historypolicy.h"
 #include "platform/clipboardsource.h"
 #include "platform/pastetarget.h"
-#include "pasteitem.h"
-#include "previewdialog.h"
-#include "appdialog.h"
-#include "settingsdialog.h"
-#include "cardswipe.h"
-#include "cardreflow.h"
-#include "elasticscroll.h"
+#include "ui/pasteitem.h"
+#include "ui/previewdialog.h"
+#include "ui/appdialog.h"
+#include "ui/settingsdialog.h"
+#include "ui/cardswipe.h"
+#include "ui/cardreflow.h"
+#include "ui/elasticscroll.h"
 #include "platform/windowintegration.h"
 #include "platform/menuintegration.h"
 

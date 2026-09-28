@@ -1,4 +1,4 @@
-#include "elasticscroll.h"
+#include "ui/elasticscroll.h"
 
 #include <QEvent>
 #include <QListWidget>

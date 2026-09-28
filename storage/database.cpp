@@ -1,4 +1,4 @@
-#include "database.h"
+#include "storage/database.h"
 #include "platform/paths.h"
 
 #include <QApplication>

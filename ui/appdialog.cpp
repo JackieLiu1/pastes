@@ -1,7 +1,7 @@
-#include "appdialog.h"
-#include "historypolicy.h"
+#include "ui/appdialog.h"
+#include "core/historypolicy.h"
 #include "platform/pastetarget.h"
-#include "roundedwidgets.h"
+#include "ui/roundedwidgets.h"
 #include "platform/windowintegration.h"
 
 #include <QApplication>

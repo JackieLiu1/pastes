@@ -1,6 +1,6 @@
 #include "platform/windowintegration.h"
-#include "settingsdialog.h"
-#include "roundedwidgets.h"
+#include "ui/settingsdialog.h"
+#include "ui/roundedwidgets.h"
 
 #include <QAbstractButton>
 #include <QApplication>

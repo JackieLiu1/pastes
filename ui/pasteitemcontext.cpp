@@ -1,5 +1,5 @@
 #include "platform/fileicon.h"
-#include "filepreview.h"
+#include "ui/filepreview.h"
 
 #include <algorithm>
 
@@ -13,7 +13,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <QDebug>
 
-#include "pasteitemcontext.h"
+#include "ui/pasteitemcontext.h"
 
 TextFrame::TextFrame(QWidget *parent) : RoundedLabel(RoundedRole::Content, parent),
 	m_mask_label(new RoundedLabel(RoundedRole::Footer, this))

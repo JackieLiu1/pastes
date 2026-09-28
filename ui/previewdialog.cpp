@@ -1,8 +1,8 @@
-#include "previewdialog.h"
-#include "pasteitem.h"
-#include "roundedwidgets.h"
+#include "ui/previewdialog.h"
+#include "ui/pasteitem.h"
+#include "ui/roundedwidgets.h"
 #include "platform/windowintegration.h"
-#include "filepreview.h"
+#include "ui/filepreview.h"
 
 #include <QApplication>
 #include <QDateTime>

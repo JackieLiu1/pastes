@@ -1,9 +1,9 @@
 #ifndef PASTEITEM_H
 #define PASTEITEM_H
 
-#include "pasteitemcontext.h"
-#include "pasteitembarnner.h"
-#include "clipboarddata.h"
+#include "ui/pasteitemcontext.h"
+#include "ui/pasteitembarnner.h"
+#include "core/clipboarddata.h"
 
 #include <QListWidgetItem>
 #include <QWidget>

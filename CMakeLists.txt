@@ -18,24 +18,24 @@ set(QAPPLICATION_CLASS QApplication)
 add_subdirectory(3rd/SingleApplication)
 
 set(PASTES_SOURCES
-    main.cpp
-    mainframe.cpp mainframe.h
-    roundedwidgets.cpp roundedwidgets.h
-    previewdialog.cpp previewdialog.h
-    appdialog.cpp appdialog.h
-    settingsdialog.cpp settingsdialog.h
-    cardswipe.cpp cardswipe.h
-    cardreflow.cpp cardreflow.h
-    elasticscroll.cpp elasticscroll.h
-    mainwindow.cpp mainwindow.h
-    historypolicy.h
-    database.cpp database.h
-    clipboarddata.cpp clipboarddata.h
-    pasteitem.cpp pasteitem.h
-    pasteitembarnner.cpp pasteitembarnner.h
-    pasteitemcontext.cpp pasteitemcontext.h
-    filepreview.cpp filepreview.h
-    searchbar.cpp searchbar.h
+    app/main.cpp
+    ui/mainframe.cpp ui/mainframe.h
+    ui/roundedwidgets.cpp ui/roundedwidgets.h
+    ui/previewdialog.cpp ui/previewdialog.h
+    ui/appdialog.cpp ui/appdialog.h
+    ui/settingsdialog.cpp ui/settingsdialog.h
+    ui/cardswipe.cpp ui/cardswipe.h
+    ui/cardreflow.cpp ui/cardreflow.h
+    ui/elasticscroll.cpp ui/elasticscroll.h
+    ui/mainwindow.cpp ui/mainwindow.h
+    core/historypolicy.h
+    storage/database.cpp storage/database.h
+    core/clipboarddata.cpp core/clipboarddata.h
+    ui/pasteitem.cpp ui/pasteitem.h
+    ui/pasteitembarnner.cpp ui/pasteitembarnner.h
+    ui/pasteitemcontext.cpp ui/pasteitemcontext.h
+    ui/filepreview.cpp ui/filepreview.h
+    ui/searchbar.cpp ui/searchbar.h
     sources.qrc
 )
 

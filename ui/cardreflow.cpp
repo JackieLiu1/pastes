@@ -1,5 +1,5 @@
-#include "cardreflow.h"
-#include "pasteitem.h"
+#include "ui/cardreflow.h"
+#include "ui/pasteitem.h"
 
 #include <QHash>
 #include <QListWidget>

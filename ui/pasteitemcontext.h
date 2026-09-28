@@ -7,7 +7,7 @@
 #include <QStackedWidget>
 #include <QPainter>
 #include <QStyleOption>
-#include "roundedwidgets.h"
+#include "ui/roundedwidgets.h"
 
 #define LABEL_HEIGHT	30
 

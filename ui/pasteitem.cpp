@@ -1,7 +1,7 @@
-#include "pasteitem.h"
-#include "roundedwidgets.h"
+#include "ui/pasteitem.h"
+#include "ui/roundedwidgets.h"
 #include "platform/menuintegration.h"
-#include "filepreview.h"
+#include "ui/filepreview.h"
 
 #include <QClipboard>
 #include <QApplication>

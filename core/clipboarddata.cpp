@@ -1,4 +1,4 @@
-#include "clipboarddata.h"
+#include "core/clipboarddata.h"
 
 #include <QBuffer>
 #include <QImageReader>

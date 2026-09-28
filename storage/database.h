@@ -6,7 +6,7 @@
 #include <QObject>
 #include <QThread>
 
-#include "pasteitem.h"
+#include "ui/pasteitem.h"
 
 /*
  * All SQL work runs on one dedicated worker thread which owns its own
