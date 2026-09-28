@@ -1113,7 +1113,15 @@ void MainWindow::parsingData(QList<ItemData *> list)
 		PasteItem *widget = this->insertItemWidget(true);
 		bool hasContent = false;
 
-		if (itemData->mimeData->hasHtml() && !itemData->mimeData->text().isEmpty()) {
+		QList<QUrl> urls = itemData->mimeData->urls();
+		bool localFiles = !urls.isEmpty();
+		for (const QUrl &url : urls)
+			localFiles &= url.isLocalFile();
+		/* Match new copies and Undo: file references precede ancillary HTML
+		 * and bitmap flavors, with a fallback when the files are gone. */
+		if (localFiles && widget->setUrls(urls)) {
+			hasContent = true;
+		} else if (itemData->mimeData->hasHtml() && !itemData->mimeData->text().isEmpty()) {
 			widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text());
 			hasContent = true;
 		} else if (itemData->mimeData->hasImage() && itemData->mimeData->imageData().isValid() &&
@@ -1122,8 +1130,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 			widget->setImage(image);
 			hasContent = true;
 		} else if (itemData->mimeData->hasUrls()) {
-			QList<QUrl> urls = itemData->mimeData->urls();
-			hasContent = widget->setUrls(urls);
+			hasContent = !localFiles && widget->setUrls(urls);
 		} else if (itemData->mimeData->hasText() && !itemData->mimeData->text().isEmpty()) {
 			widget->setPlainText(itemData->mimeData->text().trimmed());
 			hasContent = true;
