@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QMenu>
+#include <QPointer>
 #include <QWidget>
 #import <AppKit/AppKit.h>
 
@@ -13,9 +14,10 @@ static NSView *nativeView(QWidget *widget)
 	return reinterpret_cast<NSView *>(widget->winId());
 }
 
-static bool popupNativeMenu(QMenu *menu, QWidget *anchor)
+static bool popupNativeMenu(QMenu *menu, QWidget *owner,
+			    const QPoint &point, bool alignRight)
 {
-	NSView *view = nativeView(anchor->window());
+	NSView *view = nativeView(owner->window());
 	if (!view)
 		return false;
 	NSMenu *nativeMenu = menu->toNSMenu();
@@ -27,9 +29,7 @@ static bool popupNativeMenu(QMenu *menu, QWidget *anchor)
 		qApp->property("pastesDark").toBool() ?
 		NSAppearanceNameDarkAqua : NSAppearanceNameAqua];
 	nativeMenu.font = [NSFont menuFontOfSize:0];
-	const QPoint point = anchor->mapTo(anchor->window(),
-		QPoint(anchor->width(), anchor->height()+4));
-	const NSPoint location = NSMakePoint(point.x()-nativeMenu.size.width,
+	const NSPoint location = NSMakePoint(point.x()-(alignRight ? nativeMenu.size.width : 0),
 		view.flipped ? point.y() : view.bounds.size.height-point.y());
 	[nativeMenu popUpMenuPositioningItem:nil atLocation:location inView:view];
 	return true;
@@ -49,6 +49,19 @@ const Platform::MenuAppearance &Platform::menuAppearance(void)
 
 void Platform::popupMenu(QMenu *menu, QWidget *anchor)
 {
-	if (!popupNativeMenu(menu, anchor))
+	const QPoint point = anchor->mapTo(anchor->window(),
+		QPoint(anchor->width(), anchor->height()+4));
+	if (!popupNativeMenu(menu, anchor, point, true))
 		menu->exec(anchor->mapToGlobal(QPoint(0, anchor->height())));
+}
+
+QAction *Platform::execMenuAt(QMenu *menu, QWidget *owner, const QPoint &position)
+{
+	QPointer<QAction> chosen;
+	const auto connection = QObject::connect(menu, &QMenu::triggered, menu,
+		[&chosen](QAction *action) { chosen = action; });
+	const bool native = popupNativeMenu(menu, owner,
+		owner->window()->mapFromGlobal(position), false);
+	QObject::disconnect(connection);
+	return native ? chosen.data() : menu->exec(position);
 }

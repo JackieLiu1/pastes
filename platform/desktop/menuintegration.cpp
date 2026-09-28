@@ -13,3 +13,8 @@ void Platform::popupMenu(QMenu *menu, QWidget *anchor)
 {
 	menu->exec(anchor->mapToGlobal(QPoint(0, anchor->height())));
 }
+
+QAction *Platform::execMenuAt(QMenu *menu, QWidget *, const QPoint &position)
+{
+	return menu->exec(position);
+}

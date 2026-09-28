@@ -50,19 +50,19 @@
         <translation>托盘图标</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="116"/>
+        <location filename="pasteitem.cpp" line="118"/>
         <source>Image</source>
         <translation>图片</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="126"/>
-        <location filename="pasteitem.cpp" line="145"/>
+        <location filename="pasteitem.cpp" line="128"/>
+        <location filename="pasteitem.cpp" line="147"/>
         <source>Link</source>
         <translation>超链接</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="129"/>
-        <location filename="pasteitem.cpp" line="148"/>
+        <location filename="pasteitem.cpp" line="131"/>
+        <location filename="pasteitem.cpp" line="150"/>
         <source>Color</source>
         <translation>颜色</translation>
     </message>
@@ -75,7 +75,7 @@
         <translation type="vanished">富文本</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="164"/>
+        <location filename="pasteitem.cpp" line="166"/>
         <source>Files</source>
         <translation>个文件</translation>
     </message>
@@ -164,13 +164,13 @@
         <translation>剪贴板历史</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="134"/>
-        <location filename="pasteitem.cpp" line="151"/>
+        <location filename="pasteitem.cpp" line="136"/>
+        <location filename="pasteitem.cpp" line="153"/>
         <source>Text</source>
         <translation>文本</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="134"/>
+        <location filename="pasteitem.cpp" line="136"/>
         <source>Code</source>
         <translation>代码</translation>
     </message>
@@ -180,19 +180,19 @@
         <translation>粘贴</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="244"/>
+        <location filename="pasteitem.cpp" line="248"/>
         <source>Copy as Plain Text</source>
         <translation>复制为纯文本</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="243"/>
+        <location filename="pasteitem.cpp" line="247"/>
         <location filename="previewdialog.cpp" line="170"/>
         <location filename="previewdialog.cpp" line="177"/>
         <source>Copy to Clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="248"/>
+        <location filename="pasteitem.cpp" line="252"/>
         <location filename="previewdialog.cpp" line="70"/>
         <location filename="previewdialog.cpp" line="102"/>
         <location filename="previewdialog.cpp" line="152"/>
@@ -200,7 +200,7 @@
         <translation>预览</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="249"/>
+        <location filename="pasteitem.cpp" line="253"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
@@ -245,7 +245,7 @@
         <translation type="vanished">← → 浏览   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="78"/>
+        <location filename="pasteitem.cpp" line="80"/>
         <source>Ctrl+%1 to paste</source>
         <translation>按 Ctrl+%1 粘贴</translation>
     </message>

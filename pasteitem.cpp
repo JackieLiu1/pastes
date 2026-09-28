@@ -1,5 +1,6 @@
 #include "pasteitem.h"
 #include "roundedwidgets.h"
+#include "platform/menuintegration.h"
 
 #include <QClipboard>
 #include <QApplication>
@@ -9,6 +10,7 @@
 #include <QDebug>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QPointer>
 #include <QContextMenuEvent>
 #include <QStyle>
 #include <QtMath>
@@ -239,7 +241,9 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 
 void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 {
-	QMenu menu(this);
+	/* Clipboard updates can replace this card while a menu is tracking. */
+	QPointer<PasteItem> guard(this);
+	QMenu menu(this->window());
 	QAction *copyAction = menu.addAction(QObject::tr("Copy to Clipboard"));
 	QAction *plainAction = menu.addAction(QObject::tr("Copy as Plain Text"));
 	ItemData *data = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
@@ -247,7 +251,9 @@ void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 	menu.addSeparator();
 	QAction *previewAction = menu.addAction(QObject::tr("Preview"));
 	QAction *deleteAction = menu.addAction(QObject::tr("Delete"));
-	QAction *chosen = menu.exec(event->globalPos());
+	QAction *chosen = Platform::execMenuAt(&menu, this->window(), event->globalPos());
+	if (!guard || guard->isHidden())
+		return;
 	if (chosen == copyAction)
 		this->copyData(false, false);
 	else if (chosen == plainAction)
