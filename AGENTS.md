@@ -5,11 +5,12 @@
 ## 项目概览
 
 Pastes 是一个跨平台剪贴板管理器：Windows 用 `Win+V`、Linux 用 `Ctrl+Shift+V` 或点击托盘唤出，保留最近 7 天的剪贴板历史，
-双击条目或按 `Enter` 复制回剪贴板（Linux 下还会直接注入焦点窗口）。
+macOS 用 `Shift+Cmd+V` 或点击菜单栏图标唤出。双击条目或按 `Enter`
+复制回剪贴板，并由各平台的 PasteTarget 请求粘贴到原焦点应用。
 
 - 语言/框架：C++17 + Qt6（Core / Gui / Widgets / Sql）
 - 构建系统：CMake（≥ 3.16），不使用 qmake
-- 平台：Windows（Win32 API）、Linux（X11/XRecord/XTest、gio）、macOS 仅残缺支持
+- 平台：Windows（Win32 API）、Linux（X11/XRecord/XTest、gio）、macOS（AppKit / Carbon / Accessibility）
 - 单实例：捆绑的 3rd/SingleApplication（静态库，源码直接编入，`QAPPLICATION_CLASS=QApplication`）
 - 持久化：SQLite（QSQLITE），两张表 `item`（md5/imagedata/icondata/time）与
   `data`（md5/formats/format_data，每格式一行）
@@ -32,9 +33,10 @@ cmake --build build
 ## 架构与数据流
 
 ```
-QClipboard::dataChanged
-  → Windows 立即记录来源窗口/图标，ClipboardSource 在独立线程读取程序图标（QImage）
-  → 防抖定时器（1s，CLIPBOARD_SETLE_MS）
+ClipboardSource::clipboardChanged
+  → Qt 变化通知；macOS 另检查原生 pasteboard 计数
+  → 记录来源：Windows 后台读取图标（QImage），macOS 保留来源应用
+  → 快照定时器（等待时间由 ClipboardSource::settleInterval 决定）
   → MainWindow::clipboard_later()          # 快照、dup_mimedata、MD5、去重、建 PasteItem
       → Database::insertPasteItem()        # 队列化信号转发到工作线程
 Database::Worker（单一持久线程，持有独立 QSqlDatabase 连接）
@@ -46,16 +48,18 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
 
 - `MainWindow`（mainwindow.cpp）— 主窗口、剪贴板监听、条目生命周期。
 - `AppDialog` / `AboutDialog`（appdialog.cpp）、`SettingsDialog`（settingsdialog.cpp）— 统一圆角弹窗；设置通过信号即时应用主题、快捷键提示与记录暂停，并由 QSettings 保存。暂停时取消防抖，不记录当时的剪贴板；恢复后仅记录新复制。
-- `StartupIntegration`（startupintegration.cpp）— Windows 当前账户 Run 注册表项、Linux 用户 autostart 文件；以系统项为状态来源，写入失败须恢复开关并显示错误，不能只保存一个假状态。旧 Windows 安装的全用户项需要升级安装器清理。
+- `StartupIntegration`（platform/startupintegration.cpp 与各系统实现）— Windows 当前账户 Run 注册表项、Linux 用户 autostart 文件；以系统项为状态来源，写入失败须恢复开关并显示错误，不能只保存一个假状态。旧 Windows 安装的全用户项需要升级安装器清理。
 - `Database` + `Database::Worker`（database.cpp）— 数据库门面 + 工作线程。
-- `ClipboardSource`（clipboardsource_win.cpp）— Windows 来源图标捕获；异步结果用请求编号匹配仍存在的条目，迟到图标经 Database 更新。
+- `ClipboardSource`（platform/clipboardsource.h）— 统一剪贴板通知与来源图标接口，各系统实现位于 platform/{windows,macos,linux}/；异步结果用请求编号匹配仍存在的条目，迟到图标经 Database 更新。
 - `PasteItem`（pasteitem.cpp）— 列表条目 widget；`copyData()` 复制回剪贴板，通过 QMimeData 的进程内属性保留原来源图标（不增加 MIME 格式），经同一防抖流程重新置顶；重复条目在来源查询为空时保留已有图标。
 - `CardSwipeOverlay`（cardswipe.cpp）— GUI 线程缓存卡片快照，拖动可越过面板边界；松手后上沿向后翻倒至亮线，再向中心收成光点，散出短促粒子并熄灭，整体共 480 ms，未达到阈值时回弹；撤销从细线反向展开并落回卡槽，不播放关机闪光或粒子，快速撤销接续当前翻转姿态；删除在松手时提交，动画不持有剪贴板数据。
 - `CardReflowOverlay`（cardreflow.cpp）— 删除或撤销前记录相邻卡片位置，实际列表更新后用缓存快照平移补位或让位；取消动画恢复真实卡片，连续操作接续当前视觉位置。
 - `ElasticScrollController`（elasticscroll.cpp）— GUI 线程控制横向滚动的惯性与边界阻力/回弹，通过平移真实 viewport 保持卡片和点击位置一致；触控板不重复施加系统惯性，列表变化、搜索、导航或隐藏时取消运动。
 - `StackedWidget`/`TextFrame`/`PixmapFrame`/`FileFrame`（pasteitemcontext.cpp）— 条目内容渲染。
-- `GlobalShortcut`/`ShortcutPrivate`（shortcut*.cpp）— 全局唤出快捷键，
-  平台实现分文件（shortcut_win.cpp / shortcut_x11.cpp）。
+- `GlobalShortcut`（platform/globalshortcut.h）— 全局唤出快捷键门面；
+  后台细节在 platform/shortcut_p.h，系统实现位于各平台目录。
+- `Platform` 的窗口、菜单、应用、路径和文件图标接口位于 platform/；
+  原生句柄仅出现在系统实现中，公共 UI 不包含系统 SDK。详见 docs/platform-architecture.md。
 - `ItemData`（pasteitem.h）— 条目数据的内存表示（mimeData/icon(QImage)/md5/time）。
 
 ## 线程规则（最重要）
@@ -69,8 +73,8 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
 4. `ItemData` 所有权：调用方持有，直到交给 `deletePasteItem()`
    （工作线程在删行后释放对象）。UI 删除条目时记得同步清掉
    `QListWidgetItem` 的 `Qt::UserRole` 引用和搜索恢复指针 `__current_item`。
-5. 后台线程的标志位用 `std::atomic`（见 shortcut.h）；阻塞的消息/事件循环
-   退出必须显式唤醒（见 shortcut_win.cpp 的 PostThreadMessage(WM_QUIT)）。
+5. 后台线程的标志位用 `std::atomic`（见 platform/shortcut_p.h）；阻塞的消息/事件循环
+   退出必须显式唤醒（见 platform/windows/shortcut.cpp 的 PostThreadMessage(WM_QUIT)）。
 
 ## 编码风格
 
@@ -82,8 +86,9 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 �
   会截断 64 位指针）。
 - 禁止：`QApplication::processEvents()`（重入）、GUI 线程之外的 UI 操作、
   逐字节拼接 QByteArray 做哈希（用 `QCryptographicHash::addData`）。
-- 平台代码集中在 `#ifdef Q_OS_WIN / Q_OS_LINUX` 块内；跨 Qt 版本的 API
-  用 `QT_VERSION_CHECK` 守卫（参考 mainwindow.cpp 的 KWindowEffects）。
+- 平台代码放在 platform/{windows,macos,linux}/，由 platform/CMakeLists.txt
+  选择实现；公共 UI 通过 platform/ 的接口调用，避免系统条件分支。跨 Qt 版本的
+  API 用 `QT_VERSION_CHECK` 守卫（参考 platform/linux/windowblur.cpp）。
 - 中文注释可用；提交信息必须遵循下方的英文提交规范。
   面向用户的字符串必须走 `QObject::tr()`
   （新增源码记得加入 CMakeLists.txt 并 `lupdate` 更新 Pastes_zh_CN.ts）。

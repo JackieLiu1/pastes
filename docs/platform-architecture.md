@@ -1,0 +1,65 @@
+# 平台接口与实现边界
+
+UI 负责“做什么”：显示历史、选择条目、复制数据、展示设置和播放动画。
+平台层负责“如何与系统交互”：监听剪贴板、识别来源、恢复粘贴目标、设置原生窗口和注册快捷键。
+两层通过普通 C++ / Qt 接口连接，不把原生句柄或 SDK 头文件传进 UI。
+
+```text
+MainWindow / PasteItem / AppDialog / SettingsDialog
+                       │
+          platform/ 公共接口与 Qt 门面
+                       │
+       ┌───────────────┼────────────────┐
+ platform/windows  platform/macos  platform/linux
+       └───────────────┴────────────────┘
+             platform/desktop
+       Windows、Linux 共用的 Qt 窗口与菜单行为
+```
+
+## 接口按职责划分
+
+| 公共接口 | 责任 | 调用约束 |
+| --- | --- | --- |
+| `clipboardsource.h` | 剪贴板变化通知、复制来源图标、快照同步和等待时间 | GUI 线程调用；异步图标只传 `QImage`，用请求编号匹配条目 |
+| `pastetarget.h` | 唤出前记住目标应用，面板隐藏后恢复焦点并粘贴 | GUI 线程调用；平台实现持有原生目标和取消状态 |
+| `globalshortcut.h` | 全局唤出信号、默认快捷键和注册结果通知 | UI 不依赖后台线程；内部类型在 `shortcut_p.h` |
+| `windowintegration.h` | 面板几何、卡片尺寸、背板、窗口激活、关闭通知及弹窗装饰 | GUI 线程调用；观察器随所属窗口销毁 |
+| `menuintegration.h` | 原生菜单弹出、标准设置/退出动作和菜单布局约定 | GUI 线程调用；动作触发后的业务行为仍由 UI 决定 |
+| `applicationintegration.h` | 应用激活策略、首次启动与第二实例的显示约定 | 创建 QApplication 后调用 |
+| `fileicon.h` | 文件图标查询与原生图标转换 | GUI 线程调用；返回 `QIcon` |
+| `paths.h` | 数据库和翻译目录，以及数据库父目录准备 | 不访问 SQL；目录准备由 Database::Worker 调用 |
+| `startupintegration.h` | 查询和修改系统开机启动项 | 状态来自系统项；公共层校验输入，平台实现返回错误 |
+
+这是一组按职责划分的小接口。无需运行时插件或平台类型判断，CMake 已经知道目标系统，
+因此只编译一个系统的实现。Windows 与 Linux 相同的 Qt 行为放在 `desktop/`，原生代码留在各自目录。
+UI 使用有明确名称的能力与布局配置，例如 `nativeControls`、`nativeBackdrop`、`hideForDialog`，
+不推断当前系统名称。主题颜色和交互动画仍由公共 UI 管理。
+
+## 保持现有行为
+
+- macOS 使用 Shift+Cmd+V，运行时没有 Dock 项；面板贴屏幕底部，使用 AppKit 背板和菜单。
+  全屏空间切换通知、弹窗激活保护、原生关闭按钮和高分辨率来源图标仍由 macOS 实现处理。
+- Windows 保留 Win+V 及注册失败时的回退、来源图标工作线程、窗口模糊和目标窗口粘贴。
+- Linux 保留 Ctrl+Shift+V、X11 来源查询、Selection 写入、Shift+Insert 注入以及用户 autostart 文件。
+- 数据库位置、schema、历史保留期限和 Qt 信号的队列化 SQL 执行方式没有迁移。
+- macOS 的开机启动和普通文件图标回退保持原有支持范围。这次拆分不新增平台功能。
+
+## 扩展一个平台能力
+
+1. 先确定职责，在对应公共头文件声明 Qt/C++ 类型的接口，并说明线程和生命周期约束。
+2. 在各系统目录提供实现；真实共用的 Qt 行为放到公共层或 `desktop/`。
+3. 在 `platform/CMakeLists.txt` 的对应分支加入源码和系统依赖。
+   应用打包资源及翻译生成由根 CMake 管理。
+4. UI 只调用公共接口，不包含 Win32、X11、AppKit 或 Carbon 头文件，也不包含 `_p.h`。
+5. 更新翻译，编译目标系统，并验证真实交互。纯编译成功不能代表全屏、焦点或粘贴行为正确。
+
+## 本次验证范围
+
+macOS 完成构建及原生复制监听、目标粘贴、权限不足回退、原生菜单、弹窗装饰、
+设置滚动、激活保护、快捷键与卡片选择检查。全屏唤出和空间切换隐藏检查通过。
+旧全屏测试中普通 QDialog 预览的两项焦点检查，在保存的重构前实现和新实现上均失败；
+该已有问题未在这次结构重构中改动。
+
+共享 desktop 实现及 Linux 的 Qt 路径、启动服务做了额外语法编译检查。
+本机缺少 Linux 的 GDesktopAppInfo、Xt/XTest 等完整头文件，Windows 和 Linux 的完整构建
+与原生运行需要各自的环境；现有 CI 的构建入口保持不变。

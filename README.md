@@ -37,3 +37,11 @@ persist across restarts:
 About Pastes shows the application icon, build version, author, license and
 project link in a themed dialog. History remains local with a seven-day
 retention period.
+
+## Platform architecture
+
+UI and history code use public C++/Qt contracts in `platform/`. Native
+clipboard, paste, window, shortcut, icon, path and startup implementations
+live in `platform/windows/`, `platform/macos/` and `platform/linux/`. CMake
+selects one backend; Windows and Linux reuse Qt behavior from
+`platform/desktop/`. See [the interface and ownership guide](docs/platform-architecture.md).
