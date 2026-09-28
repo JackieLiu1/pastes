@@ -24,7 +24,6 @@ set(PASTES_SOURCES
     previewdialog.cpp previewdialog.h
     appdialog.cpp appdialog.h
     settingsdialog.cpp settingsdialog.h
-    platform/startupintegration.cpp platform/startupintegration.h
     cardswipe.cpp cardswipe.h
     cardreflow.cpp cardreflow.h
     elasticscroll.cpp elasticscroll.h
@@ -34,40 +33,19 @@ set(PASTES_SOURCES
     pasteitembarnner.cpp pasteitembarnner.h
     pasteitemcontext.cpp pasteitemcontext.h
     searchbar.cpp searchbar.h
-    platform/clipboardsource.h platform/pastetarget.h platform/fileicon.h platform/paths.h
-    platform/windowintegration.h platform/menuintegration.h
-    platform/menuintegration.cpp platform/applicationintegration.h
-    platform/globalshortcut.cpp platform/globalshortcut.h platform/shortcut_p.h
     sources.qrc
 )
 
-if(WIN32)
-    list(APPEND PASTES_SOURCES platform/windows/shortcut.cpp platform/windows/shortcutstate.h
-        platform/windows/clipboardsource.cpp platform/windows/pastetarget.cpp
-        platform/windows/fileicon.cpp platform/windows/paths.cpp
-        platform/windows/startupintegration.cpp
-        platform/windows/windowblur.cpp platform/desktop/windowintegration.cpp
-        platform/desktop/menuintegration.cpp platform/desktop/applicationintegration.cpp)
-elseif(APPLE)
+if(APPLE)
     enable_language(OBJCXX)
     set(CMAKE_OBJCXX_STANDARD 17)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
-    list(APPEND PASTES_SOURCES platform/macos/shortcut.cpp
-        platform/macos/clipboardsource.mm platform/macos/pastetarget.mm
-        platform/macos/fileicon.cpp platform/macos/paths.cpp
-        platform/macos/startupintegration.cpp
-        platform/macos/windowintegration.mm platform/macos/menuintegration.mm
-        platform/macos/applicationintegration.mm)
-elseif(UNIX AND NOT APPLE)
-    list(APPEND PASTES_SOURCES platform/linux/shortcut.cpp
-        platform/linux/clipboardsource.cpp platform/linux/pastetarget.cpp
-        platform/linux/fileicon.cpp platform/linux/paths.cpp
-        platform/linux/startupintegration.cpp
-        platform/linux/windowblur.cpp platform/desktop/windowintegration.cpp
-        platform/desktop/menuintegration.cpp platform/desktop/applicationintegration.cpp)
+    set(PASTES_MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/pastes.icns")
+    set_source_files_properties(${PASTES_MACOS_ICON} PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
 endif()
 
-qt_add_executable(pastes ${PASTES_SOURCES})
+qt_add_executable(pastes ${PASTES_SOURCES} ${PASTES_MACOS_ICON})
 target_include_directories(pastes PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_definitions(pastes PRIVATE PASTES_VERSION="${PROJECT_VERSION}")
 
@@ -79,39 +57,7 @@ target_link_libraries(pastes PRIVATE
     SingleApplication::SingleApplication
 )
 
-if(WIN32)
-    set_target_properties(pastes PROPERTIES WIN32_EXECUTABLE TRUE)
-    target_link_libraries(pastes PRIVATE psapi gdi32 shell32)
-elseif(APPLE)
-    find_library(CARBON_FRAMEWORK Carbon REQUIRED)
-    find_library(APPKIT_FRAMEWORK AppKit REQUIRED)
-    find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
-    find_library(APPLICATIONSERVICES_FRAMEWORK ApplicationServices REQUIRED)
-    target_link_libraries(pastes PRIVATE ${CARBON_FRAMEWORK}
-        ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK}
-        ${APPLICATIONSERVICES_FRAMEWORK})
-    set(PASTES_MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/pastes.icns")
-    target_sources(pastes PRIVATE ${PASTES_MACOS_ICON})
-    set_source_files_properties(${PASTES_MACOS_ICON} PROPERTIES
-        MACOSX_PACKAGE_LOCATION Resources)
-    set_target_properties(pastes PROPERTIES
-        MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_BUNDLE_NAME Pastes
-        MACOSX_BUNDLE_ICON_FILE pastes.icns
-        MACOSX_BUNDLE_GUI_IDENTIFIER io.github.JackieLiu1.pastes
-        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
-    )
-elseif(UNIX AND NOT APPLE)
-    find_package(X11 REQUIRED)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0 glib-2.0 gio-unix-2.0)
-    target_link_libraries(pastes PRIVATE
-        X11::X11
-        ${X11_Xtst_LIB}
-        PkgConfig::GIO
-    )
-endif()
+add_subdirectory(platform)
 
 # translations: Pastes_zh_CN.ts -> Pastes_zh_CN.qm
 qt_add_translation(QM_FILES Pastes_zh_CN.ts)
@@ -124,15 +70,6 @@ if(APPLE)
     )
 endif()
 
-if(UNIX AND NOT APPLE)
-    # main.cpp loads the .qm from this path at runtime
-    target_compile_definitions(pastes PRIVATE
-        QM_FILES_INSTALL_PATH="${CMAKE_INSTALL_FULL_DATADIR}/pastes/translations/"
-    )
-    install(FILES pastes.desktop DESTINATION /etc/xdg/autostart)
-    install(FILES resources/pastes.svg
-            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
-endif()
 
 install(TARGETS pastes DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATADIR}/pastes/translations)
