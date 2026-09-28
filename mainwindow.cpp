@@ -45,9 +45,14 @@
 
 /* History older than this is dropped on startup and on every clipboard update */
 static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
-/* Wait for the clipboard to settle before snapshotting it: rapid format
- * updates from one copy collapse into a single entry */
+/* Native macOS polling already observes published pasteboard contents.
+ * Snapshot on the next event-loop turn so another copy cannot postpone it. */
+#ifdef Q_OS_MACOS
+static const int CLIPBOARD_SETTLE_MS = 0;
+#else
+/* Collapse rapid format updates from one copy on the other platforms. */
 static const int CLIPBOARD_SETTLE_MS = 1000;
+#endif
 
 static int historyPanelHeight(const QRect &area)
 {
@@ -246,8 +251,7 @@ MainWindow::MainWindow(QWidget *parent)
 		if (!copiedIcon.isValid())
 			this->__clipboard_source->capture(this->__source_request);
 #endif
-		/* Restarting on every change collapses rapid clipboard updates
-		 * into one snapshot taken once the clipboard has settled. */
+		/* Defer the snapshot until this change notification has returned. */
 		this->__clipboard_timer->start();
 	};
 #ifdef Q_OS_MACOS
@@ -570,6 +574,13 @@ void MainWindow::show_window(void)
 	/* Re-activating an owned dialog must not summon the history panel. */
 	if (this->__app_dialog_open)
 		return;
+	/* A copy immediately followed by the hotkey may precede the next poll.
+	 * Populate the panel before showing it, keeping the native source. */
+	this->__clipboard_source->synchronize();
+	if (this->__clipboard_timer->isActive()) {
+		this->__clipboard_timer->stop();
+		this->clipboard_later();
+	}
 	QScreen *screen = macPanelScreen();
 #else
 	QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
@@ -1236,6 +1247,11 @@ void MainWindow::execAppDialog(AppDialog &dialog)
 
 void MainWindow::setHistoryRecording(bool enabled)
 {
+#ifdef Q_OS_MACOS
+	/* Consume any copy under the old recording state. In particular, a
+	 * paused copy awaiting the next poll must not be recorded on resume. */
+	this->__clipboard_source->synchronize();
+#endif
 	this->__recording_enabled = enabled;
 	this->__clipboard_timer->stop();
 #if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
@@ -1414,7 +1430,7 @@ void MainWindow::clipboard_later(void)
 	if (!this->__recording_enabled)
 		return;
 #ifdef Q_OS_MACOS
-	/* Do not pair a copy made between polls with the previous source. */
+	/* A newer native copy schedules its own snapshot with its own source. */
 	if (this->__clipboard_source->synchronize())
 		return;
 #endif
@@ -1431,6 +1447,15 @@ void MainWindow::clipboard_later(void)
 	ItemData *itemData = new ItemData;
 
 	itemData->mimeData = dup_mimedata(mime_data);
+#ifdef Q_OS_MACOS
+	/* Reading a promised flavor can change the pasteboard. Retry through
+	 * the new notification instead of saving a mixed or outdated snapshot. */
+	if (this->__clipboard_source->synchronize()) {
+		delete itemData->mimeData;
+		delete itemData;
+		return;
+	}
+#endif
 	widget = this->insertItemWidget(false);
 
 	do {

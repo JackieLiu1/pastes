@@ -1,6 +1,8 @@
 #include "clipboardsource_mac.h"
 
 #include <QCache>
+#include <QClipboard>
+#include <QGuiApplication>
 #include <QTimer>
 #import <AppKit/AppKit.h>
 
@@ -105,9 +107,13 @@ ClipboardSource::ClipboardSource(QObject *parent) : QObject(parent),
 		m_private->setApplication(application);
 	}];
 	auto *timer = new QTimer(this);
-	timer->setInterval(200);
+	timer->setInterval(100);
 	QObject::connect(timer, &QTimer::timeout, this, &ClipboardSource::checkClipboard);
 	timer->start();
+	/* Qt reports our own writes and changes on activation immediately.
+	 * The native counter deduplicates those events against background polls. */
+	QObject::connect(QGuiApplication::clipboard(), &QClipboard::dataChanged,
+		this, &ClipboardSource::checkClipboard);
 }
 
 ClipboardSource::~ClipboardSource() = default;

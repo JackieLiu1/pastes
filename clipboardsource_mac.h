@@ -14,7 +14,7 @@ public:
 	explicit ClipboardSource(QObject *parent = nullptr);
 	~ClipboardSource();
 	void capture(quint64 request);
-	/* Return true when a newer native copy restarts the settling timer. */
+	/* Return true when the native pasteboard changed since the last check. */
 	bool synchronize(void);
 
 signals:

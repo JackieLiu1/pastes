@@ -92,7 +92,7 @@ private:
 	bool				__app_dialog_open = false;
 #endif
 	Database			__db;
-	/* Debounces rapid clipboard updates into one snapshot */
+	/* Defers snapshots; macOS does not debounce separate native copies. */
 	QTimer				*__clipboard_timer;
 
 	/* widgets */
