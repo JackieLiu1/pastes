@@ -258,6 +258,25 @@ void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 		emit this->deleteRequested();
 }
 
+void copyItemDataToClipboard(const ItemData &data, bool plainText)
+{
+	if (!data.mimeData || (plainText && !data.mimeData->hasText()))
+		return;
+
+	QClipboard *clipboard = QApplication::clipboard();
+
+	QMimeData *mime = plainText ? new QMimeData : dup_mimedata(data.mimeData);
+	if (plainText)
+		mime->setText(data.mimeData->text());
+	/* This in-process property preserves source identity without exporting
+	 * private metadata as a clipboard format or retaining the old item. */
+	mime->setProperty("pastesSourceIcon", data.icon);
+	clipboard->setMimeData(mime, QClipboard::Clipboard);
+
+	if (clipboard->supportsSelection())
+		clipboard->setMimeData(dup_mimedata(mime), QClipboard::Selection);
+}
+
 void PasteItem::copyData(bool plainText, bool paste)
 {
 	ItemData *itemData = reinterpret_cast<ItemData *>(this->m_listwidget_item->data(Qt::UserRole).value<uint64_t>());
@@ -265,19 +284,7 @@ void PasteItem::copyData(bool plainText, bool paste)
 		return;
 	if (paste)
 		emit this->hideWindow();
-
-	QClipboard *clipboard = QApplication::clipboard();
-
-	QMimeData *mime = plainText ? new QMimeData : dup_mimedata(itemData->mimeData);
-	if (plainText)
-		mime->setText(itemData->mimeData->text());
-	/* This in-process property preserves source identity without exporting
-	 * private metadata as a clipboard format or retaining the old item. */
-	mime->setProperty("pastesSourceIcon", itemData->icon);
-	clipboard->setMimeData(mime, QClipboard::Clipboard);
-
-	if (clipboard->supportsSelection())
-		clipboard->setMimeData(dup_mimedata(mime), QClipboard::Selection);
+	copyItemDataToClipboard(*itemData, plainText);
 	emit this->clipboardUpdated();
 	if (paste)
 		emit this->copied(itemData->mimeData->hasUrls());

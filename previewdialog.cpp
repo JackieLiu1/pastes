@@ -168,12 +168,25 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	RoundedButton *copy = new RoundedButton(m_surface);
 	copy->setObjectName("PreviewAction");
 	copy->setText(QObject::tr("Copy to Clipboard"));
+	copy->setToolTip(QObject::tr("Copy without closing the preview"));
 	copy->setAutoDefault(false);
-	QObject::connect(copy, &QPushButton::clicked, this, &PreviewDialog::copyRequested);
+	auto *copiedTimer = new QTimer(copy);
+	copiedTimer->setSingleShot(true);
+	copiedTimer->setInterval(1500);
+	QObject::connect(copiedTimer, &QTimer::timeout, copy, [copy](void) {
+		copy->setText(QObject::tr("Copy to Clipboard"));
+	});
+	QObject::connect(copy, &QPushButton::clicked, this, [this, copy, copiedTimer](void) {
+		emit copyRequested();
+		copy->setMinimumWidth(copy->width());
+		copy->setText(QObject::tr("Copied"));
+		copiedTimer->start();
+	});
 	RoundedButton *paste = new RoundedButton(m_surface);
 	paste->setObjectName("PreviewAction");
 	paste->setProperty("primary", true);
 	paste->setText(QObject::tr("Paste"));
+	paste->setToolTip(QObject::tr("Paste into the previous application (Enter)"));
 	paste->setAutoDefault(false);
 	QObject::connect(paste, &QPushButton::clicked, this, &QDialog::accept);
 	QHBoxLayout *footer = new QHBoxLayout;

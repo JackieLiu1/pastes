@@ -34,12 +34,12 @@
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1071"/>
+        <location filename="mainwindow.cpp" line="1089"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1074"/>
+        <location filename="mainwindow.cpp" line="1092"/>
         <source>Show (%1)</source>
         <translation>显示（%1）</translation>
     </message>
@@ -97,7 +97,7 @@
     </message>
     <message>
         <location filename="appdialog.cpp" line="160"/>
-        <location filename="mainwindow.cpp" line="983"/>
+        <location filename="mainwindow.cpp" line="1001"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
     </message>
@@ -154,12 +154,12 @@
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1029"/>
+        <location filename="mainwindow.cpp" line="1047"/>
         <source>records</source>
         <translation>条记录</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="885"/>
+        <location filename="mainwindow.cpp" line="903"/>
         <source>Clipboard</source>
         <translation>剪贴板历史</translation>
     </message>
@@ -175,7 +175,7 @@
         <translation>代码</translation>
     </message>
     <message>
-        <location filename="previewdialog.cpp" line="176"/>
+        <location filename="previewdialog.cpp" line="188"/>
         <source>Paste</source>
         <translation>粘贴</translation>
     </message>
@@ -187,6 +187,7 @@
     <message>
         <location filename="pasteitem.cpp" line="243"/>
         <location filename="previewdialog.cpp" line="170"/>
+        <location filename="previewdialog.cpp" line="177"/>
         <source>Copy to Clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
@@ -204,13 +205,13 @@
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="883"/>
+        <location filename="mainwindow.cpp" line="901"/>
         <source>Pastes</source>
         <translation>Pastes</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="841"/>
-        <location filename="mainwindow.cpp" line="842"/>
+        <location filename="mainwindow.cpp" line="859"/>
+        <location filename="mainwindow.cpp" line="860"/>
         <source>Menu</source>
         <translation>菜单</translation>
     </message>
@@ -276,6 +277,21 @@
         <translation>%1 个字符</translation>
     </message>
     <message>
+        <location filename="previewdialog.cpp" line="171"/>
+        <source>Copy without closing the preview</source>
+        <translation>仅复制，保留预览窗口</translation>
+    </message>
+    <message>
+        <location filename="previewdialog.cpp" line="182"/>
+        <source>Copied</source>
+        <translation>已复制</translation>
+    </message>
+    <message>
+        <location filename="previewdialog.cpp" line="189"/>
+        <source>Paste into the previous application (Enter)</source>
+        <translation>粘贴到原来的应用（Enter）</translation>
+    </message>
+    <message>
         <source>Delete from history (Delete)</source>
         <translation type="vanished">从历史记录删除（Delete）</translation>
     </message>
@@ -284,17 +300,17 @@
         <translation type="vanished">预览（Space）</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="910"/>
+        <location filename="mainwindow.cpp" line="928"/>
         <source>Removed from history</source>
         <translation>已从历史记录移除</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="914"/>
+        <location filename="mainwindow.cpp" line="932"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="915"/>
+        <location filename="mainwindow.cpp" line="933"/>
         <source>Undo deletion (Ctrl+Z)</source>
         <translation>撤销删除（Ctrl+Z）</translation>
     </message>
@@ -476,8 +492,8 @@
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="893"/>
-        <location filename="mainwindow.cpp" line="1030"/>
+        <location filename="mainwindow.cpp" line="911"/>
+        <location filename="mainwindow.cpp" line="1048"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
     </message>

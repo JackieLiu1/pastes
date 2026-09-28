@@ -586,17 +586,35 @@ void MainWindow::previewCurrentItem(void)
 	ItemData *data = reinterpret_cast<ItemData *>(item->data(Qt::UserRole).value<uint64_t>());
 	if (!data)
 		return;
-	QPointer<PasteItem> widget = this->currentPasteItem();
-	PreviewDialog dialog(*data, this);
-	QObject::connect(&dialog, &PreviewDialog::copyRequested, this, [widget](void) {
-		if (widget) widget->copyData(false, false);
+	/* Copying promotes the item and replaces its widget. Keep an owned
+	 * payload for the whole preview, independent of that history update. */
+	std::unique_ptr<QMimeData> mime(dup_mimedata(data->mimeData));
+	const ItemData snapshot{mime.get(), data->icon, data->md5, data->time};
+	PreviewDialog dialog(snapshot, this);
+	auto copy = [this, &snapshot](bool plainText) {
+		copyItemDataToClipboard(snapshot, plainText);
+		if (this->__recording_enabled)
+			this->__clipboard_timer->start();
+	};
+	QObject::connect(&dialog, &PreviewDialog::copyRequested, this, [copy](void) {
+		copy(false);
 	});
-	QObject::connect(widget, &QObject::destroyed, &dialog, &QDialog::reject);
-	if (dialog.exec() == QDialog::Accepted && widget)
-		widget->copyData(dialog.plainText());
-	else if (widget && this->isVisible()) {
+	if (dialog.exec() == QDialog::Accepted &&
+		(!dialog.plainText() || snapshot.mimeData->hasText())) {
+		this->hide_window();
+		copy(dialog.plainText());
+		this->pasteToPreviousWindow(snapshot.mimeData->hasUrls());
+	} else if (this->isVisible()) {
 		Platform::activatePanel(this);
-		widget->setFocus();
+		for (int i = 0; i < this->__scroll_widget->count(); ++i) {
+			QListWidgetItem *candidate = this->__scroll_widget->item(i);
+			auto *current = reinterpret_cast<ItemData *>(candidate->data(Qt::UserRole).value<uint64_t>());
+			if (current && current->md5 == snapshot.md5) {
+				this->__scroll_widget->setCurrentItem(candidate);
+				if (PasteItem *widget = this->currentPasteItem()) widget->setFocus();
+				break;
+			}
+		}
 	}
 }
 

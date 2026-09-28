@@ -41,6 +41,9 @@ struct ItemData
 };
 Q_DECLARE_METATYPE(ItemData);
 
+/* GUI-thread writes shared by cards and owned preview snapshots. */
+void copyItemDataToClipboard(const ItemData &data, bool plainText = false);
+
 class PasteItem : public QWidget
 {
 	Q_OBJECT
