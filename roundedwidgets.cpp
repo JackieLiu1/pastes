@@ -83,7 +83,9 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 			style.radius = 10;
 			break;
 		}
-		if (widget->underMouse()) style.fill = QColor(dark ? "#333333" : "#E3EAE0");
+		/* The panel menu's background lasts only for the button press. */
+		if (widget->objectName() != "PanelMenu" && widget->underMouse())
+			style.fill = QColor(dark ? "#333333" : "#E3EAE0");
 		if (static_cast<QPushButton *>(widget)->isDown())
 			style.fill = QColor(dark ? "#3D3D3D" : "#D7E1D3");
 		if (widget->property("destructive").toBool() && widget->underMouse())
