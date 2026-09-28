@@ -95,6 +95,12 @@ target_link_libraries(pastes PRIVATE pastes_ui pastes_storage SingleApplication:
 
 
 # translations: Pastes_zh_CN.ts -> Pastes_zh_CN.qm
+add_custom_target(update_translations
+    COMMAND Qt6::lupdate -I "${CMAKE_CURRENT_SOURCE_DIR}" -extensions cpp,h,mm
+        app core application storage ui platform -ts Pastes_zh_CN.ts
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    VERBATIM
+)
 qt_add_translation(QM_FILES Pastes_zh_CN.ts)
 add_custom_target(translations ALL DEPENDS ${QM_FILES})
 if(APPLE)
