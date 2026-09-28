@@ -42,7 +42,7 @@ elseif(APPLE)
     find_library(APPKIT_FRAMEWORK AppKit REQUIRED)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
     find_library(APPLICATIONSERVICES_FRAMEWORK ApplicationServices REQUIRED)
-    target_link_libraries(pastes PRIVATE ${CARBON_FRAMEWORK}
+    target_link_libraries(pastes PRIVATE Qt6::GuiPrivate ${CARBON_FRAMEWORK}
         ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK}
         ${APPLICATIONSERVICES_FRAMEWORK})
     set_target_properties(pastes PROPERTIES

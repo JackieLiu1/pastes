@@ -4,6 +4,7 @@
 #include <QMenu>
 #include <QPointer>
 #include <QWidget>
+#include <qpa/qplatformmenu.h>
 #import <AppKit/AppKit.h>
 
 static NSView *nativeView(QWidget *widget)
@@ -29,9 +30,11 @@ static bool popupNativeMenu(QMenu *menu, QWidget *owner,
 		qApp->property("pastesDark").toBool() ?
 		NSAppearanceNameDarkAqua : NSAppearanceNameAqua];
 	nativeMenu.font = [NSFont menuFontOfSize:0];
-	const NSPoint location = NSMakePoint(point.x()-(alignRight ? nativeMenu.size.width : 0),
-		view.flipped ? point.y() : view.bounds.size.height-point.y());
-	[nativeMenu popUpMenuPositioningItem:nil atLocation:location inView:view];
+	const QPoint location(point.x()-(alignRight ? nativeMenu.size.width : 0), point.y());
+	/* Cocoa menu tracking consumes mouse-up. Let Qt's native popup backend
+	 * restore its view's button state before returning to card input. */
+	menu->platformMenu()->showPopup(owner->window()->windowHandle(),
+		QRect(location, QSize(0, 0)), nullptr);
 	return true;
 }
 

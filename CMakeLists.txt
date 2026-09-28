@@ -12,6 +12,9 @@ include(GNUInstallDirs)
 # Network is used privately by the bundled SingleApplication; declaring it
 # here satisfies Qt6's dependency walk at target finalization
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Sql Network LinguistTools)
+if(APPLE AND NOT TARGET Qt6::GuiPrivate)
+    find_package(Qt6 REQUIRED COMPONENTS GuiPrivate)
+endif()
 
 # used by the bundled SingleApplication build
 set(QAPPLICATION_CLASS QApplication)
