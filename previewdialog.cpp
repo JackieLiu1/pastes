@@ -83,9 +83,14 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	QLabel *icon = new QLabel(m_header);
 	icon->setFixedSize(30, 30);
 	icon->setAlignment(Qt::AlignCenter);
-	if (!data.icon.isNull())
-		icon->setPixmap(QPixmap::fromImage(data.icon).scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-	else
+	if (!data.icon.isNull()) {
+		const qreal ratio = devicePixelRatioF();
+		const int pixels = qRound(24*ratio);
+		QPixmap pixmap = QPixmap::fromImage(data.icon).scaled(pixels, pixels,
+			Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		pixmap.setDevicePixelRatio(ratio);
+		icon->setPixmap(pixmap);
+	} else
 		icon->setPixmap(QIcon(":/resources/pastes.svg").pixmap(QSize(26, 26), devicePixelRatioF()));
 	QLabel *title = new QLabel(QObject::tr("Preview"), m_header);
 	title->setObjectName("PreviewTitle");

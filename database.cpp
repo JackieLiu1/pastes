@@ -86,8 +86,8 @@ public slots:
 			 * carries an image, the usually large imagedata blob. Decoding
 			 * every historical image here made startup O(all images). */
 			itemData->icon = QImage::fromData(query.value("icondata").toByteArray());
-			if (!itemData->icon.isNull())
-				itemData->icon = itemData->icon.scaled(QSize(32, 32), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+			if (itemData->icon.width() > 64 || itemData->icon.height() > 64)
+				itemData->icon = itemData->icon.scaled(QSize(64, 64), Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
 			if (itemData->mimeData->hasImage()) {
 				QImage image = QImage::fromData(query.value("imagedata").toByteArray());

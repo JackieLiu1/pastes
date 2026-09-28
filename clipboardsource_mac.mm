@@ -10,17 +10,18 @@ QImage iconImage(NSImage *icon)
 {
 	if (!icon)
 		return QImage();
-	/* Render only the small source icon, on AppKit's main thread. */
+	/* Keep enough pixels for source icons on Retina displays. */
+	constexpr int pixels = 64;
 	NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:nil
-		pixelsWide:32 pixelsHigh:32 bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES
+		pixelsWide:pixels pixelsHigh:pixels bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES
 		isPlanar:NO colorSpaceName:NSDeviceRGBColorSpace bytesPerRow:0 bitsPerPixel:0];
 	if (!bitmap)
 		return QImage();
 	NSGraphicsContext *context = [NSGraphicsContext graphicsContextWithBitmapImageRep:bitmap];
 	[NSGraphicsContext saveGraphicsState];
 	[NSGraphicsContext setCurrentContext:context];
-	CGContextClearRect(context.CGContext, CGRectMake(0, 0, 32, 32));
-	[icon drawInRect:NSMakeRect(0, 0, 32, 32) fromRect:NSZeroRect
+	CGContextClearRect(context.CGContext, CGRectMake(0, 0, pixels, pixels));
+	[icon drawInRect:NSMakeRect(0, 0, pixels, pixels) fromRect:NSZeroRect
 		operation:NSCompositingOperationCopy fraction:1.0 respectFlipped:NO
 		hints:@{NSImageHintInterpolation: @(NSImageInterpolationHigh)}];
 	[NSGraphicsContext restoreGraphicsState];

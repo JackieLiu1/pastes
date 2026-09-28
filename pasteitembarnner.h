@@ -31,8 +31,10 @@ public:
 
 protected:
 	void showEvent(QShowEvent *);
+	void paintEvent(QPaintEvent *event) override;
 
 private:
+	void updateIconPixmap(void);
 	QLabel		*m_icon;
 	/* The type text for Barnner */
 	QLabel		*m_text;
@@ -41,6 +43,7 @@ private:
 
 	/* icon data */
 	QPixmap		m_pixmap;
+	qreal		m_scaled_ratio = 0;
 	/* date time */
 	QDateTime	m_datetime;
 };

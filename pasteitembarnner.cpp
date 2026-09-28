@@ -46,7 +46,26 @@ void Barnner::setIcon(QPixmap &pixmap)
 		painter.end();
 		m_pixmap = QPixmap::fromImage(image);
 	}
-	m_icon->setPixmap(m_pixmap.scaled(20, 20, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+	m_scaled_ratio = 0;
+	this->updateIconPixmap();
+}
+
+void Barnner::updateIconPixmap(void)
+{
+	const qreal ratio = this->devicePixelRatioF();
+	if (m_pixmap.isNull() || m_scaled_ratio == ratio)
+		return;
+	m_scaled_ratio = ratio;
+	const int pixels = qRound(20*ratio);
+	QPixmap icon = m_pixmap.scaled(pixels, pixels, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+	icon.setDevicePixelRatio(ratio);
+	m_icon->setPixmap(icon);
+}
+
+void Barnner::paintEvent(QPaintEvent *event)
+{
+	this->updateIconPixmap();
+	QWidget::paintEvent(event);
 }
 
 void Barnner::showEvent(QShowEvent *event)
