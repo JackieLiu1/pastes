@@ -4,6 +4,7 @@
 #include <QTranslator>
 #include <QLocale>
 #include <QTimer>
+#include <QIcon>
 
 #include "mainwindow.h"
 #ifdef Q_OS_MACOS
@@ -43,6 +44,7 @@ int main(int argc, char *argv[])
 
 	SingleApplication a(argc, argv);
 #ifdef Q_OS_MACOS
+	a.setWindowIcon(QIcon(":/resources/pastes.svg"));
 	configureMacApplication();
 #endif
 	LoadTranlateFile(&a);

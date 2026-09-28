@@ -71,9 +71,14 @@ elseif(APPLE)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
     target_link_libraries(pastes PRIVATE ${CARBON_FRAMEWORK}
         ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK})
+    set(PASTES_MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/pastes.icns")
+    target_sources(pastes PRIVATE ${PASTES_MACOS_ICON})
+    set_source_files_properties(${PASTES_MACOS_ICON} PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
     set_target_properties(pastes PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME Pastes
+        MACOSX_BUNDLE_ICON_FILE pastes.icns
         MACOSX_BUNDLE_GUI_IDENTIFIER io.github.JackieLiu1.pastes
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
