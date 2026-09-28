@@ -39,3 +39,5 @@ jobs:
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" %vc_arch%
           cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release
+      - name: Verify contracts and architecture
+        run: ctest --test-dir build -C Release --output-on-failure

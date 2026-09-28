@@ -22,3 +22,5 @@ jobs:
         run: |
           cmake -B build -S . -DCMAKE_BUILD_TYPE=Release;
           cmake --build build -j$(nproc);
+      - name: Verify contracts and architecture
+        run: ctest --test-dir build --output-on-failure
