@@ -34,12 +34,12 @@
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1093"/>
+        <location filename="mainwindow.cpp" line="1106"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1096"/>
+        <location filename="mainwindow.cpp" line="1109"/>
         <source>Show (%1)</source>
         <translation>显示（%1）</translation>
     </message>
@@ -50,19 +50,19 @@
         <translation>托盘图标</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="119"/>
+        <location filename="pasteitem.cpp" line="121"/>
         <source>Image</source>
         <translation>图片</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="131"/>
-        <location filename="pasteitem.cpp" line="152"/>
+        <location filename="pasteitem.cpp" line="142"/>
+        <location filename="pasteitem.cpp" line="163"/>
         <source>Link</source>
         <translation>超链接</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="134"/>
-        <location filename="pasteitem.cpp" line="155"/>
+        <location filename="pasteitem.cpp" line="145"/>
+        <location filename="pasteitem.cpp" line="166"/>
         <source>Color</source>
         <translation>颜色</translation>
     </message>
@@ -75,7 +75,7 @@
         <translation type="vanished">富文本</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="185"/>
+        <location filename="pasteitem.cpp" line="196"/>
         <source>Files</source>
         <translation>个文件</translation>
     </message>
@@ -97,7 +97,7 @@
     </message>
     <message>
         <location filename="appdialog.cpp" line="161"/>
-        <location filename="mainwindow.cpp" line="1005"/>
+        <location filename="mainwindow.cpp" line="1018"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
     </message>
@@ -154,23 +154,23 @@
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1051"/>
+        <location filename="mainwindow.cpp" line="1064"/>
         <source>records</source>
         <translation>条记录</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="905"/>
+        <location filename="mainwindow.cpp" line="918"/>
         <source>Clipboard</source>
         <translation>剪贴板历史</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="139"/>
-        <location filename="pasteitem.cpp" line="158"/>
+        <location filename="pasteitem.cpp" line="150"/>
+        <location filename="pasteitem.cpp" line="169"/>
         <source>Text</source>
         <translation>文本</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="139"/>
+        <location filename="pasteitem.cpp" line="150"/>
         <source>Code</source>
         <translation>代码</translation>
     </message>
@@ -180,24 +180,24 @@
         <translation>粘贴</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="267"/>
+        <location filename="pasteitem.cpp" line="278"/>
         <source>Copy as Plain Text</source>
         <translation>复制为纯文本</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="266"/>
+        <location filename="pasteitem.cpp" line="277"/>
         <location filename="previewdialog.cpp" line="183"/>
         <location filename="previewdialog.cpp" line="190"/>
         <source>Copy to Clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="173"/>
+        <location filename="pasteitem.cpp" line="184"/>
         <source>File path</source>
         <translation>文件路径</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="271"/>
+        <location filename="pasteitem.cpp" line="282"/>
         <location filename="previewdialog.cpp" line="72"/>
         <location filename="previewdialog.cpp" line="104"/>
         <location filename="previewdialog.cpp" line="164"/>
@@ -205,18 +205,18 @@
         <translation>预览</translation>
     </message>
     <message>
-        <location filename="pasteitem.cpp" line="272"/>
+        <location filename="pasteitem.cpp" line="283"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="903"/>
+        <location filename="mainwindow.cpp" line="916"/>
         <source>Pastes</source>
         <translation>Pastes</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="861"/>
-        <location filename="mainwindow.cpp" line="862"/>
+        <location filename="mainwindow.cpp" line="874"/>
+        <location filename="mainwindow.cpp" line="875"/>
         <source>Menu</source>
         <translation>菜单</translation>
     </message>
@@ -226,22 +226,22 @@
         <translation>输入即可搜索</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="555"/>
+        <location filename="mainwindow.cpp" line="569"/>
         <source>%1 items</source>
         <translation>%1 条记录</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="556"/>
+        <location filename="mainwindow.cpp" line="570"/>
         <source>%1 of %2 items</source>
         <translation>%2 条记录中找到 %1 条</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="560"/>
+        <location filename="mainwindow.cpp" line="574"/>
         <source>Copy something to get started</source>
         <translation>复制一段文字或一张图片，从这里开始</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="560"/>
+        <location filename="mainwindow.cpp" line="574"/>
         <source>No matching items</source>
         <translation>没有找到匹配的内容</translation>
     </message>
@@ -305,17 +305,17 @@
         <translation type="vanished">预览（Space）</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="930"/>
+        <location filename="mainwindow.cpp" line="943"/>
         <source>Removed from history</source>
         <translation>已从历史记录移除</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="934"/>
+        <location filename="mainwindow.cpp" line="947"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="935"/>
+        <location filename="mainwindow.cpp" line="948"/>
         <source>Undo deletion (Ctrl+Z)</source>
         <translation>撤销删除（Ctrl+Z）</translation>
     </message>
@@ -498,8 +498,8 @@
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="913"/>
-        <location filename="mainwindow.cpp" line="1052"/>
+        <location filename="mainwindow.cpp" line="926"/>
+        <location filename="mainwindow.cpp" line="1065"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
     </message>

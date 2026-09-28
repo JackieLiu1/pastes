@@ -3,6 +3,7 @@
 
 #include "pasteitemcontext.h"
 #include "pasteitembarnner.h"
+#include "clipboarddata.h"
 
 #include <QListWidgetItem>
 #include <QWidget>
@@ -15,18 +16,7 @@
 
 static inline QMimeData *dup_mimedata(const QMimeData *mimeData)
 {
-	QMimeData *mime = new QMimeData;
-
-	for (auto formats : mimeData->formats()) {
-		mime->setData(formats, mimeData->data(formats));
-	}
-
-	if (mimeData->hasImage()) {
-		QImage image = qvariant_cast<QImage>(mimeData->imageData());
-		mime->setImageData(image);
-	}
-
-	return mime;
+	return ClipboardData::duplicate(mimeData);
 }
 
 struct ItemData
@@ -49,7 +39,8 @@ class PasteItem : public QWidget
 	Q_OBJECT
 public:
 	explicit PasteItem(QWidget *parent = nullptr, QListWidgetItem *item = nullptr);
-	void setImage(QImage &);
+	void setImage(const QImage &, const QSize &originalSize = QSize());
+	bool setImage(const QMimeData *mime);
 	void setPlainText(QString);
 	void setRichText(QString richText, QString plainText);
 	bool setUrls(QList<QUrl> &);

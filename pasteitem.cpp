@@ -112,12 +112,23 @@ void PasteItem::endSwipe(void)
 	m_frame->show();
 }
 
-void PasteItem::setImage(QImage &image)
+void PasteItem::setImage(const QImage &image, const QSize &originalSize)
 {
-	QPixmap pixmap = QPixmap::fromImage(image);
-	m_context->setPixmap(pixmap);
+	const QImage preview = image.width() > ClipboardData::previewPixels || image.height() > ClipboardData::previewPixels ?
+		image.scaled(ClipboardData::previewPixels, ClipboardData::previewPixels, Qt::KeepAspectRatio, Qt::SmoothTransformation) : image;
+	const QPixmap pixmap = QPixmap::fromImage(preview);
+	m_context->setPixmap(pixmap, originalSize.isValid() ? originalSize : image.size());
 	this->m_barnner->setTitle(QObject::tr("Image"));
 	this->setCardKind("image");
+}
+
+bool PasteItem::setImage(const QMimeData *mime)
+{
+	QSize originalSize;
+	const QImage preview = ClipboardData::previewImage(mime, &originalSize);
+	if (preview.isNull()) return false;
+	setImage(preview, originalSize);
+	return true;
 }
 
 void PasteItem::setPlainText(QString s)

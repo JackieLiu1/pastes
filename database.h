@@ -25,17 +25,18 @@ public:
 	~Database();
 
 	void loadData(void);
-	void insertPasteItem(ItemData *itemData);
+	quint64 insertPasteItem(ItemData *itemData);
 	void updatePasteItemIcon(const QByteArray &md5, const QImage &icon);
 	/* Removes the rows from the database and deletes itemData on the worker thread */
 	void deletePasteItem(ItemData *itemData);
 
 signals:
 	void dataLoaded(QList<ItemData *> list);
+	void imageEncoded(quint64 request, QByteArray encoded, int format, qreal ratio);
 
 	/* Internal: forwarded to the worker thread */
 	void loadRequested(void);
-	void insertRequested(ItemData *itemData, QImage iconImage);
+	void insertRequested(ItemData *itemData, QImage iconImage, quint64 request);
 	void updateIconRequested(QByteArray md5, QImage icon);
 	void deleteRequested(ItemData *itemData);
 
@@ -43,6 +44,7 @@ private:
 	class Worker;
 	Worker		*m_worker;
 	QThread		*m_thread;
+	quint64 m_image_request = 0;
 };
 
 #endif // DATABASE_H

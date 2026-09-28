@@ -115,6 +115,20 @@ MainWindow::MainWindow(QWidget *parent)
 			break;
 		}
 	}, Qt::QueuedConnection);
+	QObject::connect(&this->__db, &Database::imageEncoded, this,
+		[this](quint64 request, const QByteArray &encoded, int format, qreal ratio) {
+		for (int i = 0; i < this->__scroll_widget->count(); ++i) {
+			QListWidgetItem *item = this->__scroll_widget->item(i);
+			auto *widget = qobject_cast<PasteItem *>(this->__scroll_widget->itemWidget(item));
+			if (!widget || widget->property("imageRequest").toULongLong() != request) continue;
+			auto *data = reinterpret_cast<ItemData *>(item->data(Qt::UserRole).value<uint64_t>());
+			if (!data || !ClipboardData::storedImage(data->mimeData).isEmpty()) return;
+			QMimeData *mime = ClipboardData::withStoredImage(data->mimeData, encoded, format, ratio);
+			delete data->mimeData;
+			data->mimeData = mime;
+			return;
+		}
+	});
 	auto clipboardChanged = [this](void) {
 		if (!this->__recording_enabled)
 			return;
@@ -750,15 +764,14 @@ void MainWindow::undoDeletion(void)
 		} else if (mime->hasHtml() && !mime->text().trimmed().isEmpty()) {
 			restored->setRichText(mime->html(), mime->text().trimmed());
 		} else if (mime->hasImage()) {
-			QImage image = qvariant_cast<QImage>(mime->imageData());
-			restored->setImage(image);
+			restored->setImage(mime);
 		} else {
 			restored->setPlainText(mime->text().trimmed());
 		}
 		restored->setTime(data->time);
 		restored->setIcon(QPixmap::fromImage(data->icon));
 		restored->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(data)));
-		this->__db.insertPasteItem(data);
+		restored->setProperty("imageRequest", QVariant::fromValue(this->__db.insertPasteItem(data)));
 		LineEdit *search = this->__searchbar->findChild<LineEdit *>();
 		restored->widgetItem()->setHidden(!restored->text().contains(search->text(), Qt::CaseInsensitive));
 	}
@@ -1126,10 +1139,7 @@ void MainWindow::parsingData(QList<ItemData *> list)
 		} else if (itemData->mimeData->hasHtml() && !itemData->mimeData->text().isEmpty()) {
 			widget->setRichText(itemData->mimeData->html(), itemData->mimeData->text());
 			hasContent = true;
-		} else if (itemData->mimeData->hasImage() && itemData->mimeData->imageData().isValid() &&
-			   !itemData->mimeData->imageData().isNull()) {
-			QImage image = qvariant_cast<QImage>(itemData->mimeData->imageData());
-			widget->setImage(image);
+		} else if (itemData->mimeData->hasImage() && widget->setImage(itemData->mimeData)) {
 			hasContent = true;
 		} else if (itemData->mimeData->hasUrls()) {
 			hasContent = !localFiles && widget->setUrls(urls);
@@ -1377,7 +1387,7 @@ void MainWindow::clipboard_later(void)
 	QPixmap icon = QPixmap::fromImage(itemData->icon);
 	widget->setIcon(icon);
 	widget->widgetItem()->setData(Qt::UserRole, QVariant::fromValue(reinterpret_cast<uint64_t>(itemData)));
-	this->__db.insertPasteItem(itemData);
+	widget->setProperty("imageRequest", QVariant::fromValue(this->__db.insertPasteItem(itemData)));
 	this->resetItemTabOrder();
 	this->updateQuickPasteNumbers();
 	this->updateTrayTooltip();

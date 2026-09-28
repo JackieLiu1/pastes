@@ -33,6 +33,7 @@ set(PASTES_SOURCES
     mainwindow.cpp mainwindow.h
     historypolicy.h
     database.cpp database.h
+    clipboarddata.cpp clipboarddata.h
     pasteitem.cpp pasteitem.h
     pasteitembarnner.cpp pasteitembarnner.h
     pasteitemcontext.cpp pasteitemcontext.h

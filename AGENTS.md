@@ -49,7 +49,8 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤已�
 - `MainWindow`（mainwindow.cpp）— 主窗口、剪贴板监听、条目生命周期。
 - `AppDialog` / `AboutDialog`（appdialog.cpp）、`SettingsDialog`（settingsdialog.cpp）— 统一圆角弹窗；设置通过信号即时应用主题、快捷键提示与记录暂停，并由 QSettings 保存。暂停时取消防抖，不记录当时的剪贴板；恢复后仅记录新复制。
 - `StartupIntegration`（platform/startupintegration.cpp 与各系统实现）— Windows 当前账户 Run 注册表项、Linux 用户 autostart 文件；以系统项为状态来源，写入失败须恢复开关并显示错误，不能只保存一个假状态。旧 Windows 安装的全用户项需要升级安装器清理。
-- `Database` + `Database::Worker`（database.cpp）— 数据库门面 + 工作线程。
+- `Database` + `Database::Worker`（database.cpp）— 数据库门面 + 工作线程；历史图片保留 PNG 字节，新图片在后台编码后通知 UI 释放展开图。
+- `ClipboardData`（clipboarddata.cpp）— 共享压缩原图、按需解码的 MIME 数据与最大 1024 像素的卡片缩略图；预览与复制仍读取原始尺寸，灰度和高精度格式不进行运行时压缩替换。
 - `ClipboardSource`（platform/clipboardsource.h）— 统一剪贴板通知与来源图标接口，各系统实现位于 platform/{windows,macos,linux}/；异步结果用请求编号匹配仍存在的条目，迟到图标经 Database 更新。
 - `PasteItem`（pasteitem.cpp）— 列表条目 widget；`copyData()` 复制回剪贴板，通过 QMimeData 的进程内属性保留原来源图标（不增加 MIME 格式），经同一防抖流程重新置顶；重复条目在来源查询为空时保留已有图标。
 - `CardSwipeOverlay`（cardswipe.cpp）— GUI 线程缓存卡片快照，拖动可越过面板边界；松手后上沿向后翻倒至亮线，再向中心收成光点，散出短促粒子并熄灭，整体共 480 ms，未达到阈值时回弹；撤销从细线反向展开并落回卡槽，不播放关机闪光或粒子，快速撤销接续当前翻转姿态；删除在松手时提交，动画不持有剪贴板数据。
@@ -75,6 +76,9 @@ MainWindow::parsingData()                  # 启动时从库加载，过滤已�
    `QListWidgetItem` 的 `Qt::UserRole` 引用和搜索恢复指针 `__current_item`。
 5. 后台线程的标志位用 `std::atomic`（见 platform/shortcut_p.h）；阻塞的消息/事件循环
    退出必须显式唤醒（见 platform/windows/shortcut.cpp 的 PostThreadMessage(WM_QUIT)）。
+6. 图片编码完成通知必须在 Worker 最后一次读取条目 MIME 数据之后发出，
+   UI 按插入请求编号匹配仍存在的卡片后替换 MIME 对象，不能仅匹配 MD5 或地址。
+   删除/撤销或重新复制可能创建同内容的新对象；压缩字节不可变，副本通过隐式共享保留。
 
 ## 编码风格
 

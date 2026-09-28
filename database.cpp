@@ -76,17 +76,19 @@ public slots:
 				itemData->mimeData->setData(mimeType, data);
 			}
 
-			/* Decode the icon blob (small) and, only when this entry really
-			 * carries an image, the usually large imagedata blob. Decoding
-			 * every historical image here made startup O(all images). */
+			/* Icons are small. Keep original images encoded so loading history
+			 * does not retain every full-resolution bitmap in memory. */
 			itemData->icon = QImage::fromData(query.value("icondata").toByteArray());
 			if (itemData->icon.width() > 64 || itemData->icon.height() > 64)
 				itemData->icon = itemData->icon.scaled(QSize(64, 64), Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
 			if (itemData->mimeData->hasImage()) {
-				QImage image = QImage::fromData(query.value("imagedata").toByteArray());
-				if (!image.isNull())
-					itemData->mimeData->setImageData(image);
+				const QByteArray encoded = query.value("imagedata").toByteArray();
+				if (!encoded.isEmpty()) {
+					QMimeData *mime = ClipboardData::withStoredImage(itemData->mimeData, encoded, QImage::Format_Invalid);
+					delete itemData->mimeData;
+					itemData->mimeData = mime;
+				}
 			}
 
 			list.push_front(itemData);
@@ -95,15 +97,24 @@ public slots:
 		emit dataLoaded(list);
 	}
 
-	void insert(ItemData *itd, const QImage &iconImage)
+	void insert(ItemData *itd, const QImage &iconImage, quint64 request)
 	{
 		QSqlQuery query(m_db);
+		QByteArray encoded;
+		int imageFormat = QImage::Format_Invalid;
+		qreal imageRatio = 1;
 
 		query.prepare("insert into item (md5, imagedata, icondata, time) values (:md5, :imagedata, :icondata, :time);");
 		query.bindValue(":md5", itd->md5);
 		if (itd->mimeData->hasImage()) {
-			QImage image = qvariant_cast<QImage>(itd->mimeData->imageData());
-			query.bindValue(":imagedata", Worker::convertImage2Array(image));
+			encoded = ClipboardData::storedImage(itd->mimeData);
+			if (encoded.isEmpty()) {
+				const QImage image = qvariant_cast<QImage>(itd->mimeData->imageData());
+				encoded = Worker::convertImage2Array(image);
+				if (ClipboardData::canCompressImage(image)) imageFormat = image.format();
+				imageRatio = image.devicePixelRatio();
+			}
+			query.bindValue(":imagedata", encoded);
 		}
 		query.bindValue(":icondata", Worker::convertImage2Array(iconImage));
 		query.bindValue(":time", itd->time.toSecsSinceEpoch());
@@ -121,6 +132,10 @@ public slots:
 			if (!query_data.exec())
 				DEBUG() << query_data.lastError();
 		}
+		/* All reads of the UI-owned MIME object are complete before the
+		 * queued receiver can replace it with its compact representation. */
+		if (!encoded.isEmpty() && imageFormat != QImage::Format_Invalid)
+			emit imageEncoded(request, encoded, imageFormat, imageRatio);
 	}
 
 	void updateIcon(const QByteArray &md5, const QImage &icon)
@@ -151,6 +166,7 @@ public slots:
 
 signals:
 	void dataLoaded(QList<ItemData *> list);
+	void imageEncoded(quint64 request, QByteArray encoded, int format, qreal ratio);
 
 private:
 	static QByteArray convertImage2Array(QImage image)
@@ -187,6 +203,7 @@ Database::Database(QObject *parent) : QObject(parent),
 	QObject::connect(this, &Database::updateIconRequested, m_worker, &Worker::updateIcon);
 	QObject::connect(this, &Database::deleteRequested, m_worker, &Worker::remove);
 	QObject::connect(m_worker, &Worker::dataLoaded, this, &Database::dataLoaded);
+	QObject::connect(m_worker, &Worker::imageEncoded, this, &Database::imageEncoded);
 
 	m_thread->start();
 }
@@ -202,9 +219,11 @@ void Database::loadData(void)
 	emit loadRequested();
 }
 
-void Database::insertPasteItem(ItemData *itemData)
+quint64 Database::insertPasteItem(ItemData *itemData)
 {
-	emit insertRequested(itemData, itemData->icon);
+	const quint64 request = ++m_image_request;
+	emit insertRequested(itemData, itemData->icon, request);
+	return request;
 }
 
 void Database::updatePasteItemIcon(const QByteArray &md5, const QImage &icon)

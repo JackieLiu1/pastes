@@ -227,12 +227,12 @@ StackedWidget::StackedWidget(QWidget *parent) : QStackedWidget(parent)
 StackedWidget::~StackedWidget()
 {}
 
-void StackedWidget::setPixmap(QPixmap &pixmap)
+void StackedWidget::setPixmap(const QPixmap &pixmap, const QSize &originalSize)
 {
 	PixmapFrame *pixmap_frame = new PixmapFrame(this);
 
 	pixmap_frame->setStorePixmap(pixmap);
-	QString s = QString("%1x%2 ").arg(pixmap.width()).arg(pixmap.height()) + QObject::tr("px");
+	QString s = QString("%1x%2 ").arg(originalSize.width()).arg(originalSize.height()) + QObject::tr("px");
 	pixmap_frame->setMaskFrameText(s);
 
 	this->addWidget(pixmap_frame);

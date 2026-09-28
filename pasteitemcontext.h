@@ -84,7 +84,7 @@ public:
 	StackedWidget(QWidget *parent = nullptr);
 	~StackedWidget();
 
-	void setPixmap(QPixmap &);
+	void setPixmap(const QPixmap &, const QSize &originalSize);
 	void setText(QString &);
 	void setRichText(QString &richText, QString &plainText);
 	bool setUrls(QList<QUrl> &);
