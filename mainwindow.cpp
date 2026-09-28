@@ -26,6 +26,7 @@
 #include <QScopedValueRollback>
 
 #include "mainwindow.h"
+#include "historypolicy.h"
 #include "platform/clipboardsource.h"
 #include "platform/pastetarget.h"
 #include "pasteitem.h"
@@ -37,9 +38,6 @@
 #include "elasticscroll.h"
 #include "platform/windowintegration.h"
 #include "platform/menuintegration.h"
-
-/* History older than this is dropped on startup and on every clipboard update */
-static const qint64 MAX_HISTORY_SECS = 7 * 24 * 60 * 60;
 
 MainWindow::MainWindow(QWidget *parent)
 	: QMainWindow(parent),
@@ -1107,9 +1105,9 @@ void MainWindow::reloadData()
 
 void MainWindow::parsingData(QList<ItemData *> list)
 {
+	const QDateTime now = QDateTime::currentDateTime();
 	for (auto itemData : list) {
-		/* remove the data if it's too old (than a week) */
-		if (QDateTime::currentDateTime().toSecsSinceEpoch() - itemData->time.toSecsSinceEpoch() > MAX_HISTORY_SECS) {
+		if (HistoryPolicy::expired(itemData->time, now)) {
 			this->__db.deletePasteItem(itemData);
 			continue;
 		}
@@ -1338,6 +1336,7 @@ void MainWindow::clipboard_later(void)
 		itemData->icon = sourceIcon.isNull() ? this->__clipboard_source->snapshotIcon() : sourceIcon;
 	}
 	/* Remove dup item */
+	const QDateTime now = QDateTime::currentDateTime();
 	for (int i = 1; i < this->__scroll_widget->count(); i++) {
 		QListWidgetItem *tmp_item = this->__scroll_widget->item(i);
 		ItemData *tmp_itemData = reinterpret_cast<ItemData *>(tmp_item->data(Qt::UserRole).value<uint64_t>());
@@ -1349,24 +1348,27 @@ void MainWindow::clipboard_later(void)
 			 * duplicate. A failed lookup must not erase a known source icon. */
 			if (itemData->icon.isNull())
 				itemData->icon = tmp_itemData->icon;
+			tmp_item->setData(Qt::UserRole, QVariant());
 			this->__db.deletePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			if (this->__current_item == tmp_item)
 				this->__current_item = nullptr;
 			delete tmp_item;
+			--i;
 			continue;
 		}
-		/* remove the data if it's too old (than a week) */
-		if (QDateTime::currentDateTime().toSecsSinceEpoch() - tmp_itemData->time.toSecsSinceEpoch() >= MAX_HISTORY_SECS) {
+		if (HistoryPolicy::expired(tmp_itemData->time, now)) {
+			tmp_item->setData(Qt::UserRole, QVariant());
 			this->__db.deletePasteItem(tmp_itemData);
 			this->__scroll_widget->removeItemWidget(tmp_item);
 			if (this->__current_item == tmp_item)
 				this->__current_item = nullptr;
 			delete tmp_item;
+			--i;
 		}
 	}
 
-	itemData->time = QDateTime::currentDateTime();
+	itemData->time = now;
 	widget->setTime(itemData->time);
 
 	/* Internal copies have their original icon and must not be overwritten

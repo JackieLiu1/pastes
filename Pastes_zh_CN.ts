@@ -4,27 +4,27 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="appdialog.cpp" line="132"/>
+        <location filename="appdialog.cpp" line="133"/>
         <source>Allow direct paste</source>
         <translation>允许直接粘贴</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="134"/>
+        <location filename="appdialog.cpp" line="135"/>
         <source>To paste into the previous app, allow Pastes in System Settings → Privacy &amp; Security → Accessibility.</source>
         <translation>要直接粘贴到原来的应用，请在“系统设置 → 隐私与安全性 → 辅助功能”中允许 Pastes。</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="138"/>
+        <location filename="appdialog.cpp" line="139"/>
         <source>The selected item is on the clipboard. You can press ⌘V to paste it.</source>
         <translation>选中的条目已放入剪贴板，你也可以按 ⌘V 手动粘贴。</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="145"/>
+        <location filename="appdialog.cpp" line="146"/>
         <source>Not now</source>
         <translation>暂不</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="151"/>
+        <location filename="appdialog.cpp" line="152"/>
         <source>Open System Settings</source>
         <translation>打开系统设置</translation>
     </message>
@@ -34,12 +34,12 @@
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1091"/>
+        <location filename="mainwindow.cpp" line="1093"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1094"/>
+        <location filename="mainwindow.cpp" line="1096"/>
         <source>Show (%1)</source>
         <translation>显示（%1）</translation>
     </message>
@@ -96,8 +96,8 @@
         <translation>多个文件</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="160"/>
-        <location filename="mainwindow.cpp" line="1003"/>
+        <location filename="appdialog.cpp" line="161"/>
+        <location filename="mainwindow.cpp" line="1005"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
     </message>
@@ -154,12 +154,12 @@
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1049"/>
+        <location filename="mainwindow.cpp" line="1051"/>
         <source>records</source>
         <translation>条记录</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="903"/>
+        <location filename="mainwindow.cpp" line="905"/>
         <source>Clipboard</source>
         <translation>剪贴板历史</translation>
     </message>
@@ -210,13 +210,13 @@
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="901"/>
+        <location filename="mainwindow.cpp" line="903"/>
         <source>Pastes</source>
         <translation>Pastes</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="859"/>
-        <location filename="mainwindow.cpp" line="860"/>
+        <location filename="mainwindow.cpp" line="861"/>
+        <location filename="mainwindow.cpp" line="862"/>
         <source>Menu</source>
         <translation>菜单</translation>
     </message>
@@ -226,22 +226,22 @@
         <translation>输入即可搜索</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="554"/>
+        <location filename="mainwindow.cpp" line="555"/>
         <source>%1 items</source>
         <translation>%1 条记录</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="555"/>
+        <location filename="mainwindow.cpp" line="556"/>
         <source>%1 of %2 items</source>
         <translation>%2 条记录中找到 %1 条</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="559"/>
+        <location filename="mainwindow.cpp" line="560"/>
         <source>Copy something to get started</source>
         <translation>复制一段文字或一张图片，从这里开始</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="559"/>
+        <location filename="mainwindow.cpp" line="560"/>
         <source>No matching items</source>
         <translation>没有找到匹配的内容</translation>
     </message>
@@ -260,13 +260,13 @@
         <translation>图片预览</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="64"/>
+        <location filename="appdialog.cpp" line="65"/>
         <location filename="previewdialog.cpp" line="118"/>
         <source>Close (Esc)</source>
         <translation>关闭（Esc）</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="65"/>
+        <location filename="appdialog.cpp" line="66"/>
         <location filename="previewdialog.cpp" line="119"/>
         <source>Close</source>
         <translation>关闭</translation>
@@ -305,17 +305,17 @@
         <translation type="vanished">预览（Space）</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="928"/>
+        <location filename="mainwindow.cpp" line="930"/>
         <source>Removed from history</source>
         <translation>已从历史记录移除</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="932"/>
+        <location filename="mainwindow.cpp" line="934"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="933"/>
+        <location filename="mainwindow.cpp" line="935"/>
         <source>Undo deletion (Ctrl+Z)</source>
         <translation>撤销删除（Ctrl+Z）</translation>
     </message>
@@ -330,42 +330,42 @@
         <translation>松开即可删除</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="171"/>
+        <location filename="appdialog.cpp" line="172"/>
         <source>Version %1</source>
         <translation>版本 %1</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="174"/>
+        <location filename="appdialog.cpp" line="175"/>
         <source>Keep useful copies close at hand.</source>
         <translation>把常用的复制内容留在手边。</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="195"/>
+        <location filename="appdialog.cpp" line="196"/>
         <source>Created by</source>
         <translation>开发者</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="196"/>
+        <location filename="appdialog.cpp" line="197"/>
         <source>License</source>
         <translation>许可证</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="197"/>
+        <location filename="appdialog.cpp" line="198"/>
         <source>History</source>
         <translation>历史记录</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="197"/>
-        <source>Stored locally · Last 7 days</source>
-        <translation>本地保存 · 最近 7 天</translation>
+        <location filename="appdialog.cpp" line="198"/>
+        <source>Stored locally · Last %1 days</source>
+        <translation>本地保存 · 最近 %1 天</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="201"/>
+        <location filename="appdialog.cpp" line="202"/>
         <source>Project page</source>
         <translation>项目主页</translation>
     </message>
     <message>
-        <location filename="appdialog.cpp" line="209"/>
+        <location filename="appdialog.cpp" line="210"/>
         <location filename="settingsdialog.cpp" line="202"/>
         <source>Done</source>
         <translation>完成</translation>
@@ -498,8 +498,8 @@
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="911"/>
-        <location filename="mainwindow.cpp" line="1050"/>
+        <location filename="mainwindow.cpp" line="913"/>
+        <location filename="mainwindow.cpp" line="1052"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
     </message>

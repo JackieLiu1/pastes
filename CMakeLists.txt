@@ -31,6 +31,7 @@ set(PASTES_SOURCES
     cardreflow.cpp cardreflow.h
     elasticscroll.cpp elasticscroll.h
     mainwindow.cpp mainwindow.h
+    historypolicy.h
     database.cpp database.h
     pasteitem.cpp pasteitem.h
     pasteitembarnner.cpp pasteitembarnner.h

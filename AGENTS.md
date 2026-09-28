@@ -4,7 +4,7 @@
 
 ## 项目概览
 
-Pastes 是一个跨平台剪贴板管理器：Windows 用 `Win+V`、Linux 用 `Ctrl+Shift+V` 或点击托盘唤出，保留最近 7 天的剪贴板历史，
+Pastes 是一个跨平台剪贴板管理器：Windows 用 `Win+V`、Linux 用 `Ctrl+Shift+V` 或点击托盘唤出，保留最近 30 天的剪贴板历史，
 macOS 用 `Shift+Cmd+V` 或点击菜单栏图标唤出。双击条目或按 `Enter`
 复制回剪贴板，并由各平台的 PasteTarget 请求粘贴到原焦点应用。
 
@@ -41,7 +41,7 @@ ClipboardSource::clipboardChanged
       → Database::insertPasteItem()        # 队列化信号转发到工作线程
 Database::Worker（单一持久线程，持有独立 QSqlDatabase 连接）
   → load/insert/remove 全部串行执行
-MainWindow::parsingData()                  # 启动时从库加载，过滤 >7 天与空条目
+MainWindow::parsingData()                  # 启动时从库加载，过滤已满 30 天与空条目
 ```
 
 关键类：

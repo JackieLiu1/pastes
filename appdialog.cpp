@@ -1,4 +1,5 @@
 #include "appdialog.h"
+#include "historypolicy.h"
 #include "platform/pastetarget.h"
 #include "roundedwidgets.h"
 #include "platform/windowintegration.h"
@@ -194,7 +195,7 @@ AboutDialog::AboutDialog(QWidget *parent) : AppDialog(QObject::tr("About Pastes"
 	};
 	addRow(QObject::tr("Created by"), QStringLiteral("Jackie Liu"));
 	addRow(QObject::tr("License"), QStringLiteral("LGPL v3"));
-	addRow(QObject::tr("History"), QObject::tr("Stored locally · Last 7 days"));
+	addRow(QObject::tr("History"), QObject::tr("Stored locally · Last %1 days").arg(HistoryPolicy::retentionDays));
 	bodyLayout()->addWidget(details);
 	auto *project = new RoundedButton(this);
 	project->setObjectName("PreviewAction");
