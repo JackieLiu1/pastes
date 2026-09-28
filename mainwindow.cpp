@@ -463,7 +463,14 @@ bool MainWindow::handlePointerEvent(QObject *object, QEvent *event)
 		if (card) card->setPressed(true);
 		return true;
 	}
-	if (type == QEvent::MouseMove && this->__mouse_down) {
+	if (type == QEvent::MouseMove) {
+		/* A wheel or hide can cancel our press while Qt still reports a
+		 * held button. Never let its default drag-selection handle an
+		 * unowned move. Browsing and hovering must not select a card. */
+		if (!this->__mouse_down) {
+			mouse->accept();
+			return true;
+		}
 		const QPoint delta = mouse->globalPosition().toPoint()-this->__mouse_press;
 		if (!(mouse->buttons() & Qt::LeftButton)) {
 			this->resetPointerGesture();
