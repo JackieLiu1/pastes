@@ -215,6 +215,7 @@ void Platform::preparePanel(QWidget *widget)
 	NSWindow *window = nativeView(widget).window;
 	window.movable = NO;
 	window.movableByWindowBackground = NO;
+	window.styleMask &= ~NSWindowStyleMaskResizable;
 	Platform::updatePanelBackdrop(widget);
 }
 

@@ -53,7 +53,8 @@ MainWindow::MainWindow(QWidget *parent)
 	const QRect geometry = Platform::panelGeometry(QApplication::primaryScreen());
 	this->__recording_enabled = !QSettings().value("pauseRecording", false).toBool();
 
-	this->setFixedHeight(geometry.height());
+	/* The shelf spans its screen and must not expose resize handles. */
+	this->setFixedSize(geometry.size());
 	this->setGeometry(geometry);
 	Platform::initializePanel(this);
 	this->setFocusPolicy(Qt::NoFocus);
@@ -460,7 +461,7 @@ void MainWindow::show_window(void)
 		this->clipboard_later();
 	}
 	const QRect geometry = Platform::panelGeometry();
-	this->setFixedHeight(geometry.height());
+	this->setFixedSize(geometry.size());
 	this->setGeometry(geometry);
 	Platform::preparePanel(this);
 	this->__hide_animation->setStartValue(this->pos());
