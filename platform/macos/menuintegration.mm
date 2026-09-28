@@ -1,5 +1,6 @@
 #include "platform/menuintegration.h"
 
+#include <QAction>
 #include <QApplication>
 #include <QMenu>
 #include <QPointer>
@@ -65,6 +66,21 @@ QAction *Platform::execMenuAt(QMenu *menu, QWidget *owner, const QPoint &positio
 		[&chosen](QAction *action) { chosen = action; });
 	const bool native = popupNativeMenu(menu, owner,
 		owner->window()->mapFromGlobal(position), false);
+	if (native) {
+		/* Cocoa queues the platform item's activation, which in turn queues
+		 * QAction::trigger(). Deliver only this menu's calls while its
+		 * temporary actions still exist; do not run unrelated UI events. */
+		QList<QPointer<QObject>> receivers;
+		for (QAction *action : menu->actions()) {
+			if (QPlatformMenuItem *item = menu->platformMenu()->menuItemForTag(
+				    reinterpret_cast<quintptr>(action)))
+				receivers.append(item);
+			receivers.append(action);
+		}
+		for (const QPointer<QObject> &receiver : receivers)
+			if (receiver)
+				QCoreApplication::sendPostedEvents(receiver.data(), QEvent::MetaCall);
+	}
 	QObject::disconnect(connection);
 	return native ? chosen.data() : menu->exec(position);
 }
