@@ -34,12 +34,12 @@
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1089"/>
+        <location filename="mainwindow.cpp" line="1091"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1092"/>
+        <location filename="mainwindow.cpp" line="1094"/>
         <source>Show (%1)</source>
         <translation>显示（%1）</translation>
     </message>
@@ -97,7 +97,7 @@
     </message>
     <message>
         <location filename="appdialog.cpp" line="160"/>
-        <location filename="mainwindow.cpp" line="1001"/>
+        <location filename="mainwindow.cpp" line="1003"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
     </message>
@@ -154,7 +154,7 @@
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1047"/>
+        <location filename="mainwindow.cpp" line="1049"/>
         <source>records</source>
         <translation>条记录</translation>
     </message>
@@ -493,7 +493,7 @@
     </message>
     <message>
         <location filename="mainwindow.cpp" line="911"/>
-        <location filename="mainwindow.cpp" line="1048"/>
+        <location filename="mainwindow.cpp" line="1050"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
     </message>

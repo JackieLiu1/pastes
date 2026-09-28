@@ -932,6 +932,8 @@ void MainWindow::initUI(void)
 	this->__undo_button->setText(QObject::tr("Undo"));
 	this->__undo_button->setToolTip(QObject::tr("Undo deletion (Ctrl+Z)"));
 	this->__undo_button->setFocusPolicy(Qt::NoFocus);
+	/* Align the painted button with labels, without native layout insets. */
+	this->__undo_button->setAttribute(Qt::WA_LayoutUsesWidgetRect);
 	this->__undo_button->setFixedHeight(24);
 	QObject::connect(this->__undo_button, &QPushButton::clicked, this, &MainWindow::undoDeletion);
 	this->__undo_timer = new QTimer(this);
