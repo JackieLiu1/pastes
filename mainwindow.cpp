@@ -197,9 +197,12 @@ MainWindow::MainWindow(QWidget *parent)
 bool MainWindow::event(QEvent *e)
 {
 	if (e->type() == QEvent::ActivationChange) {
-		QWidget *active = QApplication::activeWindow();
-		if (active != this && !(active && this->isAncestorOf(active)))
-			this->hide_window();
+		/* Qt briefly has no active window while an owned preview takes key
+		 * focus. Inspect ownership after the activation handoff finishes. */
+		QTimer::singleShot(0, this, [this](void) {
+			if (!Platform::isOwnedWindow(this, QApplication::activeWindow()))
+				this->hide_window();
+		});
 	}
 
 	return QMainWindow::event(e);
@@ -591,8 +594,10 @@ void MainWindow::previewCurrentItem(void)
 	QObject::connect(widget, &QObject::destroyed, &dialog, &QDialog::reject);
 	if (dialog.exec() == QDialog::Accepted && widget)
 		widget->copyData(dialog.plainText());
-	else if (widget)
+	else if (widget && this->isVisible()) {
+		Platform::activatePanel(this);
 		widget->setFocus();
+	}
 }
 
 void MainWindow::deleteCurrentItem(void)

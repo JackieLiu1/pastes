@@ -32,6 +32,8 @@ struct DialogAppearance
 
 const PanelAppearance &panelAppearance(void);
 const DialogAppearance &dialogAppearance(void);
+/* QWidget::isAncestorOf stops at top-level window boundaries. */
+bool isOwnedWindow(QWidget *owner, QWidget *window);
 /* An explicit screen is used during construction; later calls select the
  * destination display before the panel takes focus. */
 QRect panelGeometry(QScreen *screen = nullptr);
@@ -46,6 +48,10 @@ void activatePanel(QWidget *widget);
 void watchPanelDismissal(QWidget *widget, const std::function<void(bool)> &dismiss);
 void initializeDialog(QWidget *widget);
 void prepareDialog(QWidget *widget);
+/* Item previews keep keyboard focus in the panel's current workspace. */
+void initializePreview(QWidget *widget);
+void preparePreview(QWidget *widget);
+void activatePreview(QWidget *widget);
 
 }
 #endif

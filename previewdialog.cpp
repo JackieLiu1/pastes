@@ -1,6 +1,7 @@
 #include "previewdialog.h"
 #include "pasteitem.h"
 #include "roundedwidgets.h"
+#include "platform/windowintegration.h"
 
 #include <QApplication>
 #include <QDateTime>
@@ -14,6 +15,7 @@
 #include <QScrollBar>
 #include <QShortcut>
 #include <QStyle>
+#include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QWindow>
@@ -63,10 +65,12 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	m_surface(new RoundedWidget(RoundedRole::Preview, this)),
 	m_header(new QWidget(m_surface)), m_detail(new QLabel(m_surface))
 {
+	Platform::initializePreview(this);
 	setObjectName("PreviewDialog");
 	setWindowTitle(QObject::tr("Preview"));
 	setAttribute(Qt::WA_TranslucentBackground);
 	setModal(true);
+	if (parent) parent->installEventFilter(this);
 	QVBoxLayout *outer = new QVBoxLayout(this);
 	outer->setContentsMargins(14, 14, 14, 18);
 	outer->addWidget(m_surface);
@@ -189,6 +193,9 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 
 bool PreviewDialog::eventFilter(QObject *object, QEvent *event)
 {
+	/* A workspace switch must also end the preview's modal event loop. */
+	if (object == parentWidget() && event->type() == QEvent::Hide)
+		reject();
 	if (object == m_header && event->type() == QEvent::MouseButtonPress) {
 		QMouseEvent *mouse = static_cast<QMouseEvent *>(event);
 		if (mouse->button() == Qt::LeftButton && windowHandle()) {
@@ -201,6 +208,7 @@ bool PreviewDialog::eventFilter(QObject *object, QEvent *event)
 
 void PreviewDialog::showEvent(QShowEvent *event)
 {
+	Platform::preparePreview(this);
 	QDialog::showEvent(event);
 	QScreen *screen = parentWidget() ? parentWidget()->screen() : QGuiApplication::primaryScreen();
 	if (!screen) return;
@@ -208,6 +216,9 @@ void PreviewDialog::showEvent(QShowEvent *event)
 	const QSize size(qMin(760, area.width()-32), qMin(560, area.height()-32));
 	setFixedSize(size);
 	move(area.center()-QPoint(width()/2, height()/2));
+	QTimer::singleShot(0, this, [this](void) {
+		if (isVisible()) Platform::activatePreview(this);
+	});
 }
 
 void PreviewDialog::keyPressEvent(QKeyEvent *event)

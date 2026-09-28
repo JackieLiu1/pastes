@@ -1,6 +1,6 @@
 # Public contracts and Qt-only facades belong to the application target.
 target_sources(pastes PRIVATE
-    clipboardsource.h pastetarget.h windowintegration.h
+    clipboardsource.h pastetarget.h windowintegration.h windowintegration.cpp
     applicationintegration.h menuintegration.h menuintegration.cpp
     fileicon.h paths.h startupintegration.h startupintegration.cpp
     globalshortcut.h globalshortcut.cpp shortcut_p.h

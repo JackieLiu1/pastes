@@ -74,8 +74,13 @@ public:
 		}];
 		m_focusObserver = [NSNotificationCenter.defaultCenter addObserverForName:NSWindowDidResignKeyNotification
 			object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *notification) {
-			if (notification.object == nativeView(m_widget).window)
-				this->dismiss(false);
+			for (QWidget *window : QApplication::topLevelWidgets()) {
+				if (Platform::isOwnedWindow(m_widget, window) &&
+					notification.object == nativeView(window).window) {
+					this->dismiss(false);
+					break;
+				}
+			}
 		}];
 	}
 
@@ -98,7 +103,7 @@ private:
 				if (nativeView(m_widget).window.keyWindow)
 					return;
 				QWidget *active = QApplication::activeWindow();
-				if (active && active != m_widget && m_widget->isAncestorOf(active))
+				if (Platform::isOwnedWindow(m_widget, active))
 					return;
 			}
 			m_dismiss(immediate);
@@ -172,7 +177,7 @@ void Platform::updatePanelBackdrop(QWidget *widget)
 	widget->update();
 }
 
-void Platform::preparePanel(QWidget *widget)
+static void prepareFloatingWindow(QWidget *widget)
 {
 	/* Create the native window only when preparing to show it. */
 	widget->winId();
@@ -201,7 +206,19 @@ void Platform::preparePanel(QWidget *widget)
 	window.collectionBehavior = behavior;
 	/* Stay above full-screen content as well as the Dock. */
 	window.level = CGWindowLevelForKey(kCGScreenSaverWindowLevelKey);
+}
+
+void Platform::preparePanel(QWidget *widget)
+{
+	prepareFloatingWindow(widget);
 	Platform::updatePanelBackdrop(widget);
+}
+
+void Platform::preparePreview(QWidget *widget)
+{
+	prepareFloatingWindow(widget);
+	/* Keep the modal preview above its bottom panel. */
+	nativeView(widget).window.level = CGWindowLevelForKey(kCGScreenSaverWindowLevelKey)+1;
 }
 
 void Platform::activatePanel(QWidget *widget)
@@ -214,6 +231,14 @@ void Platform::activatePanel(QWidget *widget)
 	[window orderFrontRegardless];
 	[window makeKeyWindow];
 	[window makeFirstResponder:view];
+}
+
+void Platform::activatePreview(QWidget *widget)
+{
+	/* Qt assigns a tool window's level when mapping it. Restore the preview
+	 * level after that step, before ordering it above the parent panel. */
+	Platform::preparePreview(widget);
+	Platform::activatePanel(widget);
 }
 
 void Platform::prepareDialog(QWidget *widget)
@@ -309,6 +334,13 @@ void initializeDialog(QWidget *widget)
 #else
 	Q_UNUSED(widget);
 #endif
+}
+
+void initializePreview(QWidget *widget)
+{
+	widget->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
+		Qt::NoDropShadowWindowHint);
+	widget->setAttribute(Qt::WA_MacAlwaysShowToolWindow);
 }
 
 }

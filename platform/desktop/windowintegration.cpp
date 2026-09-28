@@ -45,11 +45,18 @@ void updatePanelBackdrop(QWidget *) {}
 void watchPanelDismissal(QWidget *, const std::function<void(bool)> &) {}
 void initializeDialog(QWidget *) {}
 void prepareDialog(QWidget *) {}
+void initializePreview(QWidget *) {}
+void preparePreview(QWidget *) {}
 
 void activatePanel(QWidget *widget)
 {
 	widget->raise();
 	widget->activateWindow();
+}
+
+void activatePreview(QWidget *widget)
+{
+	activatePanel(widget);
 }
 
 }
