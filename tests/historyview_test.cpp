@@ -4,6 +4,7 @@
 #include "ui/searchbar.h"
 #include "ui/cardinteraction.h"
 #include "ui/cardswipe.h"
+#include "ui/elasticscroll.h"
 #include <QApplication>
 #include <QInputMethodEvent>
 #include <QKeyEvent>
@@ -177,6 +178,52 @@ void searchInputMethod(void)
 	require(search->text() == "o", "Direct Latin typing was lost or duplicated");
 }
 
+void searchNavigationGeometry(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	window.resize(1200, 450);
+	HistoryView view(history, &window);
+	QVBoxLayout layout(&window);
+	layout.addWidget(&view);
+	window.setStyleSheet("QListWidget { border: 0; }");
+	history.load();
+	repository.finishLoad({textEntry("match first"), textEntry("match second"), textEntry("other")});
+	auto *search = view.findChild<LineEdit *>();
+	auto *list = view.findChild<QListWidget *>();
+	auto *scroll = view.findChild<ElasticScrollController *>();
+	window.show(); window.activateWindow(); search->setFocus();
+	waitUntil([&] { return search->hasFocus(); });
+	list->doItemsLayout();
+	const QPoint origin = list->viewport()->pos();
+	const int cardTop = list->itemWidget(list->item(0))->mapTo(&window, QPoint()).y();
+	auto pressTab = [&] {
+		QKeyEvent tab(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
+		QCoreApplication::sendEvent(QApplication::focusWidget(), &tab);
+		require(list->viewport()->pos() == origin, "Tab moved the idle viewport");
+		require(list->itemWidget(list->item(0))->mapTo(&window, QPoint()).y() == cardTop,
+			"Tab shifted the row of cards vertically");
+	};
+	pressTab();
+	require(list->currentRow() == 1 && list->itemWidget(list->item(1))->hasFocus(),
+		"Tab no longer advances from search to the next card");
+	search->setFocus(); search->setText("match");
+	pressTab();
+	require(list->currentRow() == 1, "Filtered Tab stopped advancing selection");
+
+	/* Cancelling real overshoot must still return to the settled layout. */
+	scroll->beginDrag(); scroll->dragTo(80);
+	require(list->viewport()->x() > origin.x(), "Fixture did not stretch the viewport");
+	search->setFocus(); pressTab();
+	require(!scroll->active() && list->currentRow() == 0,
+		"Tab failed to cancel overshoot and cycle selection");
+	scroll->wheel(-80, true, Qt::ScrollBegin);
+	require(list->viewport()->x() > origin.x(), "Fixture did not stretch with a touchpad");
+	scroll->cancel();
+	require(list->viewport()->pos() == origin, "Touchpad cancellation did not restore the viewport");
+}
+
 void composingSearchCommands(void)
 {
 	QWidget window;
@@ -338,6 +385,7 @@ int main(int argc, char **argv)
 	failures += runTest("pointer direction, cancellation and immediate undo", pointerCommands);
 	failures += runTest("synced items preserve selection and search", syncedSelection);
 	failures += runTest("search Tab advances the selected result and cycles", searchNavigation);
+	failures += runTest("search Tab keeps the card row in place", searchNavigationGeometry);
 	failures += runTest("type-to-search focuses before input method composition", searchInputMethod);
 	failures += runTest("search composition keeps candidate keys", composingSearchCommands);
 	failures += runTest("search filtering preserves uninterrupted input focus", searchKeepsInputFocus);

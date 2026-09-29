@@ -233,6 +233,9 @@ void ElasticScrollController::advance(void)
 
 void ElasticScrollController::cancel(void)
 {
+	/* An idle viewport may have been repositioned by layout or styling.
+	 * Only an active gesture owns the cached origin used for restoration. */
+	this->synchronize();
 	m_timer.stop();
 	m_wheel_end.stop();
 	m_velocity = 0;
