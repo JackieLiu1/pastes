@@ -124,6 +124,9 @@ void PasteTarget::notifyPermissionRequired(void)
 	if (m_private->permissionNotified)
 		return;
 	m_private->permissionNotified = true;
+	qWarning() << "Direct paste permission denied for"
+		<< QString::fromNSString(NSBundle.mainBundle.bundlePath)
+		<< "accessibility:" << bool(AXIsProcessTrusted());
 	emit permissionRequired();
 }
 
@@ -214,4 +217,15 @@ void PasteTarget::requestPermission(void)
 		if (@available(macOS 10.15, *))
 			if (!CGPreflightPostEventAccess()) CGRequestPostEventAccess();
 	}
+	/* A stale grant can leave the switch on without authorizing this build.
+	 * The trust prompt is asynchronous and may not appear again, so always
+	 * open the pane the button promises to open. */
+	[NSWorkspace.sharedWorkspace openURL:[NSURL URLWithString:
+		@"x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"]];
+}
+
+QString PasteTarget::permissionRecoveryHint(void)
+{
+	return QObject::tr("If Pastes is already enabled, remove its old entry and add this copy again:\n%1\nThen quit and reopen Pastes.")
+		.arg(QString::fromNSString(NSBundle.mainBundle.bundlePath));
 }

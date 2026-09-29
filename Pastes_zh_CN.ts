@@ -10,21 +10,21 @@
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="135"/>
-        <source>To paste into the previous app, allow Pastes in System Settings → Privacy &amp; Security → Accessibility.</source>
-        <translation>要直接粘贴到原来的应用，请在“系统设置 → 隐私与安全性 → 辅助功能”中允许 Pastes。</translation>
+        <source>To paste into the previous app, allow Pastes to control other apps in System Settings → Privacy &amp; Security.</source>
+        <translation>要直接粘贴到原来的应用，请在“系统设置 → 隐私与安全”中允许 Pastes 控制其他应用。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="139"/>
+        <location filename="ui/appdialog.cpp" line="148"/>
         <source>The selected item is on the clipboard. You can press ⌘V to paste it.</source>
         <translation>选中的条目已放入剪贴板，你也可以按 ⌘V 手动粘贴。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="146"/>
+        <location filename="ui/appdialog.cpp" line="155"/>
         <source>Not now</source>
         <translation>暂不</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="152"/>
+        <location filename="ui/appdialog.cpp" line="161"/>
         <source>Open System Settings</source>
         <translation>打开系统设置</translation>
     </message>
@@ -96,7 +96,7 @@
         <translation>多个文件</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="161"/>
+        <location filename="ui/appdialog.cpp" line="170"/>
         <location filename="ui/mainwindow.cpp" line="216"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
@@ -330,42 +330,42 @@
         <translation>松开即可删除</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="172"/>
+        <location filename="ui/appdialog.cpp" line="181"/>
         <source>Version %1</source>
         <translation>版本 %1</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="175"/>
+        <location filename="ui/appdialog.cpp" line="184"/>
         <source>Keep useful copies close at hand.</source>
         <translation>把常用的复制内容留在手边。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="196"/>
+        <location filename="ui/appdialog.cpp" line="205"/>
         <source>Created by</source>
         <translation>开发者</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="197"/>
+        <location filename="ui/appdialog.cpp" line="206"/>
         <source>License</source>
         <translation>许可证</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="198"/>
+        <location filename="ui/appdialog.cpp" line="207"/>
         <source>History</source>
         <translation>历史记录</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="198"/>
+        <location filename="ui/appdialog.cpp" line="207"/>
         <source>Stored locally · Last %1 days</source>
         <translation>本地保存 · 最近 %1 天</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="202"/>
+        <location filename="ui/appdialog.cpp" line="211"/>
         <source>Project page</source>
         <translation>项目主页</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="210"/>
+        <location filename="ui/appdialog.cpp" line="219"/>
         <location filename="ui/settingsdialog.cpp" line="202"/>
         <source>Done</source>
         <translation>完成</translation>
@@ -553,6 +553,15 @@
         <location filename="platform/macos/startupintegration.mm" line="69"/>
         <source>The system did not apply the launch at sign-in change. Try again.</source>
         <translation>系统未应用开机启动设置，请重试。</translation>
+    </message>
+    <message>
+        <location filename="platform/macos/pastetarget.mm" line="229"/>
+        <source>If Pastes is already enabled, remove its old entry and add this copy again:
+%1
+Then quit and reopen Pastes.</source>
+        <translation>如果 Pastes 的开关已经打开，请移除旧条目，再重新添加当前这份程序：
+%1
+然后退出并重新打开 Pastes。</translation>
     </message>
 </context>
 </TS>

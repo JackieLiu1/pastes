@@ -28,9 +28,20 @@ the user's Library. After moving from a development bundle, turn launch at
 sign-in off and on in Settings to register the installed copy. Automatic paste
 requires Accessibility permission for that copy.
 
+If automatic paste still requests permission while the Pastes switch is on,
+quit Pastes, remove its old entry in System Settings > Privacy & Security >
+Accessibility (Device Control and Data Access on newer macOS), then add
+`/Applications/Pastes.app` and enable it again. Reopen that installed copy.
+Restarting alone does not repair an authorization tied to another signature.
+
 The default application identity `-` is an ad-hoc signature for local use.
 The default installer is unsigned. These packages are not notarized and do
 not claim Gatekeeper approval for public distribution.
+Ad-hoc authorization is tied to the exact signed build. Rebuilding or switching
+between development and installed copies can invalidate a previous grant;
+using the same bundle identifier does not preserve it. Use the same Developer
+ID Application identity across distributed updates for a stable signing
+identity. Do not replace signature checks with an identifier-only requirement.
 
 For distribution, configure `PASTES_MACOS_SIGNING_IDENTITY` with a Developer ID
 Application identity and `PASTES_MACOS_INSTALLER_SIGNING_IDENTITY` with a

@@ -54,3 +54,4 @@ void PasteTarget::paste(QWidget *panel, bool hasUrls)
 
 void PasteTarget::cancel(void) {}
 void PasteTarget::requestPermission(void) {}
+QString PasteTarget::permissionRecoveryHint(void) { return {}; }

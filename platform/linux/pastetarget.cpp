@@ -39,6 +39,7 @@ PasteTarget::~PasteTarget() = default;
 void PasteTarget::captureTarget(QWidget *panel) { Q_UNUSED(panel); }
 void PasteTarget::cancel(void) {}
 void PasteTarget::requestPermission(void) {}
+QString PasteTarget::permissionRecoveryHint(void) { return {}; }
 
 void PasteTarget::paste(QWidget *panel, bool hasUrls)
 {

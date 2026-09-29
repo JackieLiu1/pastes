@@ -18,6 +18,7 @@ public:
 	void paste(QWidget *panel, bool hasUrls);
 	void cancel(void);
 	static void requestPermission(void);
+	static QString permissionRecoveryHint(void);
 
 signals:
 	void permissionRequired(void);

@@ -132,10 +132,19 @@ void AppDialog::changeEvent(QEvent *event)
 PastePermissionDialog::PastePermissionDialog(QWidget *parent) :
 	AppDialog(QObject::tr("Allow direct paste"), 492, parent)
 {
-	auto *description = new QLabel(QObject::tr("To paste into the previous app, allow Pastes in System Settings → Privacy & Security → Accessibility."), this);
+	auto *description = new QLabel(QObject::tr("To paste into the previous app, allow Pastes to control other apps in System Settings → Privacy & Security."), this);
 	description->setObjectName("AppDialogValue");
 	description->setWordWrap(true);
 	bodyLayout()->addWidget(description);
+	const QString recoveryHint = PasteTarget::permissionRecoveryHint();
+	if (!recoveryHint.isEmpty()) {
+		auto *recovery = new QLabel(recoveryHint, this);
+		recovery->setObjectName("AppDialogValue");
+		recovery->setTextFormat(Qt::PlainText);
+		recovery->setWordWrap(true);
+		recovery->setTextInteractionFlags(Qt::TextSelectableByMouse);
+		bodyLayout()->addWidget(recovery);
+	}
 	auto *fallback = new QLabel(QObject::tr("The selected item is on the clipboard. You can press ⌘V to paste it."), this);
 	fallback->setObjectName("AppDialogMuted");
 	fallback->setWordWrap(true);
