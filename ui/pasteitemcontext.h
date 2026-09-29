@@ -20,7 +20,7 @@ public:
 	void setBackgroundColor(QString);
 
 protected:
-	void resizeEvent(QResizeEvent *event);
+	void resizeEvent(QResizeEvent *event) override;
 
 private:
 	QLabel	*m_mask_label;
@@ -48,7 +48,7 @@ private:
 	void updatePreviewPixmap(void);
 
 protected:
-	void resizeEvent(QResizeEvent *event);
+	void resizeEvent(QResizeEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
 };
 
@@ -66,7 +66,7 @@ public:
 	}
 
 protected:
-	void resizeEvent(QResizeEvent *event);
+	void resizeEvent(QResizeEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
 
 private:

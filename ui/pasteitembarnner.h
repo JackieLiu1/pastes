@@ -30,7 +30,7 @@ public:
 	}
 
 protected:
-	void showEvent(QShowEvent *);
+	void showEvent(QShowEvent *) override;
 	void paintEvent(QPaintEvent *event) override;
 
 private:
