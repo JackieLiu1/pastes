@@ -366,7 +366,7 @@
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="219"/>
-        <location filename="ui/settingsdialog.cpp" line="202"/>
+        <location filename="ui/settingsdialog.cpp" line="210"/>
         <source>Done</source>
         <translation>完成</translation>
     </message>
@@ -376,124 +376,129 @@
         <translation>偏好设置…</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="110"/>
+        <location filename="ui/settingsdialog.cpp" line="111"/>
         <location filename="platform/menuintegration.cpp" line="9"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="113"/>
         <source>Appearance, startup and clipboard history.</source>
-        <translation>外观、开机启动与剪贴板记录。</translation>
+        <translation type="vanished">外观、开机启动与剪贴板记录。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="126"/>
+        <location filename="ui/settingsdialog.cpp" line="137"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="134"/>
+        <location filename="ui/settingsdialog.cpp" line="145"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="134"/>
+        <location filename="ui/settingsdialog.cpp" line="145"/>
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="146"/>
+        <location filename="ui/settingsdialog.cpp" line="157"/>
         <source>Color theme</source>
         <translation>界面主题</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="146"/>
+        <location filename="ui/settingsdialog.cpp" line="157"/>
         <source>For the panel and its windows.</source>
         <translation>适用于主面板和弹窗。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="148"/>
-        <location filename="ui/settingsdialog.cpp" line="150"/>
+        <location filename="ui/settingsdialog.cpp" line="159"/>
+        <location filename="ui/settingsdialog.cpp" line="161"/>
         <source>Keyboard hints</source>
         <translation>快捷键提示</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="150"/>
+        <location filename="ui/settingsdialog.cpp" line="161"/>
         <source>Show the controls below your cards.</source>
         <translation>在卡片下方显示操作提示。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="155"/>
+        <location filename="ui/settingsdialog.cpp" line="134"/>
+        <location filename="ui/settingsdialog.cpp" line="166"/>
         <source>General</source>
         <translation>常规</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="156"/>
-        <location filename="ui/settingsdialog.cpp" line="159"/>
+        <location filename="ui/settingsdialog.cpp" line="167"/>
+        <location filename="ui/settingsdialog.cpp" line="170"/>
         <source>Launch at sign-in</source>
         <translation>开机启动</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="160"/>
-        <location filename="ui/settingsdialog.cpp" line="229"/>
+        <location filename="ui/settingsdialog.cpp" line="171"/>
+        <location filename="ui/settingsdialog.cpp" line="237"/>
         <source>Ready in the tray when you need it.</source>
         <translation>登录后在托盘待命，随时可用。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="160"/>
-        <location filename="ui/settingsdialog.cpp" line="230"/>
+        <location filename="ui/settingsdialog.cpp" line="171"/>
+        <location filename="ui/settingsdialog.cpp" line="238"/>
         <source>Startup is not available on this platform yet.</source>
         <translation>此平台暂不支持开机启动。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="172"/>
-        <location filename="ui/settingsdialog.cpp" line="174"/>
+        <location filename="ui/settingsdialog.cpp" line="183"/>
+        <location filename="ui/settingsdialog.cpp" line="185"/>
         <source>Pause clipboard recording</source>
         <translation>暂停记录剪贴板</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="174"/>
+        <location filename="ui/settingsdialog.cpp" line="185"/>
         <source>Keep existing history; skip new copies.</source>
         <translation>保留已有历史，不记录新复制的内容。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="179"/>
+        <location filename="ui/settingsdialog.cpp" line="191"/>
         <source>Shortcuts</source>
         <translation>快捷键</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="187"/>
+        <location filename="ui/settingsdialog.cpp" line="192"/>
+        <source>Keyboard controls</source>
+        <translation>键盘操作</translation>
+    </message>
+    <message>
+        <location filename="ui/settingsdialog.cpp" line="200"/>
         <source>Open history</source>
         <translation>打开历史面板</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="188"/>
+        <location filename="ui/settingsdialog.cpp" line="201"/>
         <source>Paste selected item</source>
         <translation>粘贴选中条目</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="188"/>
+        <location filename="ui/settingsdialog.cpp" line="201"/>
         <source>Enter / Double-click</source>
         <translation>Enter / 双击</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="189"/>
+        <location filename="ui/settingsdialog.cpp" line="202"/>
         <source>Preview selected item</source>
         <translation>预览选中条目</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="190"/>
+        <location filename="ui/settingsdialog.cpp" line="203"/>
         <source>Search history</source>
         <translation>搜索历史记录</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="199"/>
-        <location filename="ui/settingsdialog.cpp" line="257"/>
+        <location filename="ui/settingsdialog.cpp" line="207"/>
+        <location filename="ui/settingsdialog.cpp" line="265"/>
         <source>Changes are saved automatically.</source>
         <translation>修改立即生效并自动保存。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="248"/>
+        <location filename="ui/settingsdialog.cpp" line="256"/>
         <source>Could not save settings. Check your account permissions and try again.</source>
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>

@@ -115,3 +115,8 @@ QMenu::separator { height: 1px; background: #414141; margin: 5px 8px; }
 #SettingsStatus { font-size: 11px; color: #9C9C9C; }
 #SettingsStatus[error="true"] { color: #E7A28C; }
 #RecordingStatus { font-size: 11px; color: #E7A28C; }
+
+#SettingsTabs::pane { border: 0; background: transparent; }
+#SettingsTabs QTabBar::tab { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 24px; margin-right: 12px; color: #B5B5B5; font-size: 13px; font-weight: 600; }
+#SettingsTabs QTabBar::tab:selected { color: #76C5AA; border-bottom-color: #76C5AA; }
+#SettingsTabs QTabBar::tab:hover { color: #76C5AA; }

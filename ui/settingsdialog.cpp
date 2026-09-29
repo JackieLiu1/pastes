@@ -16,6 +16,7 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QStyle>
+#include <QTabWidget>
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QVBoxLayout>
@@ -107,21 +108,31 @@ static void divider(QVBoxLayout *rows)
 }
 
 SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
-	AppDialog(QObject::tr("Settings"), 568, parent),
+	AppDialog(QObject::tr("Settings"), 640, parent),
 	m_status(new QLabel(this)), m_shortcut(nullptr), m_themes(new QButtonGroup(this))
 {
-	setSubtitle(QObject::tr("Appearance, startup and clipboard history."));
-	auto *scroll = new QScrollArea(this);
-	scroll->setObjectName("SettingsScroll");
-	scroll->setFrameShape(QFrame::NoFrame); scroll->setWidgetResizable(true);
-	scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-	scroll->setVerticalScrollBarPolicy(Platform::dialogAppearance().scrollBar);
-	scroll->verticalScrollBar()->setObjectName("PreviewScroll");
+	auto *tabs = new QTabWidget(this);
+	tabs->setObjectName("SettingsTabs");
+	tabs->setDocumentMode(true);
 	QScreen *screen = parent ? parent->screen() : QGuiApplication::primaryScreen();
-	auto *content = new QWidget;
-	content->setObjectName("SettingsBody");
-	auto *groups = new QVBoxLayout(content);
-	groups->setContentsMargins(0, 0, 4, 0); groups->setSpacing(16);
+	const int availableHeight = qMax(240, screen ? screen->availableGeometry().height()-230 : 430);
+	tabs->setFixedHeight(qMin(430, availableHeight));
+	auto page = [&](const QString &name) {
+		auto *scroll = new QScrollArea(tabs);
+		scroll->setObjectName("SettingsScroll");
+		scroll->setFrameShape(QFrame::NoFrame); scroll->setWidgetResizable(true);
+		scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+		scroll->setVerticalScrollBarPolicy(Platform::dialogAppearance().scrollBar);
+		auto *content = new QWidget;
+		content->setObjectName("SettingsBody");
+		auto *groups = new QVBoxLayout(content);
+		groups->setContentsMargins(0, 18, 0, 0); groups->setSpacing(16);
+		scroll->setWidget(content);
+		tabs->addTab(scroll, name);
+		return groups;
+	};
+	auto *groups = page(QObject::tr("General"));
+	QWidget *content = groups->parentWidget();
 	QSettings preferences;
 	auto *appearance = section(groups, QObject::tr("Appearance"), content);
 	auto *choices = new QWidget(content);
@@ -176,11 +187,13 @@ SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
 		if (savePreference(QStringLiteral("pauseRecording"), checked)) emit recordingChanged(!checked);
 		else pause->restoreChecked(!checked);
 	});
-	auto *keys = section(groups, QObject::tr("Shortcuts"), content);
+	groups->addStretch();
+	auto *keyGroups = page(QObject::tr("Shortcuts"));
+	auto *keys = section(keyGroups, QObject::tr("Keyboard controls"), keyGroups->parentWidget());
 	auto shortcutRow = [&](const QString &label, const QString &key) {
 		auto *row = new QHBoxLayout;
-		auto *caption = new QLabel(label, content); caption->setObjectName("AppDialogValue");
-		auto *value = new RoundedLabel(key, RoundedRole::Number, content); value->setObjectName("SettingsKey");
+		auto *caption = new QLabel(label, keyGroups->parentWidget()); caption->setObjectName("AppDialogValue");
+		auto *value = new RoundedLabel(key, RoundedRole::Number, keyGroups->parentWidget()); value->setObjectName("SettingsKey");
 		row->addWidget(caption); row->addStretch(); row->addWidget(value);
 		keys->addLayout(row); return value;
 	};
@@ -188,13 +201,8 @@ SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
 	shortcutRow(QObject::tr("Paste selected item"), QObject::tr("Enter / Double-click"));
 	shortcutRow(QObject::tr("Preview selected item"), QStringLiteral("Space"));
 	shortcutRow(QObject::tr("Search history"), QStringLiteral("Ctrl+F"));
-	groups->addStretch(); scroll->setWidget(content);
-	/* Fit the styled content when the screen allows it, instead of
-	 * introducing a tiny scroll range that clips the first heading. */
-	content->ensurePolished();
-	const int availableHeight = qMax(180, screen ? screen->availableGeometry().height()-210 : 490);
-	scroll->setFixedHeight(qBound(180, content->minimumSizeHint().height(), availableHeight));
-	bodyLayout()->addWidget(scroll);
+	keyGroups->addStretch();
+	bodyLayout()->addWidget(tabs);
 	m_status->setObjectName("SettingsStatus"); m_status->setWordWrap(true);
 	m_status->setText(QObject::tr("Changes are saved automatically."));
 	auto *done = new RoundedButton(this);
