@@ -24,6 +24,8 @@ add_library(pastes_core STATIC
     core/clipboardcontent.cpp core/clipboardcontent.h
     core/historypolicy.h
 )
+# Core has no Qt meta-object declarations; avoid an empty moc archive member.
+set_target_properties(pastes_core PROPERTIES AUTOMOC OFF)
 target_include_directories(pastes_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(pastes_core PUBLIC Qt6::Core Qt6::Gui)
 
