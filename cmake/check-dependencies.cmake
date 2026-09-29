@@ -1,11 +1,13 @@
 # Fail on outward dependencies instead of relying on directory names alone.
-set(core_forbidden "ui/|storage/|application/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
-set(application_forbidden "ui/|storage/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
+set(core_forbidden "ui/|storage/|sync/|application/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
+set(application_forbidden "ui/|storage/|sync/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
 set(storage_forbidden "ui/|platform/|QWidget|QApplication|QPixmap|QtWidgets|windows.h|X11/|AppKit|Carbon")
-set(ui_forbidden "storage/|QSql|QtSql|windows.h|X11/|AppKit|Carbon")
+set(ui_forbidden "sync/|storage/|QSql|QtSql|windows.h|X11/|AppKit|Carbon")
 set(platform_forbidden "ui/|storage/")
 
-foreach(layer core application storage ui platform)
+set(sync_forbidden "ui/|storage/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
+
+foreach(layer core application storage sync ui platform)
     file(GLOB_RECURSE sources "${PASTES_SOURCE_DIR}/${layer}/*.h"
         "${PASTES_SOURCE_DIR}/${layer}/*.cpp" "${PASTES_SOURCE_DIR}/${layer}/*.mm")
     foreach(source IN LISTS sources)

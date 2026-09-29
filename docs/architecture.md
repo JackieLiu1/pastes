@@ -123,3 +123,9 @@ Windows 测试的 Qt 运行目录由 CMake 从 Qt 导入目标取得。
 
 本轮在 Windows / Qt 6.11.2 上构建，并执行原生剪贴板入库、单实例、重启加载冒烟检查。
 Ubuntu 20.04 + Qt 6.3、Linux 原生输入和 macOS 原生窗口行为需要在对应环境复验。
+
+## WebDAV 同步适配器
+
+`pastes_sync` 依赖 `pastes_application`、QtNetwork，不依赖窗口、数据库实现或系统 SDK。
+入口注入 `SyncService` 和平台 `SecretStore`，设置界面仅使用应用层接口。
+同步按条目和原始时间恢复，不上传数据库快照。协议及验证见 [WebDAV 同步](webdav-sync.md)。

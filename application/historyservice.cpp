@@ -63,6 +63,7 @@ HistoryEntry HistoryService::find(EntryId id) const
 void HistoryService::erase(int row, HistoryChange change)
 {
 	const HistoryEntry entry = m_entries.takeAt(row);
+	emit entryErasing(entry, change);
 	for (auto it = m_sourceRequests.begin(); it != m_sourceRequests.end(); )
 		it = it.value() == entry->id ? m_sourceRequests.erase(it) : ++it;
 	for (auto it = m_imageRequests.begin(); it != m_imageRequests.end(); )
@@ -194,4 +195,30 @@ HistoryService::UndoResult HistoryService::undo(void)
 	if (!canUndo()) m_undoTimer.stop();
 	emit undoChanged(canUndo());
 	return result;
+}
+
+void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &replaced)
+{
+	if (!m_ready) return;
+	for (int row = 0; row < m_entries.size(); ) {
+		const auto &previous = m_entries.at(row);
+		if (entry && previous->md5 == entry->md5 && previous->time == entry->time) {
+			if (!entry->icon.isNull() && previous->icon != entry->icon) {
+				previous->icon = entry->icon;
+				m_repository.updateIcon(previous->md5, previous->icon);
+				emit entryChanged(previous->id);
+			}
+			return;
+		}
+		if (replaced.contains(previous->md5) || (entry && previous->md5 == entry->md5))
+			erase(row, HistoryChange::Synced);
+		else ++row;
+	}
+	if (!entry || HistoryPolicy::expired(entry->time, QDateTime::currentDateTime())) return;
+	int row = 0;
+	while (row < m_entries.size() && m_entries.at(row)->time > entry->time) ++row;
+	entry->id = ++m_nextId;
+	m_entries.insert(row, entry);
+	persist(entry);
+	emit entryAdded(entry, row, HistoryChange::Synced);
 }

@@ -30,7 +30,7 @@ target_include_directories(pastes_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(pastes_core PUBLIC Qt6::Core Qt6::Gui)
 
 add_library(pastes_application STATIC
-    application/historyrepository.h application/clipboardfeed.h
+    application/historyrepository.h application/clipboardfeed.h application/syncservice.h
     application/historyservice.cpp application/historyservice.h
     application/clipboardcontroller.cpp application/clipboardcontroller.h
 )
@@ -41,6 +41,13 @@ add_library(pastes_storage STATIC
     storage/storedentry.cpp storage/storedentry.h
 )
 target_link_libraries(pastes_storage PUBLIC pastes_application PRIVATE Qt6::Sql)
+
+add_library(pastes_sync STATIC
+    sync/synccontent.cpp sync/synccontent.h
+    sync/webdavworker.cpp sync/webdavworker.h
+    sync/webdavsync.cpp sync/webdavsync.h
+)
+target_link_libraries(pastes_sync PUBLIC pastes_application PRIVATE Qt6::Network)
 
 set(PASTES_UI_SOURCES
     ui/appdialog.cpp
@@ -73,6 +80,7 @@ set(PASTES_UI_SOURCES
     ui/roundedwidgets.h
     ui/searchbar.cpp
     ui/searchbar.h
+    ui/syncsettingspage.cpp ui/syncsettingspage.h
     ui/settingsdialog.cpp
     ui/settingsdialog.h
 )
@@ -93,13 +101,13 @@ add_subdirectory(platform)
 add_library(pastes_ui STATIC ${PASTES_UI_SOURCES})
 target_link_libraries(pastes_ui PUBLIC pastes_application pastes_platform Qt6::Widgets)
 target_compile_definitions(pastes_ui PRIVATE PASTES_VERSION="${PROJECT_VERSION}")
-target_link_libraries(pastes PRIVATE pastes_ui pastes_storage SingleApplication::SingleApplication)
+target_link_libraries(pastes PRIVATE pastes_ui pastes_storage pastes_sync SingleApplication::SingleApplication)
 
 
 # translations: Pastes_zh_CN.ts -> Pastes_zh_CN.qm
 add_custom_target(update_translations
     COMMAND Qt6::lupdate -I "${CMAKE_CURRENT_SOURCE_DIR}" -extensions cpp,h,mm
-        app core application storage ui platform -ts Pastes_zh_CN.ts
+        app core application storage sync ui platform -ts Pastes_zh_CN.ts
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     VERBATIM
 )

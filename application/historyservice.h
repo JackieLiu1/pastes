@@ -6,7 +6,7 @@
 #include <QTimer>
 #include <vector>
 
-enum class HistoryChange { Loaded, Captured, Deleted, Replaced, Expired, Discarded, Restored };
+enum class HistoryChange { Loaded, Captured, Deleted, Replaced, Expired, Discarded, Restored, Synced };
 
 class HistoryService final : public QObject
 {
@@ -18,6 +18,7 @@ public:
 	void setSourceIcon(quint64 request, const QImage &icon);
 	bool remove(EntryId id);
 	void discard(EntryId id);
+	void mergeSynced(HistoryEntry entry, const QList<QByteArray> &replaced);
 	void clearUndo(void);
 	bool canUndo(void) const { return !m_deleted.empty(); }
 	EntryId nextUndoId(void) const;
@@ -32,6 +33,7 @@ public:
 signals:
 	void entryAdded(HistoryEntry entry, int row, HistoryChange change);
 	void entryRemoved(EntryId id, HistoryChange change);
+	void entryErasing(HistoryEntry entry, HistoryChange change);
 	void entryChanged(EntryId id);
 	void loaded(void);
 	void undoChanged(bool available);

@@ -17,6 +17,8 @@
 #include <QSignalBlocker>
 #include <QStyle>
 #include <QTabWidget>
+#include <QTabBar>
+#include "ui/syncsettingspage.h"
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QVBoxLayout>
@@ -107,13 +109,14 @@ static void divider(QVBoxLayout *rows)
 	rows->addWidget(line);
 }
 
-SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
+SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent, SyncService *sync) :
 	AppDialog(QObject::tr("Settings"), 640, parent),
 	m_status(new QLabel(this)), m_shortcut(nullptr), m_themes(new QButtonGroup(this))
 {
 	auto *tabs = new QTabWidget(this);
 	tabs->setObjectName("SettingsTabs");
 	tabs->setDocumentMode(true);
+	tabs->tabBar()->setDrawBase(false);
 	QScreen *screen = parent ? parent->screen() : QGuiApplication::primaryScreen();
 	const int availableHeight = qMax(240, screen ? screen->availableGeometry().height()-230 : 430);
 	tabs->setFixedHeight(qMin(430, availableHeight));
@@ -202,6 +205,10 @@ SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
 	shortcutRow(QObject::tr("Preview selected item"), QStringLiteral("Space"));
 	shortcutRow(QObject::tr("Search history"), QStringLiteral("Ctrl+F"));
 	keyGroups->addStretch();
+	if (sync) {
+		auto *syncGroups = page(QObject::tr("Sync"));
+		syncGroups->addWidget(new SyncSettingsPage(*sync, syncGroups->parentWidget()));
+	}
 	bodyLayout()->addWidget(tabs);
 	m_status->setObjectName("SettingsStatus"); m_status->setWordWrap(true);
 	m_status->setText(QObject::tr("Changes are saved automatically."));
@@ -212,6 +219,12 @@ SettingsDialog::SettingsDialog(const QString &shortcut, QWidget *parent) :
 	auto *footer = new QHBoxLayout;
 	footer->setSpacing(16); footer->addWidget(m_status, 1); footer->addWidget(done);
 	bodyLayout()->addLayout(footer);
+	connect(tabs, &QTabWidget::currentChanged, this, [this,tabs](int index) {
+		m_status->setProperty("error", false);
+		m_status->style()->unpolish(m_status); m_status->style()->polish(m_status);
+		m_status->setText(index == 2 && tabs->count() == 3 ?
+			QObject::tr("Save the connection before syncing.") : QObject::tr("Changes are saved automatically."));
+	});
 	updateStartupState();
 	adjustSize();
 }

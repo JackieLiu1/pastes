@@ -447,7 +447,7 @@ void HistoryView::updateShortcutHint(void)
 
 void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 {
-	if (change == HistoryChange::Captured) cancelInteractions();
+	if (change == HistoryChange::Captured || change == HistoryChange::Synced) cancelInteractions();
 	if (change == HistoryChange::Restored) m_reflow->prepare(m_list, nullptr);
 	auto *item = new QListWidgetItem;
 	auto *card = new PasteItem(nullptr, item);
@@ -468,7 +468,7 @@ void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 		m_history.discard(entry->id);
 		return;
 	}
-	if (change == HistoryChange::Restored) {
+	if (change == HistoryChange::Restored || change == HistoryChange::Synced) {
 		const QString text = m_search->findChild<LineEdit *>()->text();
 		item->setHidden(!card->text().contains(text, Qt::CaseInsensitive));
 	}

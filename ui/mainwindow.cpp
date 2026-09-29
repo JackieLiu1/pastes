@@ -21,8 +21,8 @@
 #include <QSystemTrayIcon>
 #include <QTimer>
 
-MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, QWidget *parent)
-	: QMainWindow(parent), __history(history), __clipboard(clipboard)
+MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, QWidget *parent, SyncService *sync)
+	: QMainWindow(parent), __sync(sync), __history(history), __clipboard(clipboard)
 {
 	const QRect geometry = Platform::panelGeometry(QApplication::primaryScreen());
 	setFixedSize(geometry.size());
@@ -169,7 +169,7 @@ void MainWindow::previewEntry(HistoryEntry entry)
 
 void MainWindow::showSettings(void)
 {
-	SettingsDialog dialog(__primary_shortcut, this);
+	SettingsDialog dialog(__primary_shortcut, this, __sync);
 	connect(&dialog, &SettingsDialog::themeChanged, this, &MainWindow::applyTheme);
 	connect(&dialog, &SettingsDialog::recordingChanged, &__clipboard, &ClipboardController::setRecordingEnabled);
 	connect(&dialog, &SettingsDialog::hintsChanged, __main_frame, &HistoryView::setKeyboardHintsVisible);

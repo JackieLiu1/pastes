@@ -4,6 +4,7 @@ target_link_libraries(pastes_platform PUBLIC pastes_application Qt6::Widgets)
 target_sources(pastes_platform PRIVATE
     clipboardsource.h pastetarget.h windowintegration.h windowintegration.cpp
     applicationintegration.h menuintegration.h menuintegration.cpp
+    secretstore.h
     fileicon.h paths.h startupintegration.h startupintegration.cpp
     globalshortcut.h globalshortcut.cpp shortcut_p.h
 )
@@ -12,6 +13,7 @@ target_sources(pastes_platform PRIVATE
 # dependency and can be reused by Windows and Linux.
 if(WIN32)
     target_sources(pastes_platform PRIVATE
+        windows/secretstore.cpp
         windows/clipboardsource.cpp windows/pastetarget.cpp
         windows/shortcut.cpp windows/shortcutstate.h windows/windowblur.cpp
         windows/fileicon.cpp windows/paths.cpp windows/startupintegration.cpp
@@ -20,6 +22,7 @@ if(WIN32)
     )
 elseif(APPLE)
     target_sources(pastes_platform PRIVATE
+        macos/secretstore.mm
         macos/clipboardsource.mm macos/pastetarget.mm macos/shortcut.cpp
         macos/windowintegration.mm macos/menuintegration.mm
         macos/applicationintegration.mm macos/fileicon.cpp macos/paths.cpp
@@ -27,6 +30,7 @@ elseif(APPLE)
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_sources(pastes_platform PRIVATE
+        linux/secretstore.cpp
         linux/clipboardsource.cpp linux/pastetarget.cpp linux/shortcut.cpp
         linux/windowblur.cpp linux/fileicon.cpp linux/paths.cpp
         linux/startupintegration.cpp desktop/windowintegration.cpp
@@ -38,8 +42,9 @@ endif()
 
 if(WIN32)
     set_target_properties(pastes PROPERTIES WIN32_EXECUTABLE TRUE)
-    target_link_libraries(pastes_platform PRIVATE psapi gdi32 shell32)
+    target_link_libraries(pastes_platform PRIVATE psapi gdi32 shell32 advapi32)
 elseif(APPLE)
+    find_library(SECURITY_FRAMEWORK Security REQUIRED)
     find_library(CARBON_FRAMEWORK Carbon REQUIRED)
     find_library(APPKIT_FRAMEWORK AppKit REQUIRED)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
@@ -47,7 +52,7 @@ elseif(APPLE)
     find_library(SERVICEMANAGEMENT_FRAMEWORK ServiceManagement REQUIRED)
     target_link_libraries(pastes_platform PRIVATE ${CARBON_FRAMEWORK}
         ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK}
-        ${APPLICATIONSERVICES_FRAMEWORK} ${SERVICEMANAGEMENT_FRAMEWORK})
+        ${APPLICATIONSERVICES_FRAMEWORK} ${SERVICEMANAGEMENT_FRAMEWORK} ${SECURITY_FRAMEWORK})
     set_target_properties(pastes PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME Pastes

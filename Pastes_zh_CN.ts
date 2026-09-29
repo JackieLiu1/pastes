@@ -366,7 +366,7 @@
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="219"/>
-        <location filename="ui/settingsdialog.cpp" line="210"/>
+        <location filename="ui/settingsdialog.cpp" line="217"/>
         <source>Done</source>
         <translation>完成</translation>
     </message>
@@ -376,7 +376,7 @@
         <translation>偏好设置…</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="111"/>
+        <location filename="ui/settingsdialog.cpp" line="113"/>
         <location filename="platform/menuintegration.cpp" line="9"/>
         <source>Settings</source>
         <translation>设置</translation>
@@ -386,119 +386,130 @@
         <translation type="vanished">外观、开机启动与剪贴板记录。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="137"/>
+        <location filename="ui/settingsdialog.cpp" line="140"/>
         <source>Appearance</source>
         <translation>外观</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="145"/>
+        <location filename="ui/settingsdialog.cpp" line="148"/>
         <source>Light</source>
         <translation>浅色</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="145"/>
+        <location filename="ui/settingsdialog.cpp" line="148"/>
         <source>Dark</source>
         <translation>深色</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="157"/>
+        <location filename="ui/settingsdialog.cpp" line="160"/>
         <source>Color theme</source>
         <translation>界面主题</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="157"/>
+        <location filename="ui/settingsdialog.cpp" line="160"/>
         <source>For the panel and its windows.</source>
         <translation>适用于主面板和弹窗。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="159"/>
-        <location filename="ui/settingsdialog.cpp" line="161"/>
+        <location filename="ui/settingsdialog.cpp" line="162"/>
+        <location filename="ui/settingsdialog.cpp" line="164"/>
         <source>Keyboard hints</source>
         <translation>快捷键提示</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="161"/>
+        <location filename="ui/settingsdialog.cpp" line="164"/>
         <source>Show the controls below your cards.</source>
         <translation>在卡片下方显示操作提示。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="134"/>
-        <location filename="ui/settingsdialog.cpp" line="166"/>
+        <location filename="ui/settingsdialog.cpp" line="137"/>
+        <location filename="ui/settingsdialog.cpp" line="169"/>
         <source>General</source>
         <translation>常规</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="167"/>
         <location filename="ui/settingsdialog.cpp" line="170"/>
+        <location filename="ui/settingsdialog.cpp" line="173"/>
         <source>Launch at sign-in</source>
         <translation>开机启动</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="171"/>
-        <location filename="ui/settingsdialog.cpp" line="237"/>
+        <location filename="ui/settingsdialog.cpp" line="174"/>
+        <location filename="ui/settingsdialog.cpp" line="250"/>
         <source>Ready in the tray when you need it.</source>
         <translation>登录后在托盘待命，随时可用。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="171"/>
-        <location filename="ui/settingsdialog.cpp" line="238"/>
+        <location filename="ui/settingsdialog.cpp" line="174"/>
+        <location filename="ui/settingsdialog.cpp" line="251"/>
         <source>Startup is not available on this platform yet.</source>
         <translation>此平台暂不支持开机启动。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="183"/>
-        <location filename="ui/settingsdialog.cpp" line="185"/>
+        <location filename="ui/settingsdialog.cpp" line="186"/>
+        <location filename="ui/settingsdialog.cpp" line="188"/>
         <source>Pause clipboard recording</source>
         <translation>暂停记录剪贴板</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="185"/>
+        <location filename="ui/settingsdialog.cpp" line="188"/>
         <source>Keep existing history; skip new copies.</source>
         <translation>保留已有历史，不记录新复制的内容。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="191"/>
+        <location filename="ui/settingsdialog.cpp" line="194"/>
         <source>Shortcuts</source>
         <translation>快捷键</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="192"/>
+        <location filename="ui/settingsdialog.cpp" line="195"/>
         <source>Keyboard controls</source>
         <translation>键盘操作</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="200"/>
+        <location filename="ui/settingsdialog.cpp" line="203"/>
         <source>Open history</source>
         <translation>打开历史面板</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="201"/>
+        <location filename="ui/settingsdialog.cpp" line="204"/>
         <source>Paste selected item</source>
         <translation>粘贴选中条目</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="201"/>
+        <location filename="ui/settingsdialog.cpp" line="204"/>
         <source>Enter / Double-click</source>
         <translation>Enter / 双击</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="202"/>
+        <location filename="ui/settingsdialog.cpp" line="205"/>
         <source>Preview selected item</source>
         <translation>预览选中条目</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="203"/>
+        <location filename="ui/settingsdialog.cpp" line="206"/>
         <source>Search history</source>
         <translation>搜索历史记录</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="207"/>
-        <location filename="ui/settingsdialog.cpp" line="265"/>
+        <location filename="ui/settingsdialog.cpp" line="209"/>
+        <source>Sync</source>
+        <translation>同步</translation>
+    </message>
+    <message>
+        <location filename="ui/settingsdialog.cpp" line="214"/>
+        <location filename="ui/settingsdialog.cpp" line="226"/>
+        <location filename="ui/settingsdialog.cpp" line="278"/>
         <source>Changes are saved automatically.</source>
         <translation>修改立即生效并自动保存。</translation>
     </message>
     <message>
-        <location filename="ui/settingsdialog.cpp" line="256"/>
+        <location filename="ui/settingsdialog.cpp" line="226"/>
+        <source>Save the connection before syncing.</source>
+        <translation>连接信息需保存后再同步。</translation>
+    </message>
+    <message>
+        <location filename="ui/settingsdialog.cpp" line="269"/>
         <source>Could not save settings. Check your account permissions and try again.</source>
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
@@ -567,6 +578,323 @@ Then quit and reopen Pastes.</source>
         <translation>如果 Pastes 的开关已经打开，请移除旧条目，再重新添加当前这份程序：
 %1
 然后退出并重新打开 Pastes。</translation>
+    </message>
+    <message>
+        <location filename="sync/synccontent.cpp" line="76"/>
+        <source>An image is too large to sync (maximum 20 megapixels).</source>
+        <translation>图片超过同步上限（最高 2000 万像素），已跳过。</translation>
+    </message>
+    <message>
+        <location filename="sync/synccontent.cpp" line="81"/>
+        <location filename="sync/synccontent.cpp" line="86"/>
+        <source>An item is too large to sync (maximum 20 MB).</source>
+        <translation>条目超过同步上限（最大 20 MB），已跳过。</translation>
+    </message>
+    <message>
+        <location filename="sync/synccontent.cpp" line="103"/>
+        <source>Invalid text in sync data.</source>
+        <translation>同步数据中的文字无效。</translation>
+    </message>
+    <message>
+        <location filename="sync/synccontent.cpp" line="108"/>
+        <location filename="sync/synccontent.cpp" line="113"/>
+        <source>Invalid links in sync data.</source>
+        <translation>同步数据中的链接无效。</translation>
+    </message>
+    <message>
+        <location filename="sync/synccontent.cpp" line="121"/>
+        <source>Invalid or oversized image in sync data.</source>
+        <translation>同步数据中的图片无效或过大。</translation>
+    </message>
+    <message>
+        <location filename="sync/synccontent.cpp" line="123"/>
+        <source>Unsupported sync content.</source>
+        <translation>不支持此同步内容。</translation>
+    </message>
+    <message>
+        <location filename="sync/synccontent.cpp" line="150"/>
+        <source>Sync data exceeds the size limit.</source>
+        <translation>同步数据超过大小限制。</translation>
+    </message>
+    <message>
+        <location filename="sync/synccontent.cpp" line="161"/>
+        <source>Invalid sync record or incompatible version.</source>
+        <translation>同步记录无效或版本不兼容。</translation>
+    </message>
+    <message>
+        <location filename="sync/synccontent.cpp" line="168"/>
+        <source>The sync record failed its content check.</source>
+        <translation>同步记录未通过内容校验。</translation>
+    </message>
+    <message>
+        <location filename="platform/linux/secretstore.cpp" line="14"/>
+        <source>Install secret-tool (libsecret) to save WebDAV credentials securely.</source>
+        <translation>请安装 secret-tool（libsecret），以便安全保存 WebDAV 密码。</translation>
+    </message>
+    <message>
+        <location filename="platform/linux/secretstore.cpp" line="19"/>
+        <source>Could not open the system credential store.</source>
+        <translation>无法打开系统密码存储。</translation>
+    </message>
+    <message>
+        <location filename="platform/linux/secretstore.cpp" line="21"/>
+        <source>The system credential store did not respond.</source>
+        <translation>系统密码存储未响应。</translation>
+    </message>
+    <message>
+        <location filename="platform/linux/secretstore.cpp" line="26"/>
+        <source>Could not access the system credential store. Unlock your keyring and try again.</source>
+        <translation>无法访问系统密码存储，请解锁密钥环后重试。</translation>
+    </message>
+    <message>
+        <location filename="platform/macos/secretstore.mm" line="17"/>
+        <source>Could not access the system credential store: %1</source>
+        <translation>无法访问系统密码存储：%1</translation>
+    </message>
+    <message>
+        <location filename="platform/windows/secretstore.cpp" line="15"/>
+        <source>Could not read Windows Credential Manager.</source>
+        <translation>无法读取 Windows 凭据管理器。</translation>
+    </message>
+    <message>
+        <location filename="platform/windows/secretstore.cpp" line="33"/>
+        <source>Could not save to Windows Credential Manager.</source>
+        <translation>无法保存至 Windows 凭据管理器。</translation>
+    </message>
+</context>
+<context>
+    <name>SyncSettingsPage</name>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="15"/>
+        <source>Your history, across devices</source>
+        <translation>让历史记录随设备同步</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="17"/>
+        <source>Sync text, links and images through your own WebDAV server. Files and folders stay on this device.</source>
+        <translation>通过自己的 WebDAV 服务同步文字、链接和图片。文件与文件夹仅保留在本机。</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="32"/>
+        <source>Leave blank to keep the saved password</source>
+        <translation>留空则保留已保存的密码</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="34"/>
+        <source>Server folder</source>
+        <translation>服务器目录</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="35"/>
+        <source>Account</source>
+        <translation>账号</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="36"/>
+        <source>Password / app password</source>
+        <translation>密码 / 应用密码</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="37"/>
+        <source>Enable automatic sync</source>
+        <translation>开启自动同步</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="46"/>
+        <location filename="ui/syncsettingspage.cpp" line="46"/>
+        <source>Save connection</source>
+        <translation>保存连接</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="47"/>
+        <location filename="ui/syncsettingspage.cpp" line="47"/>
+        <source>Test connection</source>
+        <translation>测试连接</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="48"/>
+        <location filename="ui/syncsettingspage.cpp" line="48"/>
+        <source>Sync now</source>
+        <translation>立即同步</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="52"/>
+        <source>Each item keeps its copy time. History is retained for 30 days. Items over 20 MB or images over 20 megapixels are skipped. The server can read the synced content; use a private account.</source>
+        <translation>逐条同步并保留复制时间，历史保留 30 天。跳过超过 20 MB 或 2000 万像素的内容。服务端可读取同步内容，请使用私人账号。</translation>
+    </message>
+    <message>
+        <location filename="ui/syncsettingspage.cpp" line="73"/>
+        <source>Last sync: %1</source>
+        <translation>上次同步：%1</translation>
+    </message>
+</context>
+<context>
+    <name>WebDavSync</name>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="17"/>
+        <location filename="sync/webdavsync.cpp" line="96"/>
+        <source>Sync is off.</source>
+        <translation>同步已关闭。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="64"/>
+        <source>Enter an HTTPS WebDAV folder address without embedded credentials or query parameters.</source>
+        <translation>请输入 HTTPS WebDAV 目录地址，地址中不要包含账号、密码或查询参数。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="67"/>
+        <source>The account name contains unsupported characters.</source>
+        <translation>账号含有不支持的字符。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="91"/>
+        <source>Could not save sync settings.</source>
+        <translation>无法保存同步设置。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="96"/>
+        <source>Ready to sync.</source>
+        <translation>已就绪，可以同步。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="125"/>
+        <source>Connection verified: read, write and delete are available.</source>
+        <translation>连接成功，读取、写入和删除均可用。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="129"/>
+        <source>Up to date.</source>
+        <translation>已同步至最新。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="129"/>
+        <source>Sync finished with skipped items: %1</source>
+        <translation>同步完成，部分条目已跳过：%1</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="169"/>
+        <source>Enable sync to share your clipboard history.</source>
+        <translation>请先开启同步，再同步剪贴板历史。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="179"/>
+        <source>Testing connection…</source>
+        <translation>正在测试连接…</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="179"/>
+        <source>Syncing items…</source>
+        <translation>正在逐条同步…</translation>
+    </message>
+</context>
+<context>
+    <name>WebDavWorker</name>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="58"/>
+        <source>Could not create the local sync cache.</source>
+        <translation>无法创建本地同步缓存。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="61"/>
+        <source>Could not read the local sync index.</source>
+        <translation>无法读取本地同步索引。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="64"/>
+        <source>The local sync index is damaged.</source>
+        <translation>本地同步索引损坏。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="73"/>
+        <location filename="sync/webdavworker.cpp" line="196"/>
+        <source>The sync history exceeds the record limit.</source>
+        <translation>同步记录数量超过上限。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="79"/>
+        <source>The local sync cache is damaged.</source>
+        <translation>本地同步缓存损坏。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="93"/>
+        <source>Could not save the local sync index.</source>
+        <translation>无法保存本地同步索引。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="101"/>
+        <source>Could not save a sync record.</source>
+        <translation>无法保存同步记录。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="156"/>
+        <source>The server response exceeds the size limit.</source>
+        <translation>服务器响应超过大小限制。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="157"/>
+        <source>Connection failed. Check the address, certificate and network.</source>
+        <translation>连接失败，请检查地址、证书和网络。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="158"/>
+        <source>The server redirected the request. Enter its final WebDAV address.</source>
+        <translation>服务器重定向了请求，请填写最终的 WebDAV 地址。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="159"/>
+        <source>Access denied. Check the account, password and folder permissions.</source>
+        <translation>访问被拒绝，请检查账号、密码和目录权限。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="176"/>
+        <source>Could not create the sync folder (HTTP %1).</source>
+        <translation>无法创建同步目录（HTTP %1）。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="185"/>
+        <source>The address is not a readable WebDAV folder (HTTP %1).</source>
+        <translation>此地址不是可读取的 WebDAV 目录（HTTP %1）。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="204"/>
+        <source>The server returned an invalid WebDAV listing.</source>
+        <translation>服务器返回的 WebDAV 目录列表无效。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="209"/>
+        <source>The WebDAV folder is not writable (HTTP %1).</source>
+        <translation>WebDAV 目录不可写入（HTTP %1）。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="213"/>
+        <source>The WebDAV read/delete check failed.</source>
+        <translation>WebDAV 读取或删除检查失败。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="238"/>
+        <source>Could not download a sync record (HTTP %1).</source>
+        <translation>无法下载同步记录（HTTP %1）。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="239"/>
+        <location filename="sync/webdavworker.cpp" line="265"/>
+        <source>The downloaded record failed its integrity check.</source>
+        <translation>下载的记录未通过完整性校验。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="257"/>
+        <source>Could not read an outgoing sync record.</source>
+        <translation>无法读取待上传的同步记录。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="260"/>
+        <source>Could not upload a sync record (HTTP %1).</source>
+        <translation>无法上传同步记录（HTTP %1）。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="283"/>
+        <source>Could not remove expired sync data (HTTP %1).</source>
+        <translation>无法清理过期同步数据（HTTP %1）。</translation>
     </message>
 </context>
 </TS>

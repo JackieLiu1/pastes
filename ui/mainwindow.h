@@ -5,6 +5,7 @@
 #include <QMainWindow>
 
 class HistoryService;
+class SyncService;
 class ClipboardController;
 class HistoryView;
 class GlobalShortcut;
@@ -21,7 +22,7 @@ class MainWindow final : public QMainWindow
 {
 	Q_OBJECT
 public:
-	MainWindow(HistoryService &history, ClipboardController &clipboard, QWidget *parent = nullptr);
+	MainWindow(HistoryService &history, ClipboardController &clipboard, QWidget *parent = nullptr, SyncService *sync = nullptr);
 
 public slots:
 	void show_window(void);
@@ -42,6 +43,7 @@ private:
 	void execAppDialog(AppDialog &dialog);
 	void copyEntry(HistoryEntry entry, bool plainText, bool paste);
 	void previewEntry(HistoryEntry entry);
+	SyncService *__sync = nullptr;
 	HistoryService &__history;
 	ClipboardController &__clipboard;
 	HistoryView *__main_frame = nullptr;

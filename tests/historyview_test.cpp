@@ -62,6 +62,23 @@ void viewCommands(void)
 		"Undisplayable persisted entry was retained");
 }
 
+void syncedSelection()
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	HistoryView view(history, &window);
+	history.load(); repository.finishLoad({textEntry("selected item", QDateTime::currentDateTime().addSecs(-10))});
+	auto *list = view.findChild<QListWidget *>();
+	list->setCurrentRow(0);
+	auto *selected = list->currentItem();
+	auto *search = view.findChild<LineEdit *>();
+	search->setText("selected");
+	history.mergeSynced(textEntry("remote item"), {});
+	require(list->currentItem() == selected, "Remote arrival stole the current selection");
+	require(list->item(0)->isHidden(), "Remote arrival bypassed the active filter");
+}
+
 void pointerCommands(void)
 {
 	MemoryRepository repository;
@@ -128,5 +145,6 @@ int main(int argc, char **argv)
 	QApplication app(argc, argv);
 	int failures = runTest("history view commands, filtering and ownership", viewCommands);
 	failures += runTest("pointer direction, cancellation and immediate undo", pointerCommands);
+	failures += runTest("synced items preserve selection and search", syncedSelection);
 	return failures ? 1 : 0;
 }

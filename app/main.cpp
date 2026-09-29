@@ -6,6 +6,9 @@
 #include <QTimer>
 #include <QSettings>
 #include <QDebug>
+#include <QStandardPaths>
+#include "sync/webdavsync.h"
+#include "platform/secretstore.h"
 
 #include "ui/mainwindow.h"
 #include "application/clipboardcontroller.h"
@@ -45,7 +48,9 @@ int main(int argc, char *argv[])
 	ClipboardSource source;
 	ClipboardController clipboard(history, source, *QGuiApplication::clipboard(),
 		!QSettings().value("pauseRecording", false).toBool());
-	MainWindow w(history, clipboard);
+	auto secrets = Platform::createSecretStore();
+	WebDavSync sync(history, *secrets, QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)+"/sync");
+	MainWindow w(history, clipboard, nullptr, &sync);
 	history.load();
 	const auto &behavior = Platform::applicationBehavior();
 	QObject::connect(&a, &SingleApplication::instanceStarted, &w, [&w, behavior](void) {

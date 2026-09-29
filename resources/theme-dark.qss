@@ -120,3 +120,9 @@ QMenu::separator { height: 1px; background: #414141; margin: 5px 8px; }
 #SettingsTabs QTabBar::tab { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 24px; margin-right: 12px; color: #B5B5B5; font-size: 13px; font-weight: 600; }
 #SettingsTabs QTabBar::tab:selected { color: #76C5AA; border-bottom-color: #76C5AA; }
 #SettingsTabs QTabBar::tab:hover { color: #76C5AA; }
+
+QLineEdit[syncField="true"] { border: 1px solid #4C514F; border-radius: 7px; padding: 3px 8px; color: #F2F2F2; background: #202321; }
+#SyncAction { background: transparent; border: 0; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #A3DCC5; }
+#SyncAction[primary="true"] { color: #173B30; }
+#SyncAction:disabled { color: #777777; }
+#SyncStatus { color: #B5DACF; font-size: 12px; }

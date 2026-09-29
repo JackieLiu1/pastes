@@ -8,12 +8,13 @@ class QLabel;
 class QButtonGroup;
 class QVariant;
 class SettingsSwitch;
+class SyncService;
 
 class SettingsDialog : public AppDialog
 {
 	Q_OBJECT
 public:
-	SettingsDialog(const QString &shortcut, QWidget *parent = nullptr);
+	SettingsDialog(const QString &shortcut, QWidget *parent = nullptr, SyncService *sync = nullptr);
 	void setPrimaryShortcut(const QString &shortcut);
 
 signals:

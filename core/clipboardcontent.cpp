@@ -20,15 +20,20 @@ QByteArray ClipboardContent::fingerprint(const QMimeData &mime)
 	if (mime.hasImage()) {
 		/* Decode a compressed original only once for this identity check. */
 		const QImage image = qvariant_cast<QImage>(mime.imageData());
-		if (!image.isNull()) {
-			for (int row = 0; row < image.height(); ++row)
-				hash.addData(QByteArrayView(reinterpret_cast<const char *>(image.constScanLine(row)), image.bytesPerLine()));
-			return hash.result();
-		}
+		if (!image.isNull()) return imageFingerprint(image);
 	}
 	if (mime.hasText() && !mime.text().trimmed().isEmpty()) {
 		hash.addData(mime.text().trimmed().toLocal8Bit());
 		return hash.result();
 	}
 	return QByteArray();
+}
+
+QByteArray ClipboardContent::imageFingerprint(const QImage &image)
+{
+	if (image.isNull()) return {};
+	QCryptographicHash hash(QCryptographicHash::Md5);
+	for (int row = 0; row < image.height(); ++row)
+		hash.addData(QByteArrayView(reinterpret_cast<const char *>(image.constScanLine(row)), image.bytesPerLine()));
+	return hash.result();
 }

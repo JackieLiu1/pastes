@@ -32,3 +32,20 @@ endif()
 add_test(NAME architecture_dependencies
     COMMAND ${CMAKE_COMMAND} -DPASTES_SOURCE_DIR=${PROJECT_SOURCE_DIR}
         -P ${PROJECT_SOURCE_DIR}/cmake/check-dependencies.cmake)
+
+add_executable(webdav_test webdav_test.cpp)
+target_link_libraries(webdav_test PRIVATE pastes_sync Qt6::Network)
+add_test(NAME webdav_contract COMMAND webdav_test)
+set_tests_properties(webdav_contract PROPERTIES TIMEOUT 60)
+if(WIN32)
+    set_property(TEST webdav_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
+endif()
+
+add_executable(settings_test settings_test.cpp ../sources.qrc)
+target_link_libraries(settings_test PRIVATE pastes_ui)
+add_test(NAME settings_contract COMMAND settings_test)
+set_tests_properties(settings_contract PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+if(WIN32)
+    set_property(TEST settings_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
+endif()
