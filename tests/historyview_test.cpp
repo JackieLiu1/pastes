@@ -5,6 +5,7 @@
 #include "ui/cardinteraction.h"
 #include "ui/cardswipe.h"
 #include <QApplication>
+#include <QInputMethodEvent>
 #include <QKeyEvent>
 #include <QListWidget>
 #include <QMouseEvent>
@@ -137,6 +138,138 @@ void searchNavigation(void)
 	require(selected(0), "Tab without a selection did not enter the first result");
 }
 
+void searchInputMethod(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	window.resize(1200, 450);
+	HistoryView view(history, &window);
+	QVBoxLayout layout(&window);
+	layout.addWidget(&view);
+	history.load(); repository.finishLoad({textEntry("是中文"), textEntry("other")});
+	auto *search = view.findChild<LineEdit *>();
+	auto *list = view.findChild<QListWidget *>();
+	window.show(); window.activateWindow(); view.focusCurrent();
+	waitUntil([&] { return QApplication::activeWindow() == &window; });
+	require(list->itemWidget(list->item(0))->hasFocus(), "Fixture did not focus its card");
+
+	/* Cocoa checks shortcuts before asking the focused editor to compose.
+	 * The first letter must already belong to search at that point. */
+	QKeyEvent first(QEvent::ShortcutOverride, Qt::Key_S, Qt::NoModifier, "s");
+	QCoreApplication::sendEvent(QApplication::focusWidget(), &first);
+	require(search->hasFocus(), "First search key reached the input method with a card focused");
+	require(search->text().isEmpty(), "Shortcut routing inserted the raw pinyin letter");
+	QInputMethodEvent preedit("shi", {});
+	QCoreApplication::sendEvent(search, &preedit);
+	require(search->text().isEmpty() && !list->item(1)->isHidden(), "Uncommitted pinyin filtered history");
+	QInputMethodEvent commit;
+	commit.setCommitString(QString::fromUtf8("是"));
+	QCoreApplication::sendEvent(search, &commit);
+	require(search->text() == QString::fromUtf8("是"), "Committed Chinese retained raw pinyin");
+	require(!list->item(0)->isHidden() && list->item(1)->isHidden(), "Committed Chinese did not filter history");
+
+	search->clear(); view.focusCurrent();
+	QKeyEvent latinStart(QEvent::ShortcutOverride, Qt::Key_O, Qt::NoModifier, "o");
+	QCoreApplication::sendEvent(QApplication::focusWidget(), &latinStart);
+	QKeyEvent latin(QEvent::KeyPress, Qt::Key_O, Qt::NoModifier, "o");
+	QCoreApplication::sendEvent(QApplication::focusWidget(), &latin);
+	require(search->text() == "o", "Direct Latin typing was lost or duplicated");
+}
+
+void composingSearchCommands(void)
+{
+	QWidget window;
+	QVBoxLayout layout(&window);
+	SearchBar bar(&window, 360, 38);
+	layout.addWidget(&bar);
+	auto *search = bar.findChild<LineEdit *>();
+	int pasted = 0, moved = 0, hidden = 0;
+	QObject::connect(&bar, &SearchBar::selectItem, [&] { ++pasted; });
+	QObject::connect(&bar, &SearchBar::selectPlainTextItem, [&] { ++pasted; });
+	QObject::connect(&bar, &SearchBar::moveFocusPrevNext, [&](bool, bool) { ++moved; });
+	QObject::connect(&bar, &SearchBar::hideWindow, [&] { ++hidden; });
+	window.show(); window.activateWindow(); search->setFocus();
+	waitUntil([&] { return search->hasFocus(); });
+	for (int key : {Qt::Key_Return, Qt::Key_Enter, Qt::Key_Escape, Qt::Key_Tab,
+		Qt::Key_Backtab, Qt::Key_Right, Qt::Key_Down, Qt::Key_Space}) {
+		QInputMethodEvent preedit("shi", {});
+		QCoreApplication::sendEvent(search, &preedit);
+		QKeyEvent shortcut(QEvent::ShortcutOverride, key, Qt::ShiftModifier);
+		shortcut.ignore();
+		QCoreApplication::sendEvent(search, &shortcut);
+		require(shortcut.isAccepted(), "Composition leaked a shortcut to the panel");
+		QKeyEvent press(QEvent::KeyPress, key, Qt::NoModifier);
+		QCoreApplication::sendEvent(search, &press);
+		require(!pasted && !moved && !hidden, "Composition triggered a panel command");
+	}
+	QInputMethodEvent cancel;
+	QCoreApplication::sendEvent(search, &cancel);
+	search->clear();
+	QInputMethodEvent partial("wen", {});
+	partial.setCommitString(QString::fromUtf8("中"));
+	QCoreApplication::sendEvent(search, &partial);
+	require(search->text() == QString::fromUtf8("中"), "Partial commit saved its remaining pinyin");
+	QKeyEvent composingEnter(QEvent::KeyPress, Qt::Key_Return, Qt::ShiftModifier);
+	QCoreApplication::sendEvent(search, &composingEnter);
+	require(!pasted, "Partial commit ended composition before its remaining candidates");
+	search->actions().first()->trigger();
+	require(search->text().isEmpty(), "Clearing search retained input method text");
+	QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+	QCoreApplication::sendEvent(search, &enter);
+	QKeyEvent tab(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
+	QCoreApplication::sendEvent(search, &tab);
+	require(pasted == 1 && moved == 1, "Panel commands did not resume after composition");
+}
+
+void searchKeepsInputFocus(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	window.resize(1200, 450);
+	HistoryView view(history, &window);
+	QVBoxLayout layout(&window);
+	layout.addWidget(&view);
+	history.load();
+	repository.finishLoad({textEntry("other"), textEntry("收到 sd")});
+	auto *search = view.findChild<LineEdit *>();
+	auto *list = view.findChild<QListWidget *>();
+	window.show(); window.activateWindow(); search->setFocus();
+	waitUntil([&] { return search->hasFocus(); });
+	int focusLosses = 0;
+	QObject observer;
+	QObject::connect(qApp, &QApplication::focusChanged, &observer,
+		[&](QWidget *before, QWidget *) { if (before == search) ++focusLosses; });
+
+	/* The first match must change the current row. Merely restoring search
+	 * focus afterward commits Cocoa's still-active preedit a second time. */
+	QInputMethodEvent preedit("s'd", {});
+	QCoreApplication::sendEvent(search, &preedit);
+	QInputMethodEvent commit;
+	commit.setCommitString("sd");
+	QCoreApplication::sendEvent(search, &commit);
+	require(search->text() == "sd" && list->currentRow() == 1,
+		"Latin IME confirmation did not select the matching result");
+	require(focusLosses == 0, "Search filtering temporarily stole input focus");
+	search->clear();
+	require(list->currentRow() == 0 && focusLosses == 0,
+		"Restoring the previous selection stole search focus");
+
+	QInputMethodEvent partial("dao", {});
+	partial.setCommitString(QString::fromUtf8("收"));
+	QCoreApplication::sendEvent(search, &partial);
+	require(search->text() == QString::fromUtf8("收") && list->currentRow() == 1 && focusLosses == 0,
+		"Filtering a partial Chinese commit interrupted composition");
+	commit.setCommitString(QString::fromUtf8("到"));
+	QCoreApplication::sendEvent(search, &commit);
+	require(search->text() == QString::fromUtf8("收到") && focusLosses == 0,
+		"Chinese confirmation lost search focus");
+	search->setText("no match");
+	require(list->item(0)->isHidden() && list->item(1)->isHidden() && search->hasFocus() && focusLosses == 0,
+		"An empty result set stole search focus");
+}
+
 void pointerCommands(void)
 {
 	MemoryRepository repository;
@@ -205,5 +338,8 @@ int main(int argc, char **argv)
 	failures += runTest("pointer direction, cancellation and immediate undo", pointerCommands);
 	failures += runTest("synced items preserve selection and search", syncedSelection);
 	failures += runTest("search Tab advances the selected result and cycles", searchNavigation);
+	failures += runTest("type-to-search focuses before input method composition", searchInputMethod);
+	failures += runTest("search composition keeps candidate keys", composingSearchCommands);
+	failures += runTest("search filtering preserves uninterrupted input focus", searchKeepsInputFocus);
 	return failures ? 1 : 0;
 }

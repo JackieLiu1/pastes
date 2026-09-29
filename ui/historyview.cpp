@@ -14,6 +14,23 @@
 #include <QShortcut>
 #include <QVBoxLayout>
 
+namespace {
+class HistoryList final : public QListWidget
+{
+public:
+	using QListWidget::QListWidget;
+
+protected:
+	bool edit(const QModelIndex &, EditTrigger, QEvent *) override
+	{
+		/* Cards handle their own interaction. Qt's default editor path
+		 * focuses persistent item widgets even with NoEditTriggers,
+		 * interrupting IME composition when search changes selection. */
+		return false;
+	}
+};
+}
+
 HistoryView::HistoryView(HistoryService &history, QWidget *window)
 	: MainFrame(window), m_history(history), m_window(window)
 {
@@ -187,8 +204,6 @@ void HistoryView::setupUi(void)
 	});
 	QObject::connect(this->m_search, &SearchBar::textChanged, [this](const QString &text) {
 		this->cancelInteractions();
-		LineEdit *lineedit = this->m_search->findChild<LineEdit *>("", Qt::FindDirectChildrenOnly);
-		const bool keepSearchFocus = lineedit->hasFocus();
 		int temp_current_item_row = -1;
 		int show_row_count = 0;
 
@@ -228,10 +243,6 @@ void HistoryView::setupUi(void)
 			this->m_searchSelection = nullptr;
 		}
 		this->updateSummary();
-		/* Updating the list's current index can focus its item widget. Keep
-		 * typing in search until the user explicitly navigates to a card. */
-		if (keepSearchFocus)
-			lineedit->setFocus();
 	});
 	QObject::connect(this->m_search, &SearchBar::selectItem, [this](void) {
 		PasteItem *widget = this->currentCard();
@@ -256,7 +267,7 @@ void HistoryView::setupUi(void)
 	this->m_menuButton->setFixedSize(36, 36);
 	this->m_menuButton->setFlat(true);
 
-	this->m_list = new QListWidget(this);
+	this->m_list = new HistoryList(this);
 	this->m_list->setSelectionMode(QAbstractItemView::SingleSelection);
 	this->m_list->setHorizontalScrollMode(QListWidget::ScrollPerPixel);
 	this->m_list->setFlow(QListView::LeftToRight);
@@ -374,17 +385,24 @@ bool HistoryView::eventFilter(QObject *object, QEvent *event)
 	if (m_interaction && m_window->isVisible() && m_interaction->handleEvent(object, event)) return true;
 	if (object == m_list->viewport() && event->type() == QEvent::Resize && m_empty)
 		m_empty->setGeometry(QRect(QPoint(), static_cast<QResizeEvent *>(event)->size()));
-	if (event->type() == QEvent::KeyPress && m_window->isVisible() && QApplication::activeWindow() == m_window) {
+	if ((event->type() == QEvent::ShortcutOverride || event->type() == QEvent::KeyPress) &&
+	    m_window->isVisible() && QApplication::activeWindow() == m_window) {
 		LineEdit *search = m_search->findChild<LineEdit *>("", Qt::FindDirectChildrenOnly);
-		if (object != search) {
+		auto *receiver = qobject_cast<QWidget *>(object);
+		if (receiver && receiver->window() == m_window && object != search) {
 			QKeyEvent *key = static_cast<QKeyEvent *>(event);
 			if (key->key() == Qt::Key_Space) return MainFrame::eventFilter(object, event);
-			if (key->key() == Qt::Key_Backspace && !search->text().isEmpty()) {
-				search->setFocus(); search->backspace(); return true;
-			}
-			if (!(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)) &&
-			    !key->text().isEmpty() && key->text().at(0).isPrint()) {
-				search->setFocus(); search->insert(key->text()); return true;
+			const bool typing = !(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)) &&
+				!key->text().isEmpty() && key->text().at(0).isPrint();
+			if (typing || (key->key() == Qt::Key_Backspace && !search->text().isEmpty())) {
+				/* Cocoa queries the input-method target after ShortcutOverride.
+				 * Focus search now so the first pinyin key can start composition
+				 * instead of becoming literal text via the KeyPress fallback. */
+				search->setFocus();
+				if (event->type() == QEvent::KeyPress)
+					QCoreApplication::sendEvent(search, event);
+				event->accept();
+				return true;
 			}
 		}
 	}

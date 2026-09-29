@@ -3,6 +3,8 @@
 #include <QHBoxLayout>
 #include <QResizeEvent>
 #include <QApplication>
+#include <QInputMethod>
+#include <QInputMethodEvent>
 #include <QPainter>
 #include <QDebug>
 
@@ -18,7 +20,9 @@ LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLine
 	this->updateIcon();
 	this->addAction(m_searchAction, QLineEdit::TrailingPosition);
 	QObject::connect(m_searchAction, &QAction::triggered, [this]() {
-		this->setText("");
+		if (m_composing) qApp->inputMethod()->reset();
+		this->clear();
+		m_composing = false;
 	});
 }
 
@@ -76,10 +80,28 @@ void LineEdit::focusOutEvent(QFocusEvent *event)
 {
 	emit this->focusOut();
 	QLineEdit::focusOutEvent(event);
+	m_composing = false;
+}
+
+void LineEdit::inputMethodEvent(QInputMethodEvent *event)
+{
+	m_composing = !event->preeditString().isEmpty();
+	QLineEdit::inputMethodEvent(event);
 }
 
 bool LineEdit::event(QEvent *event)
 {
+	/* Candidate selection belongs to the input method, including keys which
+	 * otherwise paste a card, navigate the list or dismiss the panel. */
+	if (m_composing && event->type() == QEvent::ShortcutOverride) {
+		event->accept();
+		return true;
+	}
+	if (m_composing && event->type() == QEvent::KeyPress) {
+		QLineEdit::event(event);
+		event->accept(); // Do not propagate an unhandled key to MainFrame.
+		return true;
+	}
 	if (event->type() == QEvent::KeyPress) {
 		QKeyEvent *ke = static_cast<QKeyEvent *>(event);
 		switch (ke->key()) {
@@ -112,6 +134,7 @@ bool LineEdit::event(QEvent *event)
 void LineEdit::hideEvent(QHideEvent *event)
 {
 	this->clear();
+	m_composing = false;
 	QLineEdit::hideEvent(event);
 }
 

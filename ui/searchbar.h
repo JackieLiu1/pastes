@@ -16,12 +16,13 @@ public:
 	void updateIcon(void);
 
 protected:
-	void focusInEvent(QFocusEvent *event);
-	void focusOutEvent(QFocusEvent *event);
-	void hideEvent(QHideEvent *event);
-	void changeEvent(QEvent *event);
-	void paintEvent(QPaintEvent *event);
-	bool event(QEvent * event);
+	void focusInEvent(QFocusEvent *event) override;
+	void focusOutEvent(QFocusEvent *event) override;
+	void inputMethodEvent(QInputMethodEvent *event) override;
+	void hideEvent(QHideEvent *event) override;
+	void changeEvent(QEvent *event) override;
+	void paintEvent(QPaintEvent *event) override;
+	bool event(QEvent * event) override;
 
 Q_SIGNALS:
 	void focusIn(void);
@@ -34,6 +35,7 @@ Q_SIGNALS:
 private:
 	QAction			*m_searchAction;
 	RoundedSurface		m_surface;
+	bool			m_composing = false;
 };
 
 class SearchBar : public QWidget
