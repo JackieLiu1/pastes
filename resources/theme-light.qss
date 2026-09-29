@@ -20,6 +20,10 @@ QListWidget::item, QListWidget::item:hover, QListWidget::item:selected {
 	color: #293A35;
 }
 #Context { padding: 0; border: 0; background: transparent; }
+#ContextColorFrame {
+	background: transparent; border: 0;
+	font-size: 20px; font-weight: 600;
+}
 #ContextTextFrame {
 	background: transparent; border: 0;
 	padding: 10px 14px; color: #293A35; font-size: 14px;

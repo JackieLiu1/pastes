@@ -17,13 +17,27 @@ public:
 	TextFrame(QWidget *parent = nullptr);
 
 	void setMaskFrameText(QString);
-	void setBackgroundColor(QString);
 
 protected:
 	void resizeEvent(QResizeEvent *event) override;
 
 private:
 	QLabel	*m_mask_label;
+};
+
+class ColorFrame : public QLabel
+{
+public:
+	ColorFrame(const QString &text, QWidget *parent = nullptr);
+
+protected:
+	void paintEvent(QPaintEvent *event) override;
+
+private:
+	RoundedSurface m_surface;
+	QColor m_color;
+	QColor m_background;
+	QColor m_foreground;
 };
 
 class PixmapFrame : public TextFrame

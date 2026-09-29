@@ -118,10 +118,7 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 	case RoundedRole::Footer: {
 		style.radius = 12; style.corners = 2;
 		QWidget *content = widget->parentWidget();
-		const QColor swatch = content->property("swatchColor").value<QColor>();
-		if (swatch.isValid()) {
-			style.fill = qGray(swatch.rgb()) < 145 ? QColor(0, 0, 0, 20) : QColor(255, 255, 255, 35);
-		} else if (content->objectName() == "ContextPixmapFrame") {
+		if (content->objectName() == "ContextPixmapFrame") {
 			style.fill = QColor(dark ? "#282828" : "#F0F5F1");
 		} else {
 			style.gradient = true;

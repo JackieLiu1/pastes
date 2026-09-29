@@ -2,7 +2,9 @@
 #include "ui/filepreview.h"
 
 #include <algorithm>
+#include <cmath>
 
+#include <QApplication>
 #include <QResizeEvent>
 #include <QFileInfo>
 #include <QDir>
@@ -32,21 +34,76 @@ void TextFrame::setMaskFrameText(QString s)
 	this->m_mask_label->show();
 }
 
-void TextFrame::setBackgroundColor(QString colorName)
-{
-	const QColor color(colorName);
-	this->setProperty("swatchColor", color);
-	this->update();
-	this->m_mask_label->setStyleSheet(qGray(color.rgb()) < 145 ?
-		"color: #FFFFFF; background: transparent;" : "color: #24372D; background: transparent;");
-}
-
 void TextFrame::resizeEvent(QResizeEvent *event)
 {
 	this->m_mask_label->setGeometry(0, this->height()-LABEL_HEIGHT,
 					this->width(), LABEL_HEIGHT);
 
 	QLabel::resizeEvent(event);
+}
+
+namespace {
+
+QColor blend(const QColor &background, const QColor &foreground, qreal amount)
+{
+	return QColor(qRound(background.red()*(1-amount) + foreground.red()*amount),
+		qRound(background.green()*(1-amount) + foreground.green()*amount),
+		qRound(background.blue()*(1-amount) + foreground.blue()*amount));
+}
+
+qreal luminance(const QColor &color)
+{
+	/* WCAG relative luminance uses linear sRGB, not the average RGB value. */
+	auto linear = [](qreal channel) {
+		return channel <= 0.04045 ? channel/12.92 : std::pow((channel+0.055)/1.055, 2.4);
+	};
+	return 0.2126*linear(color.redF()) + 0.7152*linear(color.greenF()) +
+		0.0722*linear(color.blueF());
+}
+
+QColor swatchTextColor(const QColor &background)
+{
+	const qreal light = luminance(background);
+	const QColor endpoint = (light+0.05)/0.05 >= 1.05/(light+0.05) ? Qt::black : Qt::white;
+	/* Keep a tint/shade of the swatch, strengthening it until normal text
+	 * reaches 4.5:1 contrast. One of the two endpoints always satisfies it. */
+	for (int percent = 45; percent < 100; ++percent) {
+		const QColor foreground = blend(background, endpoint, percent/100.0);
+		const qreal foregroundLight = luminance(foreground);
+		if ((qMax(light, foregroundLight)+0.05)/(qMin(light, foregroundLight)+0.05) >= 4.5)
+			return foreground;
+	}
+	return endpoint;
+}
+
+}
+
+ColorFrame::ColorFrame(const QString &text, QWidget *parent)
+	: QLabel(text.trimmed(), parent), m_color(text.trimmed())
+{
+	this->setObjectName("ContextColorFrame");
+	this->setTextFormat(Qt::PlainText);
+	this->setAlignment(Qt::AlignCenter);
+	this->setProperty("swatchColor", m_color);
+}
+
+void ColorFrame::paintEvent(QPaintEvent *)
+{
+	/* Alpha colors are displayed over the card's themed surface. */
+	QColor surface(qApp->property("pastesDark").toBool() ? "#282828" : "#FFFDF8");
+	QWidget *card = this->parentWidget();
+	while (card && card->objectName() != "PasteItemFrame") card = card->parentWidget();
+	if (card && card->property("pressed").toBool())
+		surface = qApp->property("pastesDark").toBool() ? surface.lighter(108) : surface.darker(103);
+	const QColor background = blend(surface, m_color, m_color.alphaF());
+	if (background != m_background) {
+		m_background = background;
+		m_foreground = swatchTextColor(background);
+	}
+	QPainter painter(this);
+	m_surface.paint(this, RoundedRole::Content, painter);
+	painter.setPen(m_foreground);
+	painter.drawText(this->contentsRect(), this->alignment(), this->text());
 }
 
 PixmapFrame::PixmapFrame(QWidget *parent) : TextFrame(parent)
@@ -240,32 +297,30 @@ void StackedWidget::setPixmap(const QPixmap &pixmap, const QSize &originalSize)
 
 void StackedWidget::setText(QString &s)
 {
+	if (QColor(s).isValid()) {
+		this->addWidget(new ColorFrame(s, this));
+		return;
+	}
 	TextFrame *text_frame = new TextFrame(this);
 
-	if (QColor(s).isValid()) {
-		text_frame->setBackgroundColor(s);
-		text_frame->setMaskFrameText(s);
-	} else {
-		text_frame->setText(s);
-		text_frame->setIndent(4);
-		text_frame->setMaskFrameText(QString("%1 ").arg(s.size()) + QObject::tr("characters"));
-	}
+	text_frame->setText(s);
+	text_frame->setIndent(4);
+	text_frame->setMaskFrameText(QString("%1 ").arg(s.size()) + QObject::tr("characters"));
 
 	this->addWidget(text_frame);
 }
 
 void StackedWidget::setRichText(QString &richText, QString &plainText)
 {
+	if (QColor(plainText.trimmed()).isValid()) {
+		this->addWidget(new ColorFrame(plainText, this));
+		return;
+	}
 	TextFrame *richtext_frame = new TextFrame(this);
 
-	if (QColor(plainText.simplified().trimmed()).isValid()) {
-		richtext_frame->setBackgroundColor(plainText);
-		richtext_frame->setMaskFrameText(plainText);
-	} else {
-		richtext_frame->setText(richText);
-		richtext_frame->setTextFormat(Qt::RichText);
-		richtext_frame->setMaskFrameText(QString("%1 ").arg(plainText.size()) + QObject::tr("characters"));
-	}
+	richtext_frame->setText(richText);
+	richtext_frame->setTextFormat(Qt::RichText);
+	richtext_frame->setMaskFrameText(QString("%1 ").arg(plainText.size()) + QObject::tr("characters"));
 
 	this->addWidget(richtext_frame);
 }
