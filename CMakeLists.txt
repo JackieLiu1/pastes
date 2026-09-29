@@ -126,7 +126,7 @@ if(APPLE)
     )
     # ServiceManagement requires a signed bundle, including its final resources.
     set(PASTES_MACOS_SIGNING_IDENTITY "-" CACHE STRING
-        "macOS signing identity (- for local development)")
+        "macOS certificate identity (- for ad-hoc signing)")
     find_program(PASTES_CODESIGN_EXECUTABLE codesign)
     if(NOT PASTES_CODESIGN_EXECUTABLE)
         message(FATAL_ERROR "codesign is required for macOS login items")

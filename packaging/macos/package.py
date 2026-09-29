@@ -137,8 +137,11 @@ def verify_bundle(app):
     return architectures, minimum, binaries
 
 
-def sign_bundle(app, binaries, identity):
-    options = ["--options", "runtime", "--timestamp"] if identity != "-" else []
+def sign_bundle(app, binaries, identity, local_signing=False):
+    # Local certificates provide a persistent identity but no Apple Team ID.
+    # Keep Developer ID's hardened runtime and timestamp for distribution only.
+    options = (["--options", "runtime", "--timestamp"]
+               if identity != "-" and not local_signing else [])
     for binary in binaries:
         run("/usr/bin/codesign", "--force", "--sign", identity,
             *options, str(binary))
@@ -160,7 +163,11 @@ def main():
     parser.add_argument("--qmake", required=True)
     parser.add_argument("--identity", default="-")
     parser.add_argument("--installer-identity", default="")
+    parser.add_argument("--local-signing", action="store_true",
+                        help="Use a persistent local certificate for this Mac")
     args = parser.parse_args()
+    if args.local_signing and args.identity in ("", "-"):
+        parser.error("--local-signing requires a certificate identity")
     # macdeployqt invokes Darwin tools by name; GNU strip corrupts Mach-O files.
     os.environ["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin:" + os.environ.get("PATH", "")
     source = args.app.resolve()
@@ -201,7 +208,7 @@ def main():
         with info_path.open("wb") as stream:
             plistlib.dump(info, stream)
         print("Signing the final application...", flush=True)
-        sign_bundle(app, binaries, args.identity)
+        sign_bundle(app, binaries, args.identity, args.local_signing)
         architecture = "universal" if len(arches) > 1 else arches[0]
         name = "Pastes-{}-macos-{}".format(args.version, architecture)
 
@@ -247,7 +254,7 @@ def main():
             "Open clipboard history with Shift+Cmd+V. Enable launch at sign-in\n"
             "in Settings. Automatic paste needs Accessibility permission.\n"
         ).format(args.version, minimum, architecture)
-        if args.identity == "-":
+        if args.identity == "-" or args.local_signing:
             instructions += "\n本地签名版本，未经 Apple 公证。\n"
         (image_root / "安装说明.txt").write_text(instructions, encoding="utf-8")
         image = output / (name + ".dmg")

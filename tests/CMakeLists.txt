@@ -15,6 +15,12 @@ if(APPLE)
     target_link_libraries(clipboard_macos_test PRIVATE pastes_platform)
     add_test(NAME clipboard_macos_contract COMMAND clipboard_macos_test)
     set_tests_properties(clipboard_macos_contract PROPERTIES TIMEOUT 30)
+    find_package(Python3 3.9 QUIET COMPONENTS Interpreter)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME macos_signing_contract
+            COMMAND ${Python3_EXECUTABLE} -B ${CMAKE_CURRENT_SOURCE_DIR}/macos_signing_test.py)
+        set_tests_properties(macos_signing_contract PROPERTIES TIMEOUT 30)
+    endif()
 endif()
 
 add_executable(historyview_test historyview_test.cpp ../sources.qrc)

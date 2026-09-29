@@ -43,8 +43,41 @@ using the same bundle identifier does not preserve it. Use the same Developer
 ID Application identity across distributed updates for a stable signing
 identity. Do not replace signature checks with an identifier-only requirement.
 
+## Persistent signing for local use
+
+For development on your own Mac, use one persistent code-signing certificate
+and private key in the login keychain. A local self-signed certificate can
+identify successive builds without a Developer ID account. Limit any local
+certificate trust to code signing; do not grant it SSL or general root trust.
+Keep the same certificate and bundle identifier, and launch the installed
+copy from `/Applications/Pastes.app`. Do not regenerate the certificate for
+each build or commit private keys to the repository.
+
+Configure the existing build directory with the certificate's SHA-1 identity
+fingerprint from `security find-identity -v -p codesigning`:
+
+```sh
+cmake -S . -B build \
+    -DPASTES_MACOS_SIGNING_IDENTITY="YOUR_CERTIFICATE_FINGERPRINT" \
+    -DPASTES_MACOS_LOCAL_SIGNING=ON
+cmake --build build --target package_macos --parallel
+```
+
+Use these options for every build directory that produces your local app.
+Local mode signs the app and dependencies with that certificate, without
+Developer ID's hardened-runtime or timestamp options. It does not notarize
+the app or make a local certificate suitable for public distribution.
+
+Changing from ad-hoc signing to this identity still requires a one-time
+Accessibility grant for the new identity. To validate future updates,
+compare `codesign -d -r-` output from two different builds and verify the
+new build against the old designated requirement. Then test an actual
+upgrade after granting Accessibility; matching requirements alone do not
+prove that macOS retained the user's permission.
+
 For distribution, configure `PASTES_MACOS_SIGNING_IDENTITY` with a Developer ID
 Application identity and `PASTES_MACOS_INSTALLER_SIGNING_IDENTITY` with a
-Developer ID Installer identity. Submit the resulting artifacts to Apple's
-notarization service and staple successful tickets before publishing them.
+Developer ID Installer identity, and set `PASTES_MACOS_LOCAL_SIGNING=OFF`.
+Submit the resulting artifacts to Apple's notarization service and staple
+successful tickets before publishing them.
 Notarization credentials are not stored or managed by this target.
