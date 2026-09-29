@@ -177,6 +177,11 @@ bool ClipboardSource::synchronize(void)
 	return false;
 }
 
+bool ClipboardSource::allowsCapture(void) const
+{
+	return true;
+}
+
 QImage ClipboardSource::snapshotIcon(void)
 {
 	return QImage();

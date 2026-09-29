@@ -30,6 +30,11 @@ bool ClipboardSource::synchronize(void)
 	return false;
 }
 
+bool ClipboardSource::allowsCapture(void) const
+{
+	return true;
+}
+
 void ClipboardSource::capture(quint64 request)
 {
 	Q_UNUSED(request);

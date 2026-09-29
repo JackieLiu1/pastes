@@ -17,6 +17,7 @@ public:
 	void capture(quint64 request) override;
 	/* True when a newer native copy invalidates the pending snapshot. */
 	bool synchronize(void) override;
+	bool allowsCapture(void) const override;
 	QImage snapshotIcon(void) override;
 
 private:

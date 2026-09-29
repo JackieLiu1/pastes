@@ -2,6 +2,7 @@
 #include "application/clipboardcontroller.h"
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QUrl>
 #include <utility>
 
 class TestFeed final : public ClipboardFeed
@@ -15,11 +16,87 @@ public:
 		return onSynchronize();
 	}
 	QImage snapshotIcon(void) override { return icon; }
+	bool allowsCapture(void) const override { return allowed; }
 	void notify(void) { emit clipboardChanged(); }
+	bool allowed = true;
 	QImage icon;
 	quint64 lastRequest = 0;
 	std::function<bool()> onSynchronize;
 };
+
+class ObservedMimeData final : public QMimeData
+{
+public:
+	explicit ObservedMimeData(int &reads) : m_reads(reads) { setText("temporary content"); }
+protected:
+	QVariant retrieveData(const QString &type, QMetaType preferred) const override
+	{
+		++m_reads;
+		return QMimeData::retrieveData(type, preferred);
+	}
+private:
+	int &m_reads;
+};
+
+void capturePolicy(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	history.load(); repository.finishLoad();
+	TestFeed feed;
+	QClipboard &clipboard = *QGuiApplication::clipboard();
+	ClipboardController controller(history, feed, clipboard, true);
+
+	int reads = 0;
+	feed.allowed = false;
+	clipboard.setMimeData(new ObservedMimeData(reads)); feed.notify();
+	controller.flushPending();
+	require(history.entries().isEmpty(), "Excluded clipboard content entered history");
+	require(repository.writes.isEmpty(), "Excluded content reached storage");
+	require(reads == 0, "Excluded clipboard payload was read");
+	require(feed.lastRequest == 0, "Excluded clipboard requested a source icon");
+
+	/* An excluded write must cancel a previously scheduled normal copy. */
+	feed.allowed = true;
+	clipboard.setText("pending"); feed.notify();
+	feed.allowed = false;
+	clipboard.setMimeData(new ObservedMimeData(reads)); feed.notify();
+	controller.flushPending();
+	require(history.entries().isEmpty(), "Excluded replacement escaped pending cancellation");
+	require(reads == 0, "Excluded replacement payload was read");
+
+	/* Recheck the policy at capture time, even without a new notification. */
+	feed.allowed = true; feed.notify();
+	feed.allowed = false;
+	controller.flushPending();
+	require(history.entries().isEmpty(), "Late exclusion was not checked before capture");
+	require(reads == 0, "Late exclusion allowed a payload read");
+
+	/* A provider may add its marker while resolving a promised flavor. */
+	int checks = 0;
+	feed.allowed = true;
+	feed.onSynchronize = [&] {
+		if (++checks == 3) feed.allowed = false;
+		return false;
+	};
+	clipboard.setText("marked while reading"); feed.notify();
+	controller.flushPending();
+	require(history.entries().isEmpty(), "Content marked during capture entered history");
+	feed.onSynchronize = {};
+
+	feed.allowed = true;
+	clipboard.setText("ordinary copy"); feed.notify();
+	controller.flushPending();
+	require(history.entries().size() == 1, "Normal copy after exclusion was lost");
+	require(history.entries().first()->mimeData->text() == "ordinary copy",
+		"Excluded content replaced the subsequent normal copy");
+
+	/* The location of an explicitly copied file is not an exclusion marker. */
+	auto *files = new QMimeData;
+	files->setUrls({QUrl::fromLocalFile("/tmp/Pastes test/cache/image.png")});
+	clipboard.setMimeData(files); feed.notify(); controller.flushPending();
+	require(history.entries().size() == 2, "A deliberate temporary file copy was lost");
+}
 
 void clipboardLifecycle(void)
 {
@@ -67,5 +144,6 @@ void clipboardLifecycle(void)
 int main(int argc, char **argv)
 {
 	QGuiApplication app(argc, argv);
-	return runTest("clipboard pause, copy and native synchronization", clipboardLifecycle);
+	return runTest("clipboard pause, copy and native synchronization", clipboardLifecycle) |
+		runTest("clipboard capture exclusion and recovery", capturePolicy);
 }

@@ -14,6 +14,8 @@ public:
 	virtual int settleInterval(void) const = 0;
 	virtual void capture(quint64 request) = 0;
 	virtual bool synchronize(void) = 0;
+	/* Inspect native metadata before requesting any clipboard payload. */
+	virtual bool allowsCapture(void) const = 0;
 	virtual QImage snapshotIcon(void) = 0;
 
 signals:

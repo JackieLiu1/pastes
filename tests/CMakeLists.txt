@@ -10,6 +10,13 @@ add_executable(clipboard_test clipboard_test.cpp)
 target_link_libraries(clipboard_test PRIVATE pastes_application)
 add_test(NAME clipboard_contract COMMAND clipboard_test)
 
+if(APPLE)
+    add_executable(clipboard_macos_test clipboard_macos_test.mm)
+    target_link_libraries(clipboard_macos_test PRIVATE pastes_platform)
+    add_test(NAME clipboard_macos_contract COMMAND clipboard_macos_test)
+    set_tests_properties(clipboard_macos_contract PROPERTIES TIMEOUT 30)
+endif()
+
 add_executable(historyview_test historyview_test.cpp ../sources.qrc)
 target_link_libraries(historyview_test PRIVATE pastes_ui)
 add_test(NAME historyview_contract COMMAND historyview_test)

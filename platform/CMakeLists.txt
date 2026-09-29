@@ -23,6 +23,7 @@ if(WIN32)
 elseif(APPLE)
     target_sources(pastes_platform PRIVATE
         macos/secretstore.mm
+        macos/clipboardpolicy.mm macos/clipboardpolicy.h
         macos/clipboardsource.mm macos/pastetarget.mm macos/shortcut.cpp
         macos/windowintegration.mm macos/menuintegration.mm
         macos/applicationintegration.mm macos/fileicon.cpp macos/paths.cpp

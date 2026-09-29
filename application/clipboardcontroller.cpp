@@ -27,11 +27,13 @@ ClipboardController::ClipboardController(HistoryService &history, ClipboardFeed 
 
 void ClipboardController::clipboardChanged(void)
 {
-	if (!m_recordingEnabled) return;
+	m_timer.stop();
+	++m_sourceRequest;
+	m_sourceIcon = QImage();
+	if (!m_recordingEnabled || !m_feed.allowsCapture()) return;
 	const QMimeData *mime = m_clipboard.mimeData();
 	if (!mime) return;
 	const QVariant icon = mime->property(sourceIconProperty);
-	++m_sourceRequest;
 	m_sourceIcon = icon.value<QImage>();
 	if (!icon.isValid()) m_feed.capture(m_sourceRequest);
 	m_timer.start();
@@ -39,7 +41,7 @@ void ClipboardController::clipboardChanged(void)
 
 void ClipboardController::capture(void)
 {
-	if (!m_recordingEnabled || m_feed.synchronize()) return;
+	if (!m_recordingEnabled || m_feed.synchronize() || !m_feed.allowsCapture()) return;
 	const QMimeData *mime = m_clipboard.mimeData();
 	if (!mime) return;
 	const quint64 request = m_sourceRequest;
@@ -48,7 +50,7 @@ void ClipboardController::capture(void)
 	auto entry = HistoryEntry::create();
 	entry->mimeData = ClipboardData::duplicate(mime);
 	/* Reading promised MIME flavors may cause a newer native notification. */
-	if (m_feed.synchronize()) return;
+	if (m_feed.synchronize() || !m_feed.allowsCapture()) return;
 	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
 	if (entry->md5.isEmpty()) return;
 	entry->icon = copiedIcon.isValid() ? copiedIcon.value<QImage>() :

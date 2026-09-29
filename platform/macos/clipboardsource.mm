@@ -1,4 +1,5 @@
 #include "platform/clipboardsource.h"
+#include "platform/macos/clipboardpolicy.h"
 
 #include <QCache>
 #include <QClipboard>
@@ -129,7 +130,9 @@ bool ClipboardSource::synchronize(void)
 	const NSInteger count = pasteboard.changeCount;
 	if (count == m_private->changeCount)
 		return false;
-	const QImage icon = m_private->sourceIcon(pasteboard);
+	/* Excluded writes still notify the controller so a pending capture is
+	 * cancelled, but do not resolve their source or promised payloads. */
+	const QImage icon = allowsCapture() ? m_private->sourceIcon(pasteboard) : QImage();
 	/* A promised pasteboard flavor may have changed while it was read. */
 	if (pasteboard.changeCount != count)
 		return true;
@@ -137,6 +140,11 @@ bool ClipboardSource::synchronize(void)
 	m_private->icon = icon;
 	emit clipboardChanged();
 	return true;
+}
+
+bool ClipboardSource::allowsCapture(void) const
+{
+	return Platform::allowsClipboardHistory(NSPasteboard.generalPasteboard);
 }
 
 void ClipboardSource::capture(quint64 request)
