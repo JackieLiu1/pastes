@@ -79,6 +79,64 @@ void syncedSelection()
 	require(list->item(0)->isHidden(), "Remote arrival bypassed the active filter");
 }
 
+void searchNavigation(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	window.resize(1200, 450);
+	HistoryView view(history, &window);
+	QVBoxLayout layout(&window);
+	layout.addWidget(&view);
+	history.load();
+	repository.finishLoad({textEntry("hidden before"), textEntry("match first"),
+		textEntry("hidden between"), textEntry("match last")});
+	auto *list = view.findChild<QListWidget *>();
+	auto *search = view.findChild<LineEdit *>();
+	window.show(); window.activateWindow();
+	search->setFocus();
+	waitUntil([&] { return search->hasFocus(); });
+	search->setText("match");
+	require(list->currentRow() == 1 && search->hasFocus(), "Search did not preselect its first match");
+	auto press = [&](int key, Qt::KeyboardModifiers modifiers = Qt::NoModifier) {
+		QWidget *focused = QApplication::focusWidget();
+		require(focused != nullptr, "Navigation fixture lost focus");
+		QKeyEvent event(QEvent::KeyPress, key, modifiers);
+		QCoreApplication::sendEvent(focused, &event);
+	};
+	auto selected = [&](int row) {
+		return list->currentRow() == row && list->itemWidget(list->item(row))->hasFocus();
+	};
+	press(Qt::Key_Tab);
+	require(selected(3), "First Tab from search did not advance past the selected result");
+	press(Qt::Key_Right);
+	require(selected(3), "Right arrow wrapped past the final search result");
+	search->setFocus(); press(Qt::Key_Tab);
+	require(selected(1), "Tab from search did not wrap from the last visible result");
+	press(Qt::Key_Left);
+	require(selected(1), "Left arrow wrapped before the first search result");
+	search->setFocus(); press(Qt::Key_Backtab, Qt::ShiftModifier);
+	require(selected(3), "Shift-Tab from search did not wrap backwards");
+	press(Qt::Key_Backtab, Qt::ShiftModifier);
+	require(selected(1), "Shift-Tab on a card did not skip hidden results");
+	press(Qt::Key_Tab); press(Qt::Key_Tab);
+	require(selected(1), "Tab stopped cycling after entering the cards");
+
+	/* Preserve the search arrow's existing focus-transfer behavior. */
+	search->setFocus(); press(Qt::Key_Right);
+	require(selected(1), "Right arrow from search stopped entering the current result");
+	search->setFocus(); search->setText("match last"); press(Qt::Key_Tab);
+	require(selected(3), "Tab failed with a single search result");
+	search->setFocus(); search->setText("no matches");
+	press(Qt::Key_Tab); press(Qt::Key_Backtab, Qt::ShiftModifier);
+	require(search->hasFocus(), "Tab left search when there were no visible results");
+
+	search->clear(); list->setCurrentRow(1); search->setFocus(); press(Qt::Key_Tab);
+	require(selected(2), "Tab from empty search did not advance the current selection");
+	list->setCurrentRow(-1); search->setFocus(); press(Qt::Key_Tab);
+	require(selected(0), "Tab without a selection did not enter the first result");
+}
+
 void pointerCommands(void)
 {
 	MemoryRepository repository;
@@ -146,5 +204,6 @@ int main(int argc, char **argv)
 	int failures = runTest("history view commands, filtering and ownership", viewCommands);
 	failures += runTest("pointer direction, cancellation and immediate undo", pointerCommands);
 	failures += runTest("synced items preserve selection and search", syncedSelection);
+	failures += runTest("search Tab advances the selected result and cycles", searchNavigation);
 	return failures ? 1 : 0;
 }

@@ -98,7 +98,9 @@ void HistoryView::moveSelection(bool prev, bool wrap)
 	for (int i = 0; i < count; i++) {
 		if (prev)
 			--row;
-		else if (i > 0 || !fromSearch || row < 0)
+		/* Tab advances the visible selection even while search has focus.
+		 * Arrows from search still enter the currently highlighted result. */
+		else if (wrap || i > 0 || !fromSearch || row < 0)
 			++row;
 		if (row < 0 || row >= count) {
 			/* Arrow navigation stops at the edge; Tab may wrap around. */
