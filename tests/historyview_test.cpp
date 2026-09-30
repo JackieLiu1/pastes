@@ -10,6 +10,7 @@
 #include "ui/filepreview.h"
 #include <QApplication>
 #include <QFile>
+#include <QFileInfo>
 #include <QInputMethodEvent>
 #include <QKeyEvent>
 #include <QListWidget>
@@ -616,6 +617,91 @@ void svgFilePreviews(void)
 	require(FilePreview::loadImage(url, 320).isNull(), "Invalid SVG created a misleading image preview");
 }
 
+void svgColorPreviews(void)
+{
+	QFile fixture(QFileInfo(QString::fromUtf8(__FILE__)).absolutePath()+"/fixtures/pattern-hsla.svg");
+	require(fixture.open(QIODevice::ReadOnly), "Cannot open the reported SVG pattern fixture");
+	const QByteArray original = fixture.readAll();
+	QTemporaryDir directory;
+	const QString path = directory.filePath("pattern.svg");
+	auto writeSvg = [&](const QByteArray &bytes) {
+		QFile file(path);
+		require(file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size(), "Cannot write color SVG");
+	};
+	writeSvg(original);
+	const QUrl url = QUrl::fromLocalFile(path);
+	const QImage image = FilePreview::loadImage(url, 320).convertToFormat(QImage::Format_ARGB32);
+	require(image.size() == QSize(320, 320), "Reported SVG did not render at the requested size");
+	require(image.pixelColor(160, 160) == QColor(Qt::white), "SVG HSLA background rendered as black");
+	auto containsColor = [](const QImage &pixels, const QColor &expected) {
+		int count = 0;
+		for (int y = 0; y < pixels.height(); ++y) {
+			const auto *row = reinterpret_cast<const QRgb *>(pixels.constScanLine(y));
+			for (int x = 0; x < pixels.width(); ++x)
+				if (qAbs(qRed(row[x])-expected.red()) <= 2 && qAbs(qGreen(row[x])-expected.green()) <= 2 &&
+					qAbs(qBlue(row[x])-expected.blue()) <= 2 && qAlpha(row[x]) == 255) ++count;
+		}
+		return count > 100;
+	};
+	for (const QColor color : {QColor(128, 90, 213), QColor(233, 30, 99), QColor(3, 169, 244), QColor(236, 201, 75)})
+		require(containsColor(image, color), "SVG lost one of the four HSLA wave colors");
+	auto entry = textEntry(path);
+	entry->mimeData->setUrls({url});
+	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
+	const QByteArray fingerprint = entry->md5;
+	PasteItem card;
+	card.setAttribute(Qt::WA_DontShowOnScreen);
+	card.resize(280, 360);
+	require(card.setEntry(entry, true), "Reported SVG card did not load");
+	card.show(); card.grab();
+	auto *thumbnail = card.findChild<QLabel *>("SvgFilePreview");
+	require(thumbnail && thumbnail->pixmap().toImage().pixelColor(thumbnail->pixmap().width()/2,
+		thumbnail->pixmap().height()/2) == QColor(Qt::white), "SVG card still shows a black tile");
+	PreviewDialog preview(*entry);
+	require(!preview.findChild<QPlainTextEdit *>("PreviewText"), "Reported SVG preview fell back to text");
+	if (qApp->arguments().contains("--render-dir")) {
+		const QString output = qApp->arguments().value(qApp->arguments().indexOf("--render-dir")+1);
+		require(card.grab().save(output+"/pattern-card.png"), "Cannot save the reported SVG card");
+		preview.setAttribute(Qt::WA_DontShowOnScreen);
+		preview.show();
+		require(preview.grab().save(output+"/pattern-preview.png"), "Cannot save the reported SVG preview");
+		preview.hide();
+		require(image.save(output+"/pattern-after.png"), "Cannot save the rendered pattern");
+	}
+	QFile file(path);
+	require(file.open(QIODevice::ReadOnly) && file.readAll() == original &&
+		ClipboardContent::fingerprint(*entry->mimeData) == fingerprint,
+		"SVG color compatibility changed the original file or clipboard identity");
+	file.close();
+	writeSvg("<svg xmlns='http://www.w3.org/2000/svg' width='12' height='4'>"
+		"<style><![CDATA[.green {fill: hsl(120,100%,50%)}]]></style>"
+		"<rect width='4' height='4' class='green'/>"
+		"<g fill-opacity='0.5'><rect x='4' width='4' height='4' fill='hsla(0,100%,50%,0.5)'/></g>"
+		"<rect x='8' width='4' height='4' style='fill: hsl(240deg 100% 50% / 25%);fill-opacity:0.5'/>"
+		"</svg>");
+	const QImage colors = FilePreview::loadImage(url, 120);
+	require(colors.pixelColor(20, 20) == QColor(Qt::green), "SVG stylesheet HSL color failed");
+	const QColor red = colors.pixelColor(60, 20), blue = colors.pixelColor(100, 20);
+	require(red.red() == 255 && qAbs(red.alpha()-64) <= 1,
+		"HSLA alpha did not combine with inherited fill opacity");
+	require(blue.blue() == 255 && qAbs(blue.alpha()-32) <= 1,
+		"Inline modern HSL alpha did not combine with explicit fill opacity");
+	QImage embedded(4, 4, QImage::Format_RGB32); embedded.fill(Qt::cyan);
+	require(embedded.save(directory.filePath(QString::fromUtf8("图片 file.png"))), "Cannot write relative SVG image");
+	writeSvg(QString::fromUtf8("<svg xmlns='http://www.w3.org/2000/svg' xmlns:s='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='12' height='4'>"
+		"<s:defs><s:rect id='tile' width='4' height='4'/></s:defs>"
+		"<s:g fill='hsl(-240,100%,50%)'><s:use xlink:href='#tile'/></s:g>"
+		"<s:image x='4' width='4' height='4' xlink:href='图片 file.png'/>"
+		"<s:g stroke-opacity='0.5'><s:path d='M8 2h4' stroke='hsla(0.5turn 100% 50% / 0.5)' stroke-width='1'/></s:g>"
+		"</svg>").toUtf8());
+	const QImage references = FilePreview::loadImage(url, 120);
+	require(references.pixelColor(20, 20) == QColor(Qt::green) && references.pixelColor(60, 20) == QColor(Qt::cyan),
+		"HSL normalization broke SVG namespaces, use references or relative image paths");
+	const QColor stroke = references.pixelColor(100, 20);
+	require(stroke.green() == 255 && stroke.blue() == 255 && qAbs(stroke.alpha()-64) <= 1,
+		"Transparent HSL stroke lost its color or combined opacity");
+}
+
 void mixedImageCopies(void)
 {
 	QTemporaryDir directory;
@@ -721,8 +807,11 @@ void sourceIconPresentation(void)
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
-	if (app.arguments().contains("--svg-only"))
-		return runTest("SVG files render lazily and preserve file copy identity", svgFilePreviews);
+	if (app.arguments().contains("--svg-only")) {
+		int failures = runTest("SVG files render lazily and preserve file copy identity", svgFilePreviews);
+		failures += runTest("SVG HSL colors retain wave artwork and transparency", svgColorPreviews);
+		return failures ? 1 : 0;
+	}
 	int failures = runTest("history view commands, filtering and ownership", viewCommands);
 	failures += runTest("pointer direction, cancellation and immediate undo", pointerCommands);
 	failures += runTest("synced items preserve selection and search", syncedSelection);
@@ -733,6 +822,7 @@ int main(int argc, char **argv)
 	failures += runTest("search filtering preserves uninterrupted input focus", searchKeepsInputFocus);
 	failures += runTest("image files preview on demand and retain missing paths", imageFilePreviews);
 	failures += runTest("SVG files render lazily and preserve file copy identity", svgFilePreviews);
+	failures += runTest("SVG HSL colors retain wave artwork and transparency", svgColorPreviews);
 	failures += runTest("mixed image copies retain pixels independently of file paths", mixedImageCopies);
 	failures += runTest("bounded card excerpts retain complete search, copy and preview", longTextCards);
 	failures += runTest("source icons keep uniform visible bounds on HiDPI screens", sourceIconPresentation);
