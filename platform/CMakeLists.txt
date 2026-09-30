@@ -45,7 +45,7 @@ endif()
 
 if(WIN32)
     set_target_properties(pastes PROPERTIES WIN32_EXECUTABLE TRUE)
-    target_link_libraries(pastes_platform PRIVATE psapi gdi32 shell32 advapi32)
+    target_link_libraries(pastes_platform PRIVATE psapi gdi32 shell32 advapi32 dwmapi)
 elseif(APPLE)
     find_library(CARBON_FRAMEWORK Carbon REQUIRED)
     find_library(APPKIT_FRAMEWORK AppKit REQUIRED)

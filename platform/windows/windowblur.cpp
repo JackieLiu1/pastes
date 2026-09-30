@@ -7,8 +7,8 @@
 #include <QSettings>
 #include <QTimer>
 #include <QWidget>
-#include <QtMath>
 #include <windows.h>
+#include <dwmapi.h>
 
 namespace {
 enum AccentState { AccentDisabled = 0, AccentBlur = 3, AccentAcrylic = 4 };
@@ -69,15 +69,19 @@ public:
 		m_initialized = true;
 		const HWND window = reinterpret_cast<HWND>(m_widget->winId());
 		const bool dark = qApp->property("pastesDark").toBool();
-		const auto version = QOperatingSystemVersion::current();
-		const bool enabled = m_allowed && version >= QOperatingSystemVersion::Windows10;
+		const bool enabled = m_allowed &&
+			QOperatingSystemVersion::current() >= QOperatingSystemVersion::Windows10;
 		const auto function = compositionFunction();
 		if (refreshSystem || window != m_window || enabled != m_enabled ||
 			dark != m_dark || !m_applied) {
+			/* Accent material ignores SetWindowRgn even though the hit-test region
+			 * changes. Let DWM clip the material and match that contour in Qt. */
+			const DWM_WINDOW_CORNER_PREFERENCE corners = enabled ? DWMWCP_ROUND : DWMWCP_DONOTROUND;
+			const bool rounded = SUCCEEDED(DwmSetWindowAttribute(window,
+				DWMWA_WINDOW_CORNER_PREFERENCE, &corners, sizeof(corners)));
 			AccentPolicy accent{AccentDisabled, 0, 0, 0};
-			if (enabled) {
-				/* Acrylic is available starting with Windows 10 April 2018. */
-				accent.state = version.microVersion() >= 17134 ? AccentAcrylic : AccentBlur;
+			if (enabled && rounded) {
+				accent.state = AccentAcrylic;
 				accent.flags = 2;
 				accent.color = dark ? 0xA0181818 : 0xA0EFF4F4; // ABGR tint.
 			}
@@ -90,26 +94,18 @@ public:
 			m_applied = applied;
 			m_enabled = enabled;
 			m_dark = dark;
-			m_widget->setProperty("pastesPanelBackdrop", enabled && applied);
+			m_widget->setProperty("pastesPanelBackdrop", enabled && rounded && applied);
 			m_widget->update();
 		}
-		RECT rect{};
-		if (GetClientRect(window, &rect)) {
-			const QSize pixels(rect.right, rect.bottom);
-			const int radius = qRound(18*m_widget->devicePixelRatioF());
-			if (window != m_window || pixels != m_pixels || radius != m_radius) {
-				/* Clip the native material as well as Qt's top-only round corners. */
-				HRGN region = CreateRoundRectRgn(0, 0, pixels.width()+1,
-					pixels.height()+1, radius*2, radius*2);
-				HRGN bottom = CreateRectRgn(0, radius, pixels.width(), pixels.height());
-				if (region && bottom) {
-					CombineRgn(region, region, bottom, RGN_OR);
-					if (SetWindowRgn(window, region, TRUE)) region = nullptr;
-				}
-				if (region) DeleteObject(region);
-				if (bottom) DeleteObject(bottom);
-				m_pixels = pixels;
+		if (m_widget->property("pastesPanelBackdrop").toBool()) {
+			/* DWM's standard corner is 8 screen DIPs. Qt can have an additional
+			 * application scale factor, so convert through the HWND's real DPI. */
+			const qreal radius = GetDpiForWindow(window)/12.0/m_widget->devicePixelRatioF();
+			if (m_radius != radius) {
 				m_radius = radius;
+				m_widget->setProperty("pastesPanelCornerRadius", radius);
+				m_widget->setProperty("pastesPanelCorners", 0);
+				m_widget->update();
 			}
 		}
 		m_window = window;
@@ -119,7 +115,8 @@ public:
 	{
 		const auto *event = static_cast<MSG *>(message);
 		if (event->hwnd == m_window && (event->message == WM_SETTINGCHANGE ||
-			event->message == WM_THEMECHANGED || event->message == WM_DWMCOMPOSITIONCHANGED))
+			event->message == WM_THEMECHANGED || event->message == WM_DWMCOMPOSITIONCHANGED ||
+			event->message == WM_DPICHANGED))
 			QTimer::singleShot(0, this, [this] { update(true); });
 		return false;
 	}
@@ -134,8 +131,7 @@ public:
 private:
 	QWidget *m_widget;
 	HWND m_window = nullptr;
-	QSize m_pixels;
-	int m_radius = 0;
+	qreal m_radius = 0;
 	bool m_initialized = false;
 	bool m_allowed = false;
 	bool m_enabled = false;

@@ -39,6 +39,8 @@ void backdropUsesOpaqueFallback(void)
 {
 	QWidget panel;
 	panel.resize(160, 100);
+	panel.setProperty("pastesPanelCornerRadius", 8.0);
+	panel.setProperty("pastesPanelCorners", 0);
 	RoundedSurface surface;
 	for (bool dark : {false, true}) {
 		qApp->setProperty("pastesDark", dark);
@@ -53,6 +55,8 @@ void backdropUsesOpaqueFallback(void)
 			if (Platform::panelAppearance().nativeBackdrop) {
 				if (active) require(alpha > 0 && alpha < 255, "Active backdrop is covered by opaque paint");
 				else require(alpha == 255, "Unavailable backdrop left a translucent panel");
+				require((image.pixelColor(3, 3).alpha() != 0) == active,
+					"Panel did not switch between native corners and its fallback contour");
 			}
 			QPainter cardPainter(&image);
 			surface.paint(&panel, RoundedRole::Card, cardPainter);
