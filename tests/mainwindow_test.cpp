@@ -3,11 +3,14 @@
 #include "ui/mainwindow.h"
 #include "ui/historyview.h"
 #include "ui/previewdialog.h"
+#include "ui/roundedwidgets.h"
+#include "platform/windowintegration.h"
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
 #include <QDialog>
 #include <QKeyEvent>
+#include <QPainter>
 #include <QPushButton>
 #include <QSettings>
 #include <QTemporaryDir>
@@ -31,6 +34,34 @@ struct WindowFixture
 	ClipboardController clipboard{history, feed, *QApplication::clipboard(), false};
 	MainWindow window{history, clipboard};
 };
+
+void backdropUsesOpaqueFallback(void)
+{
+	QWidget panel;
+	panel.resize(160, 100);
+	RoundedSurface surface;
+	for (bool dark : {false, true}) {
+		qApp->setProperty("pastesDark", dark);
+		for (bool active : {false, true, false}) {
+			panel.setProperty("pastesPanelBackdrop", active);
+			QImage image(panel.size(), QImage::Format_ARGB32_Premultiplied);
+			image.fill(Qt::transparent);
+			QPainter painter(&image);
+			surface.paint(&panel, RoundedRole::Panel, painter);
+			painter.end();
+			const int alpha = image.pixelColor(80, 50).alpha();
+			if (Platform::panelAppearance().nativeBackdrop) {
+				if (active) require(alpha > 0 && alpha < 255, "Active backdrop is covered by opaque paint");
+				else require(alpha == 255, "Unavailable backdrop left a translucent panel");
+			}
+			QPainter cardPainter(&image);
+			surface.paint(&panel, RoundedRole::Card, cardPainter);
+			cardPainter.end();
+			require(image.pixelColor(80, 50).alpha() == 255, "Glass made card contents translucent");
+		}
+	}
+	qApp->setProperty("pastesDark", false);
+}
 
 void appDialogsHideHistory(void)
 {
@@ -129,7 +160,8 @@ int main(int argc, char **argv)
 	QCoreApplication::setApplicationName("Dialogs");
 	QSettings::setDefaultFormat(QSettings::IniFormat);
 	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences.path());
-	int failures = runTest("application dialogs hide history and block reopening", appDialogsHideHistory);
+	int failures = runTest("backdrop activation and fallback preserve readable surfaces", backdropUsesOpaqueFallback);
+	failures += runTest("application dialogs hide history and block reopening", appDialogsHideHistory);
 	failures += runTest("preview keeps history visible through close and Escape", previewKeepsHistoryVisible);
 	return failures ? 1 : 0;
 }

@@ -33,7 +33,7 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 			if (widget->window()->property("pastesPanelBackdrop").toBool())
 				style.fill.setAlpha(dark ? 72 : 52);
 			style.border = dark ? QColor(255, 255, 255, 76) : QColor(0, 0, 0, 64);
-			/* Keep the glass outline one physical pixel wide on Retina displays. */
+			/* Keep the glass outline one physical pixel wide on HiDPI displays. */
 			style.borderWidth = 1/widget->devicePixelRatioF();
 			style.radius = 18; style.corners = 1;
 		} else {

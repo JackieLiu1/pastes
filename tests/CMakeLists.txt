@@ -44,12 +44,18 @@ set_tests_properties(history_contract database_contract clipboard_contract
 set_property(TEST mainwindow_contract APPEND PROPERTY ENVIRONMENT "QT_FORCE_STDERR_LOGGING=1")
 
 if(WIN32)
+    add_executable(windowbackdrop_windows_test windowbackdrop_windows_test.cpp)
+    target_link_libraries(windowbackdrop_windows_test PRIVATE pastes_ui)
+    add_test(NAME windowbackdrop_windows_contract COMMAND windowbackdrop_windows_test)
+    set_tests_properties(windowbackdrop_windows_contract PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_FORCE_STDERR_LOGGING=1" TIMEOUT 30)
     # CTest child processes need the Qt/compiler runtime directory even when
     # launched from an IDE or a shell without the toolchain on its PATH.
     set(test_path "$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}")
     string(REPLACE ";" "\\;" test_path "${test_path}")
     set_property(TEST history_contract database_contract clipboard_contract diagnostics_contract
-        historyview_contract mainwindow_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
+        historyview_contract mainwindow_contract windowbackdrop_windows_contract
+        APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
 endif()
 
 add_test(NAME architecture_dependencies

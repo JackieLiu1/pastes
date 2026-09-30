@@ -5,6 +5,15 @@
 #include <KF5/KWindowSystem/KWindowEffects>
 #endif
 
+const Platform::PanelAppearance &Platform::panelAppearance(void)
+{
+	static const PanelAppearance appearance;
+	return appearance;
+}
+
+void Platform::preparePanel(QWidget *) {}
+void Platform::updatePanelBackdrop(QWidget *) {}
+
 void Platform::enablePanelBlur(QWidget *widget)
 {
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)

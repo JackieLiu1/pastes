@@ -7,12 +7,6 @@
 
 namespace Platform {
 
-const PanelAppearance &panelAppearance(void)
-{
-	static const PanelAppearance appearance;
-	return appearance;
-}
-
 const DialogAppearance &dialogAppearance(void)
 {
 	static const DialogAppearance appearance;
@@ -40,8 +34,6 @@ void initializePanel(QWidget *widget)
 		Qt::BypassWindowManagerHint | Qt::SplashScreen);
 }
 
-void preparePanel(QWidget *) {}
-void updatePanelBackdrop(QWidget *) {}
 void watchPanelDismissal(QWidget *, const std::function<void(bool)> &) {}
 void initializeDialog(QWidget *) {}
 void prepareDialog(QWidget *) {}
