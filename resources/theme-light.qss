@@ -3,11 +3,11 @@
 #MainFrame {
 	background: transparent; border: 0;
 }
-#BrandTitle { font-size: 18px; font-weight: 600; color: #273E35; }
+#BrandTitle { font-size: 18px; font-weight: 600; color: #20362C; }
 #HeaderDivider { background: rgba(41, 58, 53, 45); border: 0; }
 #HistoryTab {
 	background: transparent; border: 0;
-	font-size: 13px; font-weight: 400; color: #43514B;
+	font-size: 13px; font-weight: 400; color: #293A35;
 	padding: 0;
 }
 #HistoryCount, #KeyboardHint { color: #303735; font-size: 11px; }
@@ -105,7 +105,7 @@ QMenu::separator { height: 1px; background: #E5E8DF; margin: 5px 8px; }
 #PreviewScroll::add-line:vertical, #PreviewScroll::sub-line:vertical { height: 0; }
 #PreviewScroll::add-page:vertical, #PreviewScroll::sub-page:vertical { background: transparent; }
 #UndoHint { color: #303735; font-size: 11px; }
-#UndoButton { background: transparent; border: 0; color: #124C3D; font-size: 11px; font-weight: 600; padding: 2px 10px; }
+#UndoButton { background: transparent; border: 0; color: #163D2F; font-size: 11px; font-weight: 600; padding: 2px 10px; }
 
 #AppDialog, #AppDialogSurface, #AppDialogCard { background: transparent; border: 0; }
 #AppDialog, #AppDialog QWidget { font-family: "Microsoft YaHei UI", "Segoe UI", "Noto Sans CJK SC", sans-serif; }
@@ -124,7 +124,7 @@ QMenu::separator { height: 1px; background: #E5E8DF; margin: 5px 8px; }
 #SettingsStatus { font-size: 11px; color: #58615D; }
 #SettingsStatus[error="true"] { color: #AD4C35; }
 #RecordingStatus { font-size: 11px; color: #AD4C35; }
-#MainFrame #RecordingStatus { color: #843C2C; }
+#MainFrame #RecordingStatus { color: #51291F; }
 
 #SettingsTabs::pane { border: 0; background: transparent; }
 #SettingsTabs QTabBar::tab { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 24px; margin-right: 12px; color: #58615D; font-size: 13px; font-weight: 600; }

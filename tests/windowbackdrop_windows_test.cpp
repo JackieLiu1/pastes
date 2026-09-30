@@ -219,7 +219,7 @@ void nativeBackdrop(bool capture)
 				minimum = qMin(minimum, contrastRatio(label->palette().color(QPalette::WindowText), cardColor));
 			qInfo() << "Light text minimum contrast over black/white:" << minimum;
 			require(minimum >= 4.5, "Light theme text was unreadable over an extreme native backdrop");
-			require(right.red()-left.red() > 10, "Light tint removed all backdrop translucency");
+			require(right.red()-left.red() >= 64, "Light tint concealed the frosted backdrop");
 			continue;
 		}
 		const QColor left = image.pixelColor(image.width()/3, qRound(270*ratio));
