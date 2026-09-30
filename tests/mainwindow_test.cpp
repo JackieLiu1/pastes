@@ -54,9 +54,11 @@ void backdropUsesOpaqueFallback(void)
 				if (active) require(alpha > 0 && alpha < 255, "Active backdrop is covered by opaque paint");
 				else require(alpha == 255, "Unavailable backdrop left a translucent panel");
 			}
-			require(image.pixelColor(15, 2).alpha() == 0 &&
-				image.pixelColor(144, 2).alpha() == 0,
-				"Panel did not retain its larger custom top corners");
+			require(image.pixelColor(3, 3).alpha() == 0 &&
+				image.pixelColor(156, 3).alpha() == 0 &&
+				image.pixelColor(15, 2).alpha() > 0 &&
+				image.pixelColor(144, 2).alpha() > 0,
+				"Panel did not retain its 18 DIP custom top corners");
 			require(image.pixelColor(2, 97).alpha() > 0 &&
 				image.pixelColor(157, 97).alpha() > 0,
 				"Panel rounded a bottom corner");

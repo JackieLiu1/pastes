@@ -77,7 +77,8 @@ void verifyCornerPixels(const QImage &actual, const QImage &background, QWidget 
 		}
 	}
 	qInfo() << "Outside corner pixels:" << checked << "maximum RGB difference:" << maximumDifference;
-	require(checked >= 100*ratio*ratio, "Corner comparison did not inspect the larger custom corners");
+	const qreal radius = Platform::panelAppearance().cornerRadius*ratio;
+	require(checked >= radius*radius/10, "Corner comparison did not inspect both custom corners");
 	/* A small difference permits the native shadow. An acrylic plate changes
 	 * these patterned background pixels by tens or hundreds of RGB levels. */
 	require(maximumDifference <= 16, "Native acrylic leaked outside the painted corner contour");
