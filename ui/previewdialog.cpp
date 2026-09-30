@@ -107,15 +107,9 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	titles->setSpacing(3);
 	titles->addWidget(title);
 	titles->addWidget(time);
-	RoundedButton *close = nullptr;
+	DialogCloseButton *close = nullptr;
 	if (!appearance.nativeControls) {
-		close = new RoundedButton(m_header);
-		close->setObjectName("PreviewClose");
-		close->setText(QStringLiteral("×"));
-		close->setFixedSize(32, 32);
-		close->setToolTip(QObject::tr("Close (Esc)"));
-		close->setAccessibleName(QObject::tr("Close"));
-		close->setAutoDefault(false);
+		close = new DialogCloseButton(m_header);
 		QObject::connect(close, &QPushButton::clicked, this, &QDialog::reject);
 	}
 	QHBoxLayout *header = new QHBoxLayout(m_header);

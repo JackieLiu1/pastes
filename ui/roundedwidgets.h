@@ -8,6 +8,8 @@
 #include <QWidget>
 
 class QPainter;
+class QFocusEvent;
+class QMouseEvent;
 
 enum class RoundedRole { Panel, Card, Search, HistoryBadge, Number, MenuButton, Content, Footer,
 	Preview, PreviewContent };
@@ -75,6 +77,21 @@ protected:
 
 private:
 	RoundedSurface m_surface;
+};
+
+class DialogCloseButton : public QPushButton
+{
+public:
+	explicit DialogCloseButton(QWidget *parent = nullptr);
+
+protected:
+	void paintEvent(QPaintEvent *event) override;
+	void focusInEvent(QFocusEvent *event) override;
+	void focusOutEvent(QFocusEvent *event) override;
+	void mousePressEvent(QMouseEvent *event) override;
+
+private:
+	bool m_keyboardFocus = false;
 };
 
 #endif

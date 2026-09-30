@@ -2,8 +2,10 @@
 #include "platform/windowintegration.h"
 
 #include <QApplication>
+#include <QFocusEvent>
 #include <QImage>
 #include <QLineEdit>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QtMath>
@@ -208,4 +210,56 @@ void RoundedButton::paintEvent(QPaintEvent *event)
 {
 	{ QPainter painter(this); m_surface.paint(this, RoundedRole::MenuButton, painter); }
 	QPushButton::paintEvent(event);
+}
+
+DialogCloseButton::DialogCloseButton(QWidget *parent) : QPushButton(parent)
+{
+	setObjectName("PreviewClose");
+	setFixedSize(32, 32);
+	setToolTip(QObject::tr("Close (Esc)"));
+	setAccessibleName(QObject::tr("Close"));
+	setAutoDefault(false);
+	setAttribute(Qt::WA_Hover);
+}
+
+void DialogCloseButton::paintEvent(QPaintEvent *)
+{
+	const bool dark = qApp->property("pastesDark").toBool();
+	QPainter painter(this);
+	painter.setRenderHint(QPainter::Antialiasing);
+	const QRectF bounds = QRectF(rect()).adjusted(0.75, 0.75, -0.75, -0.75);
+	QColor fill(Qt::transparent);
+	if (underMouse()) fill = QColor(dark ? "#333333" : "#E3EAE0");
+	if (isDown()) fill = QColor(dark ? "#3D3D3D" : "#D7E1D3");
+	painter.setBrush(fill);
+	painter.setPen(hasFocus() && m_keyboardFocus ?
+		QPen(QColor(dark ? "#76C5AA" : "#359782"), 1.5) : QPen(Qt::NoPen));
+	painter.drawRoundedRect(bounds, 8, 8);
+	const QColor ink(dark ? (underMouse() ? "#F1F1F1" : "#B5B5B5") : "#43514B");
+	painter.setPen(QPen(ink, 1.5, Qt::SolidLine, Qt::RoundCap));
+	const QPointF center(width()/2.0, height()/2.0);
+	painter.drawLine(center+QPointF(-4.5, -4.5), center+QPointF(4.5, 4.5));
+	painter.drawLine(center+QPointF(4.5, -4.5), center+QPointF(-4.5, 4.5));
+}
+
+void DialogCloseButton::focusInEvent(QFocusEvent *event)
+{
+	m_keyboardFocus = event->reason() == Qt::TabFocusReason ||
+		event->reason() == Qt::BacktabFocusReason || event->reason() == Qt::ShortcutFocusReason;
+	QPushButton::focusInEvent(event);
+	update();
+}
+
+void DialogCloseButton::focusOutEvent(QFocusEvent *event)
+{
+	m_keyboardFocus = false;
+	QPushButton::focusOutEvent(event);
+	update();
+}
+
+void DialogCloseButton::mousePressEvent(QMouseEvent *event)
+{
+	m_keyboardFocus = false;
+	QPushButton::mousePressEvent(event);
+	update();
 }

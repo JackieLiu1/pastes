@@ -58,13 +58,7 @@ AppDialog::AppDialog(const QString &title, int width, QWidget *parent) :
 	header->setSpacing(14);
 	header->addLayout(titles, 1);
 	if (!Platform::dialogAppearance().nativeControls) {
-		auto *close = new RoundedButton(m_header);
-		close->setObjectName("PreviewClose");
-		close->setText(QStringLiteral("×"));
-		close->setFixedSize(32, 32);
-		close->setToolTip(QObject::tr("Close (Esc)"));
-		close->setAccessibleName(QObject::tr("Close"));
-		close->setAutoDefault(false);
+		auto *close = new DialogCloseButton(m_header);
 		QObject::connect(close, &QPushButton::clicked, this, &QDialog::reject);
 		header->addWidget(close, 0, Qt::AlignTop);
 	}

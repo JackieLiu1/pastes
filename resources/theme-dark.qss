@@ -95,7 +95,7 @@ QMenu::separator { height: 1px; background: #414141; margin: 5px 8px; }
 	font-size: 12px; font-weight: 600; color: #A3DCC5;
 }
 #PreviewAction[primary="true"] { color: #173B30; }
-#PreviewClose { background: transparent; border: 0; color: #B5B5B5; font-size: 23px; }
+#PreviewClose { background: transparent; border: 0; }
 #PreviewScroll:vertical { background: transparent; width: 8px; margin: 2px; }
 #PreviewScroll::handle:vertical { background: #5A5A5A; min-height: 24px; border-radius: 3px; }
 #PreviewScroll::add-line:vertical, #PreviewScroll::sub-line:vertical { height: 0; }
