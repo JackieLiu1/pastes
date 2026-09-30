@@ -206,3 +206,8 @@ again:
 	return pixmap.scaled(32, 32, Qt::KeepAspectRatio,
 		Qt::SmoothTransformation).toImage();
 }
+
+bool ClipboardSource::hasImageContent(void) const
+{
+	return true;
+}

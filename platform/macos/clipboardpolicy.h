@@ -6,6 +6,7 @@
 namespace Platform {
 /* Read type declarations only, including markers Qt does not expose. */
 bool allowsClipboardHistory(NSPasteboard *pasteboard);
+bool hasClipboardImageContent(NSPasteboard *pasteboard);
 }
 
 #endif

@@ -18,6 +18,7 @@ public:
 	/* True when a newer native copy invalidates the pending snapshot. */
 	bool synchronize(void) override;
 	bool allowsCapture(void) const override;
+	bool hasImageContent(void) const override;
 	QImage snapshotIcon(void) override;
 
 private:

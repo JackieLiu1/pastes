@@ -26,6 +26,16 @@ void fingerprintContract(void)
 	bitmap.setImageData(image);
 	const QByteArray pixels(reinterpret_cast<const char *>(image.constBits()), image.sizeInBytes());
 	require(ClipboardContent::fingerprint(bitmap) == QCryptographicHash::hash(pixels, QCryptographicHash::Md5), "Image row bytes changed");
+	const QUrl picture = QUrl::fromLocalFile("/one.png");
+	bitmap.setUrls({picture});
+	require(ClipboardContent::prefersImage(bitmap), "An accompanying local path concealed supplied pixels");
+	require(ClipboardContent::fingerprint(bitmap) == QCryptographicHash::hash(picture.toEncoded(), QCryptographicHash::Md5),
+		"Presenting mixed content as an image changed persisted identity");
+	require(!ClipboardContent::prefersImage(plain), "File-only content was classified as an image");
+	for (const char *path : {"/document.docx", "/vector.svg", "/vector.svgz"}) {
+		bitmap.setUrls({QUrl::fromLocalFile(path)});
+		require(!ClipboardContent::prefersImage(bitmap), "A file icon was treated as copied image content");
+	}
 	QMimeData empty;
 	empty.setText(" \n ");
 	require(ClipboardContent::fingerprint(empty).isEmpty(), "Empty clipboard must be ignored");

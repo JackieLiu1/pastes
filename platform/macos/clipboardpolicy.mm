@@ -34,3 +34,19 @@ bool Platform::allowsClipboardHistory(NSPasteboard *pasteboard)
 	}
 	return true;
 }
+
+bool Platform::hasClipboardImageContent(NSPasteboard *pasteboard)
+{
+	if (!pasteboard) return false;
+	bool files = false;
+	for (NSPasteboardItem *item in pasteboard.pasteboardItems) {
+		files |= [item.types containsObject:NSPasteboardTypeFileURL];
+		for (NSPasteboardType type in item.types) {
+			/* Aggregate pasteboard.types may advertise TIFF converted from an
+			 * ICNS file icon. Only declared image flavors are actual pixels. */
+			if (![type isEqualToString:@"com.apple.icns"] &&
+				[NSImage.imageTypes containsObject:type]) return true;
+		}
+	}
+	return !files;
+}

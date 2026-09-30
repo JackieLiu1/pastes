@@ -4,7 +4,22 @@
 #include <QCryptographicHash>
 #include <QImage>
 #include <QMimeData>
+#include <QMimeDatabase>
 #include <QUrl>
+
+bool ClipboardContent::prefersImage(const QMimeData &mime)
+{
+	if (!mime.hasImage() || (mime.hasHtml() && !mime.text().trimmed().isEmpty()))
+		return false;
+	const QList<QUrl> urls = mime.urls();
+	/* A bitmap cannot represent a collection of files or a web link. */
+	if (urls.isEmpty()) return true;
+	if (urls.size() != 1 || !urls.first().isLocalFile()) return false;
+	/* Stored file copies can contain a synthesized file icon. Treat only
+	 * accompanying raster-image paths as bitmap content, without file I/O. */
+	const QMimeType type = QMimeDatabase().mimeTypeForFile(urls.first().fileName(), QMimeDatabase::MatchExtension);
+	return type.name().startsWith("image/") && !type.inherits("image/svg+xml");
+}
 
 QByteArray ClipboardContent::fingerprint(const QMimeData &mime)
 {

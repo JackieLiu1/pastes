@@ -48,7 +48,7 @@ void ClipboardController::capture(void)
 	const QImage sourceIcon = m_sourceIcon;
 	const QVariant copiedIcon = mime->property(sourceIconProperty);
 	auto entry = HistoryEntry::create();
-	entry->mimeData = ClipboardData::duplicate(mime);
+	entry->mimeData = ClipboardData::duplicate(mime, m_feed.hasImageContent());
 	/* Reading promised MIME flavors may cause a newer native notification. */
 	if (m_feed.synchronize() || !m_feed.allowsCapture()) return;
 	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);

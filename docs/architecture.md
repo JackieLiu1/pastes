@@ -54,6 +54,7 @@ flowchart TD
 
 1. `ClipboardSource` 通过 `ClipboardFeed` 发出通知。
 2. `ClipboardController` 记录来源请求编号，并按平台等待时间安排快照。
+   原生接口检查图片是否由来源声明，快照不读取系统为文件图标合成的位图格式。
 3. 快照前后分别检查原生剪贴板是否更新；失效快照不会进入历史。
 4. `ClipboardContent::fingerprint` 使用已有格式优先级与 MD5 输入生成身份。
 5. `HistoryService` 删除重复/过期条目，保留已知来源图标，分配新的进程内 `EntryId`。

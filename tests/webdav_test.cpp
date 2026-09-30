@@ -1,5 +1,6 @@
 #include "tests/testsupport.h"
 #include "sync/webdavsync.h"
+#include "core/clipboarddata.h"
 #include "platform/secretstore.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -12,6 +13,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QProcess>
+#include <QJsonDocument>
 
 namespace {
 class DavServer final : public QTcpServer
@@ -191,6 +193,40 @@ void limitsAndIntegrity()
 	require(!WebDavSync::validate(&settings, &error), "Plain HTTP was allowed outside loopback");
 	first.run(true); require(first.success && server.files.size() == 1, "Connection probe left files or failed");
 }
+
+void mixedImageSync(void)
+{
+	DavServer server; QTemporaryDir temp;
+	Client first(server.settings(), temp.path()+"/a");
+	QImage image(48, 32, QImage::Format_RGB32); image.fill(Qt::green);
+	auto entry = textEntry("");
+	const QUrl url = QUrl::fromLocalFile(temp.filePath("missing temporary image.png"));
+	entry->mimeData->setUrls({url}); entry->mimeData->setImageData(image);
+	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
+	auto *stored = ClipboardData::withStoredImage(entry->mimeData, png(image), image.format());
+	delete entry->mimeData; entry->mimeData = stored;
+	const auto snapshot = SyncContent::snapshot(*entry);
+	require(snapshot.kind == "image" && snapshot.urls.isEmpty() && snapshot.png == png(image),
+		"An accompanying file URL excluded supplied image content from sync");
+	first.capture(entry); first.run();
+	require(first.success && server.files.size() == 1, "Mixed clipboard image was not uploaded as one item");
+	for (const QByteArray &record : server.files) {
+		const QJsonObject content = QJsonDocument::fromJson(record).object().value("content").toObject();
+		require(content.value("kind").toString() == "image" && !content.contains("urls") &&
+			!record.contains("missing temporary image.png") && !record.contains("file://"),
+			"Image synchronization exported the accompanying local file path");
+	}
+	Client second(server.settings(), temp.path()+"/b"); second.run();
+	require(second.success && second.deliveries.size() == 1, "Mixed clipboard image did not reach the other device");
+	const auto received = second.deliveries.first().content;
+	const auto restored = SyncContent::materialize(received);
+	const QImage receivedImage = qvariant_cast<QImage>(restored->mimeData->imageData());
+	require(received.kind == "image" && received.urls.isEmpty() && receivedImage.size() == image.size() &&
+		receivedImage.pixelColor(0, 0) == image.pixelColor(0, 0), "Mixed clipboard image lost its pixels in transit");
+	entry->mimeData->setUrls({QUrl::fromLocalFile("/tmp/document.docx")});
+	require(SyncContent::snapshot(*entry).kind.isEmpty(), "A file icon entered image synchronization");
+}
+
 class MemorySecrets final : public SecretStore
 {
 public:
@@ -396,6 +432,7 @@ int main(int argc, char **argv)
 	failures += runTest("offline restart and concurrent devices", offlineRestartAndConcurrency);
 	failures += runTest("simultaneous independent item uploads", simultaneousWriters);
 	failures += runTest("file exclusion and server validation", limitsAndIntegrity);
+	failures += runTest("supplied clipboard images sync without accompanying local paths", mixedImageSync);
 	failures += runTest("service settings and disabled-session persistence", servicePersistence);
 	failures += runTest("image content and timestamp round trip", imageRoundTrip);
 	failures += runTest("source icon resolution and incremental upgrades", sourceIconRoundTrip);

@@ -1,5 +1,6 @@
 #include "ui/pasteitem.h"
 #include "ui/roundedwidgets.h"
+#include "core/clipboardcontent.h"
 #include "platform/menuintegration.h"
 #include "ui/filepreview.h"
 
@@ -305,7 +306,12 @@ bool PasteItem::setEntry(const HistoryEntry &entry, bool loaded)
 	const QMimeData *mime = entry->mimeData;
 	QList<QUrl> urls = mime->urls();
 	bool hasContent = false;
-	if (loaded) {
+	if (ClipboardContent::prefersImage(*mime) && setImage(mime)) {
+		/* Keep the accompanying path searchable without reading its file. */
+		m_text = mime->text();
+		for (const QUrl &url : urls) m_text += url.toString();
+		hasContent = true;
+	} else if (loaded) {
 		bool localFiles = !urls.isEmpty();
 		for (const QUrl &url : urls) localFiles &= url.isLocalFile();
 		if (localFiles && setUrls(urls)) hasContent = true;

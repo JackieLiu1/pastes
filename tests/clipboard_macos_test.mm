@@ -86,6 +86,27 @@ void nativeMarkers(void)
 	require(Platform::allowsClipboardHistory(board), "Normal text after exclusion was lost");
 }
 
+void nativeImageDeclarations(void)
+{
+	PrivatePasteboard isolated;
+	NSPasteboard *board = isolated.board;
+	PastesPromisedClipboardData *provider = [[[PastesPromisedClipboardData alloc] init] autorelease];
+	NSPasteboardItem *file = [[[NSPasteboardItem alloc] init] autorelease];
+	[file setString:@"file:///tmp/file.png" forType:NSPasteboardTypeFileURL];
+	[file setDataProvider:provider forTypes:@[@"com.apple.icns"]];
+	[board clearContents];
+	require([board writeObjects:@[file]], "Could not write native file-icon fixture");
+	require(!Platform::hasClipboardImageContent(board), "File-icon image conversions became content");
+	require(provider.reads == 0, "Image policy resolved a promised icon");
+	NSPasteboardItem *image = [[[NSPasteboardItem alloc] init] autorelease];
+	[image setString:@"file:///tmp/temporary.png" forType:NSPasteboardTypeFileURL];
+	[image setDataProvider:provider forTypes:@[NSPasteboardTypeTIFF]];
+	[board clearContents];
+	require([board writeObjects:@[image]], "Could not write declared bitmap fixture");
+	require(Platform::hasClipboardImageContent(board), "A declared bitmap with a file URL was lost");
+	require(provider.reads == 0, "Image policy resolved a promised bitmap");
+}
+
 void localDiagnostics(void)
 {
 	PrivatePasteboard isolated;
@@ -143,6 +164,7 @@ int main(int argc, char **argv)
 	QCoreApplication app(argc, argv);
 	@autoreleasepool {
 		return runTest("macOS native clipboard markers without payload reads", nativeMarkers) |
+			runTest("native bitmap declarations exclude synthesized file icons", nativeImageDeclarations) |
 			runTest("bounded private clipboard metadata diagnostics", localDiagnostics);
 	}
 }

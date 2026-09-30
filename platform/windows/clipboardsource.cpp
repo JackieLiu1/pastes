@@ -209,3 +209,8 @@ QImage ClipboardSource::snapshotIcon(void)
 {
 	return QImage();
 }
+
+bool ClipboardSource::hasImageContent(void) const
+{
+	return true;
+}

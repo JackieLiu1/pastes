@@ -7,6 +7,10 @@ class QImage;
 
 namespace ClipboardContent {
 
+/* Supplied pixels remain usable independently of an accompanying local file.
+ * File references alone never cause a file read or become image content. */
+bool prefersImage(const QMimeData &mime);
+
 /* This is the persisted deduplication identity; preserve format precedence,
  * text encoding and every image row byte when changing its implementation. */
 QByteArray fingerprint(const QMimeData &mime);

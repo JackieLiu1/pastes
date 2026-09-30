@@ -500,13 +500,14 @@ void imageFilePreviews(void)
 	require(previewed == file && copied == file && file->mimeData->urls() == QList<QUrl>{QUrl::fromLocalFile(path)},
 		"Preview or copy replaced the file entry with decoded pixels");
 
-	/* Read the source on each preview; never keep a stale file thumbnail. */
+	/* File-only previews resolve the source afresh, while separately supplied
+	 * clipboard pixels remain self-contained after the file disappears. */
 	require(QFile::remove(path), "Cannot remove preview source fixture");
 	checkPreview(file, false, path);
 	checkPreview(textEntry(path), false, path);
-	auto missingWithThumbnail = cloneEntry(*file);
-	missingWithThumbnail->mimeData->setImageData(pixels);
-	checkPreview(missingWithThumbnail, false, path);
+	auto suppliedBitmap = cloneEntry(*file);
+	suppliedBitmap->mimeData->setImageData(pixels);
+	checkPreview(suppliedBitmap, true);
 	QFile ordinary(path);
 	require(ordinary.open(QIODevice::WriteOnly), "Cannot create unreadable image fixture");
 	ordinary.write("ordinary file contents"); ordinary.close();
@@ -536,6 +537,66 @@ void imageFilePreviews(void)
 	reloadHistory.load(); reloadRepository.finishLoad({file});
 	require(reloadHistory.entries().size() == 1 && reloadView.findChild<QListWidget *>()->count() == 1 &&
 		reloadRepository.removals.isEmpty(), "Missing source file deleted its history record");
+}
+
+void mixedImageCopies(void)
+{
+	QTemporaryDir directory;
+	const QString path = directory.filePath("temporary picture.png");
+	QImage filePixels(8, 6, QImage::Format_RGB32); filePixels.fill(Qt::red);
+	require(filePixels.save(path), "Cannot prepare mixed image source");
+	QImage supplied(96, 64, QImage::Format_RGB32); supplied.fill(Qt::blue);
+	auto entry = textEntry("");
+	entry->mimeData->setUrls({QUrl::fromLocalFile(path)});
+	entry->mimeData->setImageData(supplied);
+	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
+	PasteItem fresh;
+	require(fresh.setEntry(entry) && fresh.findChild<QWidget *>("PasteItemFrame")->property("contentKind").toString() == "image",
+		"Fresh mixed clipboard pixels were displayed as a file");
+	require(fresh.text().contains(QUrl::fromLocalFile(path).toString()), "Image presentation lost its searchable file reference");
+	auto *stored = ClipboardData::withStoredImage(entry->mimeData, png(supplied), supplied.format());
+	delete entry->mimeData; entry->mimeData = stored;
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	HistoryView view(history, &window);
+	history.load(); repository.finishLoad({entry});
+	auto *list = view.findChild<QListWidget *>();
+	auto *card = qobject_cast<PasteItem *>(list->itemWidget(list->item(0)));
+	require(card && card->findChild<QWidget *>("PasteItemFrame")->property("contentKind").toString() == "image",
+		"Reloaded mixed clipboard pixels were displayed as a file");
+	HistoryEntry copied;
+	QObject::connect(&view, &HistoryView::copyRequested, &view,
+		[&](HistoryEntry value, bool, bool) { copied = value; });
+	card->copyData();
+	require(copied == entry && entry->mimeData->urls() == QList<QUrl>{QUrl::fromLocalFile(path)} &&
+		qvariant_cast<QImage>(entry->mimeData->imageData()) == supplied,
+		"Image presentation changed the original mixed clipboard payload");
+	auto checkPreview = [&] {
+		PreviewDialog dialog(*entry);
+		require(!dialog.findChild<QPlainTextEdit *>("PreviewText"), "Supplied pixels fell back to the file path");
+		bool dimensions = false;
+		for (const QLabel *label : dialog.findChildren<QLabel *>("PreviewMeta"))
+			dimensions |= label->text() == "96 × 64 px";
+		require(dimensions, "Preview read the accompanying file instead of supplied pixels");
+	};
+	checkPreview();
+	require(QFile::remove(path), "Cannot remove temporary mixed image source");
+	checkPreview();
+	PasteItem missing;
+	require(missing.setEntry(entry, true) && missing.findChild<QWidget *>("PasteItemFrame")->property("contentKind").toString() == "image",
+		"Missing file concealed persisted clipboard pixels");
+	auto files = cloneEntry(*entry);
+	files->mimeData->setUrls({QUrl::fromLocalFile(path), QUrl::fromLocalFile(directory.path())});
+	PasteItem collection;
+	require(collection.setEntry(files) && collection.findChild<QWidget *>("PasteItemFrame")->property("contentKind").toString() == "file",
+		"A single supplied bitmap concealed a multiple-file copy");
+	auto unavailable = textEntry("");
+	unavailable->mimeData->setUrls({QUrl::fromLocalFile(path)});
+	unavailable->mimeData->setImageData(QImage());
+	PasteItem fallback;
+	require(fallback.setEntry(unavailable) && fallback.findChild<QWidget *>("PasteItemFrame")->property("contentKind").toString() == "file",
+		"Unavailable clipboard pixels discarded their path fallback");
 }
 
 void sourceIconPresentation(void)
@@ -592,6 +653,7 @@ int main(int argc, char **argv)
 	failures += runTest("search composition keeps candidate keys", composingSearchCommands);
 	failures += runTest("search filtering preserves uninterrupted input focus", searchKeepsInputFocus);
 	failures += runTest("image files preview on demand and retain missing paths", imageFilePreviews);
+	failures += runTest("mixed image copies retain pixels independently of file paths", mixedImageCopies);
 	failures += runTest("bounded card excerpts retain complete search, copy and preview", longTextCards);
 	failures += runTest("source icons keep uniform visible bounds on HiDPI screens", sourceIconPresentation);
 	return failures ? 1 : 0;

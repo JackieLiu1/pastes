@@ -172,3 +172,8 @@ QImage ClipboardSource::snapshotIcon(void)
 {
 	return m_private->icon;
 }
+
+bool ClipboardSource::hasImageContent(void) const
+{
+	return Platform::hasClipboardImageContent(NSPasteboard.generalPasteboard);
+}

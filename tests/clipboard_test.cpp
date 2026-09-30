@@ -17,8 +17,10 @@ public:
 	}
 	QImage snapshotIcon(void) override { return icon; }
 	bool allowsCapture(void) const override { return allowed; }
+	bool hasImageContent(void) const override { return imageContent; }
 	void notify(void) { emit clipboardChanged(); }
 	bool allowed = true;
+	bool imageContent = true;
 	QImage icon;
 	quint64 lastRequest = 0;
 	std::function<bool()> onSynchronize;
@@ -141,9 +143,41 @@ void clipboardLifecycle(void)
 		require(entry->mimeData->text() != "superseded", "Invalidated snapshot entered history");
 }
 
+void mixedImageSnapshot(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	history.load(); repository.finishLoad();
+	TestFeed feed;
+	QClipboard &clipboard = *QGuiApplication::clipboard();
+	ClipboardController controller(history, feed, clipboard, true);
+	const QList<QUrl> urls{QUrl::fromLocalFile("/tmp/nonexistent temporary image.png")};
+	QImage image(32, 24, QImage::Format_RGB32); image.fill(Qt::cyan);
+	auto *mime = new QMimeData;
+	mime->setUrls(urls); mime->setImageData(image);
+	clipboard.setMimeData(mime); feed.notify(); controller.flushPending();
+	require(history.entries().size() == 1, "Mixed image copy was not captured");
+	const auto entry = history.entries().first();
+	require(entry->mimeData->urls() == urls && qvariant_cast<QImage>(entry->mimeData->imageData()) == image,
+		"Capture discarded a mixed image format");
+	require(controller.copy(*entry), "Mixed image copy could not be restored");
+	const QMimeData *restored = clipboard.mimeData();
+	require(restored->urls() == urls && qvariant_cast<QImage>(restored->imageData()) == image,
+		"Restoring the image discarded its original formats");
+	feed.notify(); controller.flushPending();
+	require(history.entries().size() == 1, "Restoring a mixed image changed its persisted identity");
+	feed.imageContent = false;
+	auto *file = new QMimeData;
+	file->setUrls({QUrl::fromLocalFile("/tmp/file-only.png")}); file->setImageData(image);
+	clipboard.setMimeData(file); feed.notify(); controller.flushPending();
+	require(history.entries().size() == 2 && !history.entries().first()->mimeData->hasImage(),
+		"A synthesized file icon was retained as clipboard image content");
+}
+
 int main(int argc, char **argv)
 {
 	QGuiApplication app(argc, argv);
 	return runTest("clipboard pause, copy and native synchronization", clipboardLifecycle) |
-		runTest("clipboard capture exclusion and recovery", capturePolicy);
+		runTest("clipboard capture exclusion and recovery", capturePolicy) |
+		runTest("mixed clipboard image snapshots preserve original formats", mixedImageSnapshot);
 }

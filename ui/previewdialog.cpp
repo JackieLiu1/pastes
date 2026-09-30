@@ -2,6 +2,7 @@
 #include "ui/sourceiconview.h"
 #include "core/itemdata.h"
 #include "core/clipboarddata.h"
+#include "core/clipboardcontent.h"
 #include "ui/roundedwidgets.h"
 #include "platform/windowintegration.h"
 #include "ui/filepreview.h"
@@ -136,21 +137,21 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	QVBoxLayout *body = new QVBoxLayout(content);
 	body->setContentsMargins(8, 8, 8, 8);
 	const QMimeData *mime = data.mimeData;
-	const bool bitmap = mime->hasImage() && !mime->hasUrls() &&
-		!(mime->hasHtml() && !mime->text().trimmed().isEmpty());
+	const bool bitmap = ClipboardContent::prefersImage(*mime);
 	const QUrl textFile = (mime->hasUrls() || bitmap) ? QUrl() : FilePreview::localUrl(mime->text());
 	const QList<QUrl> files = mime->hasUrls() ? mime->urls() :
 		(textFile.isEmpty() ? QList<QUrl>() : QList<QUrl>{textFile});
 	QImage image;
-	/* Resolve the source afresh on every preview. A missing image file must
-	 * show its path below, even if its MIME data also contains a thumbnail. */
-	if (files.size() == 1)
-		image = FilePreview::loadImage(files.first(), 2048);
 	if (bitmap)
 		image = qvariant_cast<QImage>(mime->imageData());
+	const bool suppliedImage = !image.isNull();
+	/* File-only copies resolve their source on demand. Supplied clipboard
+	 * pixels survive removal or replacement of the accompanying file. */
+	if (image.isNull() && files.size() == 1)
+		image = FilePreview::loadImage(files.first(), 2048);
 	if (!image.isNull()) {
 		body->addWidget(new PreviewImage(image, content));
-		m_detail->setText(files.isEmpty() ? QString("%1 × %2 px").arg(image.width()).arg(image.height()) :
+		m_detail->setText(suppliedImage || files.isEmpty() ? QString("%1 × %2 px").arg(image.width()).arg(image.height()) :
 			QFileInfo(files.first().toLocalFile()).fileName());
 	} else {
 		QPlainTextEdit *text = new QPlainTextEdit(content);

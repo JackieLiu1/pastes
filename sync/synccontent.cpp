@@ -34,7 +34,10 @@ Snapshot snapshot(const ItemData &entry)
 	Snapshot value;
 	const auto &mime = *entry.mimeData;
 	value.md5 = entry.md5; value.time = entry.time; value.icon = entry.icon;
-	if (mime.hasUrls() && !mime.urls().isEmpty()) {
+	if (ClipboardContent::prefersImage(mime)) {
+		value.kind = "image"; value.png = ClipboardData::storedImage(&mime);
+		if (value.png.isEmpty()) value.image = qvariant_cast<QImage>(mime.imageData());
+	} else if (mime.hasUrls() && !mime.urls().isEmpty()) {
 		for (const QUrl &url : mime.urls()) {
 			if (url.isLocalFile() || (url.scheme() != "https" && url.scheme() != "http")) return {};
 			value.urls.append(QString::fromUtf8(url.toEncoded()));

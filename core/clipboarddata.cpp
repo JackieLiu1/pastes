@@ -38,21 +38,23 @@ private:
 	qreal m_ratio;
 };
 
-void copyFormats(const QMimeData *source, QMimeData *target)
+void copyFormats(const QMimeData *source, QMimeData *target, bool includeImage = true)
 {
 	for (const QString &format : source->formats())
-		target->setData(format, source->data(format));
+		if (includeImage || format != imageType)
+			target->setData(format, source->data(format));
 }
 
 }
 
-QMimeData *ClipboardData::duplicate(const QMimeData *source)
+QMimeData *ClipboardData::duplicate(const QMimeData *source, bool includeImage)
 {
-	if (const auto *stored = dynamic_cast<const StoredImageMimeData *>(source))
-		return withStoredImage(source, stored->encoded(), stored->imageFormat(), stored->imageRatio());
+	if (includeImage)
+		if (const auto *stored = dynamic_cast<const StoredImageMimeData *>(source))
+			return withStoredImage(source, stored->encoded(), stored->imageFormat(), stored->imageRatio());
 	auto *mime = new QMimeData;
-	copyFormats(source, mime);
-	if (source->hasImage())
+	copyFormats(source, mime, includeImage);
+	if (includeImage && source->hasImage())
 		mime->setImageData(source->imageData());
 	return mime;
 }

@@ -16,6 +16,8 @@ public:
 	virtual bool synchronize(void) = 0;
 	/* Inspect native metadata before requesting any clipboard payload. */
 	virtual bool allowsCapture(void) const = 0;
+	/* Native file icons synthesized as bitmap flavors are not image content. */
+	virtual bool hasImageContent(void) const { return true; }
 	virtual QImage snapshotIcon(void) = 0;
 
 signals:
