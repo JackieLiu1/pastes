@@ -1,9 +1,11 @@
 #include "tests/testsupport.h"
+#include "tests/colorcontrast.h"
 #include "platform/windowintegration.h"
 #include "ui/roundedwidgets.h"
 
 #include <QApplication>
 #include <QDir>
+#include <QFile>
 #include <QLabel>
 #include <QPainter>
 #include <QScreen>
@@ -14,9 +16,21 @@
 namespace {
 class Background final : public QWidget
 {
+	bool m_extremes = false;
+public:
+	void setExtremes(bool extremes) { m_extremes = extremes; update(); }
+private:
 	void paintEvent(QPaintEvent *) override
 	{
 		QPainter painter(this);
+		if (m_extremes) {
+			painter.fillRect(rect(), Qt::black);
+			painter.fillRect(QRect(width()/2, 0, width()/2, height()), Qt::white);
+			/* A contrasting band keeps both bottom corners observable even
+			 * when the light material nearly matches the white background. */
+			painter.fillRect(QRect(0, 330, width(), 40), Qt::black);
+			return;
+		}
 		painter.fillRect(rect(), QColor("#159BCD"));
 		painter.fillRect(QRect(width()/2, 0, width()/2, height()), QColor("#DF6944"));
 		for (int x = 0; x < width(); x += 12)
@@ -102,23 +116,46 @@ void nativeBackdrop(bool capture)
 	background.setAttribute(Qt::WA_DontShowOnScreen, !capture);
 	if (capture) background.show();
 	RoundedWidget panel(RoundedRole::Panel);
+	panel.setObjectName("MainFrame");
 	Platform::initializePanel(&panel);
 	panel.setAttribute(Qt::WA_TranslucentBackground);
 	panel.setAttribute(Qt::WA_DontShowOnScreen, !capture);
 	panel.setGeometry(120, 150, 860, 310);
 	RoundedWidget card(RoundedRole::Card, &panel);
+	card.setObjectName("PasteItemFrame");
 	card.setGeometry(25, 85, 240, 150);
-	QLabel title("Pastes | Windows Acrylic", &panel);
-	title.setGeometry(20, 20, 720, 40);
+	QLabel title("Pastes", &panel);
+	title.setObjectName("BrandTitle");
+	title.setGeometry(20, 20, 110, 40);
+	QLabel tab("Clipboard history", &panel);
+	tab.setObjectName("HistoryTab");
+	tab.setGeometry(145, 20, 260, 40);
+	QLabel paused("Recording paused", &panel);
+	paused.setObjectName("RecordingStatus");
+	paused.setGeometry(450, 20, 360, 40);
+	QLabel count("78 records", &panel);
+	count.setObjectName("HistoryCount");
+	count.setGeometry(20, 270, 240, 25);
+	QLabel hint("Enter: paste | Space: preview", &panel);
+	hint.setObjectName("KeyboardHint");
+	hint.setGeometry(300, 270, 400, 25);
 	QLabel content("Card contents stay clear", &card);
-	content.setGeometry(20, 20, 210, 40);
-	title.setFont(QFont("Segoe UI", 17));
-	content.setFont(QFont("Segoe UI", 11));
+	content.setGeometry(20, 50, 210, 40);
+	QWidget banner(&card);
+	banner.setObjectName("Barnner");
+	banner.setGeometry(0, 0, 240, 40);
+	QLabel type("Text", &banner), time("1 hour ago", &banner);
+	type.setObjectName("CardType");
+	time.setObjectName("CardTime");
+	type.setGeometry(20, 10, 80, 20);
+	time.setGeometry(130, 10, 100, 20);
 	for (const QString &stage : {QStringLiteral("dark"), QStringLiteral("light"),
-		QStringLiteral("reopen"), QStringLiteral("resize"), QStringLiteral("docked")}) {
+		QStringLiteral("light-contrast"), QStringLiteral("reopen"), QStringLiteral("resize"),
+		QStringLiteral("docked")}) {
 		QImage baseline;
 		if (capture) {
 			panel.hide();
+			background.setExtremes(stage == "light-contrast");
 			if (stage == "docked") {
 				const QRect area = background.screen()->availableGeometry();
 				background.setGeometry(area.x(), area.bottom()-359, area.width(), 360);
@@ -130,10 +167,11 @@ void nativeBackdrop(bool capture)
 			if (owner) require(!IsWindowVisible(owner), "Hidden panel left its backdrop visible");
 			baseline = captureBackground(background);
 		}
-		const bool dark = stage != "light";
+		const bool dark = stage != "light" && stage != "light-contrast";
 		qApp->setProperty("pastesDark", dark);
-		title.setStyleSheet(dark ? "color: white" : "color: #181818");
-		content.setStyleSheet(dark ? "color: white" : "color: #181818");
+		QFile theme(dark ? ":/resources/theme-dark.qss" : ":/resources/theme-light.qss");
+		require(theme.open(QFile::ReadOnly), "Native contrast test could not load the real theme");
+		panel.setStyleSheet(QString::fromUtf8(theme.readAll()));
 		if (stage == "reopen") panel.hide();
 		if (stage == "resize") panel.resize(820, 300);
 		Platform::preparePanel(&panel);
@@ -168,6 +206,22 @@ void nativeBackdrop(bool capture)
 		require(baseline.save("build/backdrop-preview/baseline-"+stage+suffix+".png"), "Could not save the corner baseline");
 		const QPoint offset = panel.frameGeometry().topLeft()-background.frameGeometry().topLeft();
 		verifyCornerPixels(image, baseline, panel, QPoint(qRound(offset.x()*ratio), qRound(offset.y()*ratio)));
+		if (stage == "light-contrast") {
+			const QColor left = image.pixelColor(qRound((offset.x()+320)*ratio), qRound((offset.y()+65)*ratio));
+			const QColor right = image.pixelColor(qRound((offset.x()+700)*ratio), qRound((offset.y()+65)*ratio));
+			qreal minimum = 100;
+			for (QLabel *label : {&title, &tab, &paused, &count, &hint}) {
+				const QColor ink = label->palette().color(QPalette::WindowText);
+				minimum = qMin(minimum, qMin(contrastRatio(ink, left), contrastRatio(ink, right)));
+			}
+			const QColor cardColor = image.pixelColor(qRound((offset.x()+145)*ratio), qRound((offset.y()+215)*ratio));
+			for (QLabel *label : {&type, &time, &content})
+				minimum = qMin(minimum, contrastRatio(label->palette().color(QPalette::WindowText), cardColor));
+			qInfo() << "Light text minimum contrast over black/white:" << minimum;
+			require(minimum >= 4.5, "Light theme text was unreadable over an extreme native backdrop");
+			require(right.red()-left.red() > 10, "Light tint removed all backdrop translucency");
+			continue;
+		}
 		const QColor left = image.pixelColor(image.width()/3, qRound(270*ratio));
 		const QColor right = image.pixelColor(image.width()*3/4, qRound(270*ratio));
 		require(left.blue() > left.red()+4 && right.red() > right.blue()+4,

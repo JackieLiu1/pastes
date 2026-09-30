@@ -44,7 +44,7 @@ set_tests_properties(history_contract database_contract clipboard_contract
 set_property(TEST mainwindow_contract APPEND PROPERTY ENVIRONMENT "QT_FORCE_STDERR_LOGGING=1")
 
 if(WIN32)
-    add_executable(windowbackdrop_windows_test windowbackdrop_windows_test.cpp)
+    add_executable(windowbackdrop_windows_test windowbackdrop_windows_test.cpp ../sources.qrc)
     target_link_libraries(windowbackdrop_windows_test PRIVATE pastes_ui)
     add_test(NAME windowbackdrop_windows_contract COMMAND windowbackdrop_windows_test)
     set_tests_properties(windowbackdrop_windows_contract PROPERTIES

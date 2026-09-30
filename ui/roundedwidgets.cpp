@@ -32,7 +32,8 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 			style.fill = QColor(dark ? "#181818" : "#F4F4EF");
 			const bool active = widget->window()->property("pastesPanelBackdrop").toBool();
 			if (active)
-				style.fill.setAlpha(dark ? 72 : 52);
+				/* Light-theme text needs a light surface even over a black desktop. */
+				style.fill.setAlpha(dark ? 72 : 208);
 			style.border = dark ? QColor(255, 255, 255, 76) : QColor(0, 0, 0, 64);
 			/* Keep the glass outline one physical pixel wide on HiDPI displays. */
 			style.borderWidth = 1/widget->devicePixelRatioF();

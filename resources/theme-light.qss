@@ -7,7 +7,7 @@
 #HeaderDivider { background: rgba(41, 58, 53, 45); border: 0; }
 #HistoryTab {
 	background: transparent; border: 0;
-	font-size: 13px; font-weight: 400; color: #435D53;
+	font-size: 13px; font-weight: 400; color: #43514B;
 	padding: 0;
 }
 #HistoryCount, #KeyboardHint { color: #303735; font-size: 11px; }
@@ -31,7 +31,7 @@ QListWidget::item, QListWidget::item:hover, QListWidget::item:selected {
 }
 #ContextTextFrame > QLabel {
 	background: transparent; border: 0;
-	color: #869083; font-size: 11px;
+	color: #59695F; font-size: 11px;
 }
 #PasteItemFrame[contentKind="code"] #ContextTextFrame {
 	background: transparent; border: 0;
@@ -47,16 +47,16 @@ QListWidget::item, QListWidget::item:hover, QListWidget::item:selected {
 }
 #ContextPixmapFrame > QLabel {
 	background: transparent; border: 0;
-	color: #61766C; font-size: 11px;
+	color: #52645A; font-size: 11px;
 }
 #Barnner { background: transparent; }
 #Barnner > QLabel { background: transparent; }
 #Barnner > QLabel#CardType {
 	background: transparent; border: 0;
-	font-size: 11px; font-weight: 400; color: #758278;
+	font-size: 11px; font-weight: 400; color: #52645A;
 	padding: 0;
 }
-#Barnner > QLabel#CardTime { font-size: 10px; color: #929A8F; }
+#Barnner > QLabel#CardTime { font-size: 10px; color: #59695F; }
 #PasteItemFrame[contentKind="code"] #CardType {
 	background: transparent; border: 0;
 	color: #B6D9BF;
@@ -67,7 +67,7 @@ QListWidget::item, QListWidget::item:hover, QListWidget::item:selected {
 }
 #QuickPasteNumber {
 	background: transparent; border: 0;
-	color: #78887B;
+	color: #52645A;
 	font-size: 11px; font-weight: 600;
 }
 #SearchBar { padding: 0; margin: 0; border: 0; background: transparent; }
@@ -124,6 +124,7 @@ QMenu::separator { height: 1px; background: #E5E8DF; margin: 5px 8px; }
 #SettingsStatus { font-size: 11px; color: #58615D; }
 #SettingsStatus[error="true"] { color: #AD4C35; }
 #RecordingStatus { font-size: 11px; color: #AD4C35; }
+#MainFrame #RecordingStatus { color: #843C2C; }
 
 #SettingsTabs::pane { border: 0; background: transparent; }
 #SettingsTabs QTabBar::tab { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 24px; margin-right: 12px; color: #58615D; font-size: 13px; font-weight: 600; }

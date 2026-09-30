@@ -1,4 +1,5 @@
 #include "tests/testsupport.h"
+#include "tests/colorcontrast.h"
 #include "application/clipboardcontroller.h"
 #include "ui/mainwindow.h"
 #include "ui/historyview.h"
@@ -10,6 +11,7 @@
 #include <QClipboard>
 #include <QDialog>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QPainter>
 #include <QPushButton>
 #include <QSettings>
@@ -114,6 +116,55 @@ void appDialogsHideHistory(void)
 	}
 }
 
+void lightThemeTextContrast(void)
+{
+	QSettings().setValue("theme", "light");
+	WindowFixture fixture;
+	fixture.history.load();
+	fixture.repository.finishLoad({textEntry("Readable clipboard text")});
+	auto &window = fixture.window;
+	window.setAttribute(Qt::WA_DontShowOnScreen);
+	window.show_window();
+	auto *view = window.findChild<HistoryView *>();
+	require(view, "History view missing");
+	view->ensurePolished();
+	RoundedSurface surface;
+	for (bool active : {false, true}) {
+		window.setProperty("pastesPanelBackdrop", active);
+		for (const QColor &background : {QColor(Qt::black), QColor(Qt::white)}) {
+			QImage image(view->size(), QImage::Format_ARGB32_Premultiplied);
+			image.fill(background);
+			QPainter painter(&image);
+			surface.paint(view, RoundedRole::Panel, painter);
+			painter.end();
+			const QColor panelColor = image.pixelColor(view->width()/2, view->height()/2);
+			for (const char *name : {"BrandTitle", "HistoryTab", "HistoryCount", "KeyboardHint",
+				"EmptyState", "RecordingStatus", "UndoHint", "UndoButton", "PanelMenu"}) {
+				auto *label = view->findChild<QWidget *>(name);
+				require(label, (std::string("Panel text widget missing: ")+name).c_str());
+				label->ensurePolished();
+				const QColor ink = label->palette().color(QPalette::WindowText);
+				require(contrastRatio(ink, panelColor) >= 4.5,
+					(std::string("Light panel text lost contrast: ")+name).c_str());
+			}
+		}
+	}
+	auto *card = view->findChild<QWidget *>("PasteItemFrame");
+	require(card, "Contrast test did not bind the history card");
+	QImage image(card->size(), QImage::Format_ARGB32_Premultiplied);
+	image.fill(Qt::transparent);
+	QPainter painter(&image);
+	surface.paint(card, RoundedRole::Card, painter);
+	painter.end();
+	const QColor cardColor = image.pixelColor(card->width()/2, card->height()/2);
+	for (QLabel *label : card->findChildren<QLabel *>()) {
+		if (label->text().isEmpty()) continue;
+		label->ensurePolished();
+		require(contrastRatio(label->palette().color(QPalette::WindowText), cardColor) >= 4.5,
+			(std::string("Light card metadata lost contrast: ")+label->objectName().toStdString()).c_str());
+	}
+}
+
 void previewKeepsHistoryVisible(void)
 {
 	WindowFixture fixture;
@@ -169,6 +220,7 @@ int main(int argc, char **argv)
 	QSettings::setDefaultFormat(QSettings::IniFormat);
 	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences.path());
 	int failures = runTest("backdrop activation and fallback preserve readable surfaces", backdropUsesOpaqueFallback);
+	failures += runTest("light theme text remains readable over black and white backgrounds", lightThemeTextContrast);
 	failures += runTest("application dialogs hide history and block reopening", appDialogsHideHistory);
 	failures += runTest("preview keeps history visible through close and Escape", previewKeepsHistoryVisible);
 	return failures ? 1 : 0;
