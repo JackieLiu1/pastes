@@ -146,6 +146,8 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	const QList<QUrl> files = mime->hasUrls() ? mime->urls() :
 		(textFile.isEmpty() ? QList<QUrl>() : QList<QUrl>{textFile});
 	QImage image;
+	/* Resolve the source afresh on every preview. A missing image file must
+	 * show its path below, even if its MIME data also contains a thumbnail. */
 	if (files.size() == 1)
 		image = FilePreview::loadImage(files.first(), 2048);
 	if (bitmap)

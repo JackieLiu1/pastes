@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QImageReader>
+#include <QMimeDatabase>
 
 QUrl FilePreview::localUrl(const QString &text)
 {
@@ -31,6 +32,15 @@ QUrl FilePreview::localUrl(const QString &text)
 QImage FilePreview::loadImage(const QUrl &url, int maxPixels)
 {
 	if (!url.isLocalFile() || maxPixels <= 0)
+		return QImage();
+	/* Only explicit previews read file contents; missing files, folders
+	 * and special files retain the path representation. */
+	const QFileInfo file(url.toLocalFile());
+	if (!file.isFile())
+		return QImage();
+	/* Image plugins may also decode documents such as PDF. Only actual
+	 * image content belongs in the picture preview. */
+	if (!QMimeDatabase().mimeTypeForFile(file, QMimeDatabase::MatchContent).name().startsWith("image/"))
 		return QImage();
 	QImageReader reader(url.toLocalFile());
 	reader.setAutoTransform(true);

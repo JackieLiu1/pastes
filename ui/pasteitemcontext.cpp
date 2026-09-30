@@ -1,5 +1,4 @@
 #include "platform/fileicon.h"
-#include "ui/filepreview.h"
 
 #include <algorithm>
 #include <cmath>
@@ -7,11 +6,11 @@
 #include <QApplication>
 #include <QResizeEvent>
 #include <QFileInfo>
+#include <QFileIconProvider>
 #include <QDir>
 #include <QPixmap>
 #include <QPair>
 #include <QList>
-#include <QMimeDatabase>
 #include <QGraphicsDropShadowEffect>
 #include <QDebug>
 
@@ -161,24 +160,18 @@ bool FileFrame::setUrls(QList<QUrl> &urls)
 	bool ret = false;
 
 	for (int i = 0; i < urls.count() && i < 3; i++) {
-		QPixmap pixmap;
 		auto url = urls.at(i);
-
-		QFileInfo fileinfo(url.toLocalFile());
-		if (!fileinfo.exists())
+		if (!url.isLocalFile() || url.toLocalFile().isEmpty())
 			continue;
-		else
-			ret |= true;
+		ret = true;
 
-		QMimeDatabase db;
-		QMimeType mime = db.mimeTypeForUrl(url);
-		if (mime.name().startsWith("image/")) {
-			pixmap = QPixmap::fromImage(FilePreview::loadImage(url, 512));
-		}
-		if (pixmap.isNull()) {
-			auto icon = Platform::fileIcon(url.toLocalFile());
-			pixmap = icon.pixmap(256, 256);
-		}
+		/* File cards show icons only. Read image contents when explicitly
+		 * previewed, and keep missing paths available after a restart. */
+		const QFileInfo fileinfo(url.toLocalFile());
+		QIcon icon = fileinfo.exists() ? Platform::fileIcon(fileinfo.absoluteFilePath()) : QIcon();
+		if (icon.isNull())
+			icon = QFileIconProvider().icon(QFileIconProvider::File);
+		const QPixmap pixmap = icon.pixmap(256, 256);
 		QLabel *label = new QLabel(this);
 		label->setAttribute(Qt::WA_TranslucentBackground);
 		/* The shadow effect only has to be attached once, not on every resize */

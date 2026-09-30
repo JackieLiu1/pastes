@@ -5,12 +5,17 @@
 #include "ui/cardinteraction.h"
 #include "ui/cardswipe.h"
 #include "ui/elasticscroll.h"
+#include "ui/previewdialog.h"
 #include <QApplication>
+#include <QFile>
 #include <QInputMethodEvent>
 #include <QKeyEvent>
 #include <QListWidget>
 #include <QMouseEvent>
+#include <QPdfWriter>
+#include <QPlainTextEdit>
 #include <QShortcut>
+#include <QTemporaryDir>
 #include <QVBoxLayout>
 
 void viewCommands(void)
@@ -378,6 +383,97 @@ void pointerCommands(void)
 	require(swipe->sourceCard() == nullptr, "Cancelling interactions retained the restored card");
 }
 
+void imageFilePreviews(void)
+{
+	QTemporaryDir directory;
+	const QString path = directory.filePath(QString::fromUtf8("预览 image.png"));
+	QImage pixels(64, 48, QImage::Format_RGB32);
+	pixels.fill(Qt::cyan);
+	require(pixels.save(path), "Cannot save preview image fixture");
+	auto file = textEntry(path);
+	file->mimeData->setUrls({QUrl::fromLocalFile(path)});
+	file->md5 = ClipboardContent::fingerprint(*file->mimeData);
+	auto checkPreview = [](const HistoryEntry &entry, bool image, const QString &fallback = QString()) {
+		const QByteArray fingerprint = ClipboardContent::fingerprint(*entry->mimeData);
+		PreviewDialog dialog(*entry);
+		const auto *text = dialog.findChild<QPlainTextEdit *>("PreviewText");
+		bool picture = false;
+		for (const QWidget *child : dialog.findChildren<QWidget *>())
+			picture |= child->accessibleName() == QObject::tr("Image preview");
+		require(picture == image && bool(text) != image, "Preview chose the wrong content representation");
+		if (text) require(text->toPlainText() == fallback, "Preview lost its original path fallback");
+		require(ClipboardContent::fingerprint(*entry->mimeData) == fingerprint,
+			"Preview changed the clipboard payload");
+	};
+	checkPreview(file, true);
+	checkPreview(textEntry(path), true);
+	checkPreview(textEntry('"'+path+'"'), true);
+	checkPreview(textEntry(QUrl::fromLocalFile(path).toString(QUrl::FullyEncoded)), true);
+	auto rich = textEntry(path);
+	rich->mimeData->setHtml("<p>"+path+"</p>");
+	checkPreview(rich, true);
+	auto bitmap = textEntry("");
+	bitmap->mimeData->setImageData(pixels);
+	checkPreview(bitmap, true);
+
+	/* Opening a card must preserve a file payload, including its commands. */
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	HistoryView view(history, &window);
+	history.load(); repository.finishLoad({file});
+	auto *list = view.findChild<QListWidget *>();
+	require(list->count() == 1, "Image file card did not load");
+	auto *card = qobject_cast<PasteItem *>(list->itemWidget(list->item(0)));
+	HistoryEntry previewed, copied;
+	QObject::connect(&view, &HistoryView::previewRequested, &view,
+		[&](HistoryEntry entry) { previewed = entry; });
+	QObject::connect(&view, &HistoryView::copyRequested, &view,
+		[&](HistoryEntry entry, bool, bool) { copied = entry; });
+	QKeyEvent space(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier);
+	QCoreApplication::sendEvent(card, &space);
+	card->copyData();
+	require(previewed == file && copied == file && file->mimeData->urls() == QList<QUrl>{QUrl::fromLocalFile(path)},
+		"Preview or copy replaced the file entry with decoded pixels");
+
+	/* Read the source on each preview; never keep a stale file thumbnail. */
+	require(QFile::remove(path), "Cannot remove preview source fixture");
+	checkPreview(file, false, path);
+	checkPreview(textEntry(path), false, path);
+	auto missingWithThumbnail = cloneEntry(*file);
+	missingWithThumbnail->mimeData->setImageData(pixels);
+	checkPreview(missingWithThumbnail, false, path);
+	QFile ordinary(path);
+	require(ordinary.open(QIODevice::WriteOnly), "Cannot create unreadable image fixture");
+	ordinary.write("ordinary file contents"); ordinary.close();
+	checkPreview(file, false, path);
+	require(pixels.save(path), "Cannot restore image fixture");
+	checkPreview(file, true);
+	auto mixed = cloneEntry(*file);
+	mixed->mimeData->setUrls({QUrl::fromLocalFile(path), QUrl::fromLocalFile(directory.path())});
+	checkPreview(mixed, false, path+'\n'+directory.path());
+	checkPreview(textEntry(directory.path()), false, directory.path());
+	checkPreview(textEntry("https://example.invalid/photo.png"), false, "https://example.invalid/photo.png");
+	const QString pdfPath = directory.filePath("document.pdf");
+	{
+		QPdfWriter pdf(pdfPath);
+		QPainter painter(&pdf);
+		painter.drawText(100, 100, "Ordinary document");
+	}
+	checkPreview(textEntry(pdfPath), false, pdfPath);
+
+	/* Reloading history after removal must retain the path and not delete
+	 * the persisted record merely because its source file is unavailable. */
+	require(QFile::remove(path), "Cannot remove image fixture before reload");
+	MemoryRepository reloadRepository;
+	HistoryService reloadHistory(reloadRepository);
+	QWidget reloadWindow;
+	HistoryView reloadView(reloadHistory, &reloadWindow);
+	reloadHistory.load(); reloadRepository.finishLoad({file});
+	require(reloadHistory.entries().size() == 1 && reloadView.findChild<QListWidget *>()->count() == 1 &&
+		reloadRepository.removals.isEmpty(), "Missing source file deleted its history record");
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
@@ -389,5 +485,6 @@ int main(int argc, char **argv)
 	failures += runTest("type-to-search focuses before input method composition", searchInputMethod);
 	failures += runTest("search composition keeps candidate keys", composingSearchCommands);
 	failures += runTest("search filtering preserves uninterrupted input focus", searchKeepsInputFocus);
+	failures += runTest("image files preview on demand and retain missing paths", imageFilePreviews);
 	return failures ? 1 : 0;
 }
