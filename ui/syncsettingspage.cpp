@@ -29,7 +29,8 @@ SyncSettingsPage::SyncSettingsPage(SyncService &sync, QWidget *parent) : QWidget
 	m_username = new QLineEdit(settings.username, card); m_username->setObjectName("SyncUsername");
 	m_password = new QLineEdit(card); m_password->setObjectName("SyncPassword");
 	m_password->setEchoMode(QLineEdit::Password);
-	m_password->setPlaceholderText(tr("Leave blank to keep the saved password"));
+	m_password->setPlaceholderText(QString(8, QChar(0x2022)));
+	m_password->setToolTip(tr("Leave blank to keep the saved password"));
 	for (auto *edit : {m_url, m_username, m_password}) { edit->setMinimumHeight(30); edit->setProperty("syncField", true); }
 	form->addRow(tr("Server folder"), m_url);
 	form->addRow(tr("Account"), m_username);
