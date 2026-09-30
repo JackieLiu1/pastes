@@ -4,7 +4,7 @@ target_link_libraries(pastes_platform PUBLIC pastes_application Qt6::Widgets)
 target_sources(pastes_platform PRIVATE
     clipboardsource.h pastetarget.h windowintegration.h windowintegration.cpp
     applicationintegration.h menuintegration.h menuintegration.cpp
-    secretstore.h
+    secretstore.h localcredentialstore.cpp
     fileicon.h paths.h startupintegration.h startupintegration.cpp
     globalshortcut.h globalshortcut.cpp shortcut_p.h
 )
@@ -22,7 +22,7 @@ if(WIN32)
     )
 elseif(APPLE)
     target_sources(pastes_platform PRIVATE
-        macos/secretstore.mm
+        macos/secretstore.cpp
         macos/clipboardpolicy.mm macos/clipboardpolicy.h
         macos/clipboardsource.mm macos/pastetarget.mm macos/shortcut.cpp
         macos/windowintegration.mm macos/menuintegration.mm
@@ -45,7 +45,6 @@ if(WIN32)
     set_target_properties(pastes PROPERTIES WIN32_EXECUTABLE TRUE)
     target_link_libraries(pastes_platform PRIVATE psapi gdi32 shell32 advapi32)
 elseif(APPLE)
-    find_library(SECURITY_FRAMEWORK Security REQUIRED)
     find_library(CARBON_FRAMEWORK Carbon REQUIRED)
     find_library(APPKIT_FRAMEWORK AppKit REQUIRED)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
@@ -53,7 +52,7 @@ elseif(APPLE)
     find_library(SERVICEMANAGEMENT_FRAMEWORK ServiceManagement REQUIRED)
     target_link_libraries(pastes_platform PRIVATE ${CARBON_FRAMEWORK}
         ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK}
-        ${APPLICATIONSERVICES_FRAMEWORK} ${SERVICEMANAGEMENT_FRAMEWORK} ${SECURITY_FRAMEWORK})
+        ${APPLICATIONSERVICES_FRAMEWORK} ${SERVICEMANAGEMENT_FRAMEWORK})
     set_target_properties(pastes PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME Pastes

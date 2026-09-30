@@ -47,7 +47,7 @@ add_test(NAME architecture_dependencies
         -P ${PROJECT_SOURCE_DIR}/cmake/check-dependencies.cmake)
 
 add_executable(webdav_test webdav_test.cpp)
-target_link_libraries(webdav_test PRIVATE pastes_sync Qt6::Network)
+target_link_libraries(webdav_test PRIVATE pastes_sync pastes_platform Qt6::Network)
 add_test(NAME webdav_contract COMMAND webdav_test)
 set_tests_properties(webdav_contract PROPERTIES TIMEOUT 60)
 if(WIN32)

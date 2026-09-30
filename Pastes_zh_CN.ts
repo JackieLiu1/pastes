@@ -29,12 +29,12 @@
         <translation>打开系统设置</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="37"/>
+        <location filename="ui/pasteitembarnner.cpp" line="38"/>
         <source>Source unavailable</source>
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="445"/>
+        <location filename="ui/historyview.cpp" line="465"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
@@ -80,18 +80,18 @@
         <translation>个文件</translation>
     </message>
     <message>
-        <location filename="ui/pasteitemcontext.cpp" line="235"/>
+        <location filename="ui/pasteitemcontext.cpp" line="285"/>
         <source>px</source>
         <translation>像素</translation>
     </message>
     <message>
-        <location filename="ui/pasteitemcontext.cpp" line="251"/>
-        <location filename="ui/pasteitemcontext.cpp" line="267"/>
+        <location filename="ui/pasteitemcontext.cpp" line="301"/>
+        <location filename="ui/pasteitemcontext.cpp" line="316"/>
         <source>characters</source>
         <translation>字符</translation>
     </message>
     <message>
-        <location filename="ui/pasteitemcontext.cpp" line="283"/>
+        <location filename="ui/pasteitemcontext.cpp" line="331"/>
         <source>MultiPath</source>
         <translation>多个文件</translation>
     </message>
@@ -102,32 +102,32 @@
         <translation>关于 Pastes</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="85"/>
+        <location filename="ui/pasteitembarnner.cpp" line="83"/>
         <source>months ago</source>
         <translation>月前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="87"/>
+        <location filename="ui/pasteitembarnner.cpp" line="85"/>
         <source>days ago</source>
         <translation>天前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="89"/>
+        <location filename="ui/pasteitembarnner.cpp" line="87"/>
         <source>hours ago</source>
         <translation>小时前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="91"/>
+        <location filename="ui/pasteitembarnner.cpp" line="89"/>
         <source>minutes ago</source>
         <translation>分钟前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="93"/>
+        <location filename="ui/pasteitembarnner.cpp" line="91"/>
         <source>secs ago</source>
         <translation>秒前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="95"/>
+        <location filename="ui/pasteitembarnner.cpp" line="93"/>
         <source>moment ago</source>
         <translation>刚刚</translation>
     </message>
@@ -159,7 +159,7 @@
         <translation>条记录</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="296"/>
+        <location filename="ui/historyview.cpp" line="309"/>
         <source>Clipboard</source>
         <translation>剪贴板历史</translation>
     </message>
@@ -175,7 +175,7 @@
         <translation>代码</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="202"/>
+        <location filename="ui/previewdialog.cpp" line="200"/>
         <source>Paste</source>
         <translation>粘贴</translation>
     </message>
@@ -186,8 +186,8 @@
     </message>
     <message>
         <location filename="ui/pasteitem.cpp" line="276"/>
-        <location filename="ui/previewdialog.cpp" line="184"/>
-        <location filename="ui/previewdialog.cpp" line="191"/>
+        <location filename="ui/previewdialog.cpp" line="182"/>
+        <location filename="ui/previewdialog.cpp" line="189"/>
         <source>Copy to Clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
@@ -198,9 +198,9 @@
     </message>
     <message>
         <location filename="ui/pasteitem.cpp" line="281"/>
-        <location filename="ui/previewdialog.cpp" line="73"/>
-        <location filename="ui/previewdialog.cpp" line="105"/>
-        <location filename="ui/previewdialog.cpp" line="165"/>
+        <location filename="ui/previewdialog.cpp" line="74"/>
+        <location filename="ui/previewdialog.cpp" line="101"/>
+        <location filename="ui/previewdialog.cpp" line="163"/>
         <source>Preview</source>
         <translation>预览</translation>
     </message>
@@ -210,38 +210,38 @@
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="294"/>
+        <location filename="ui/historyview.cpp" line="307"/>
         <source>Pastes</source>
         <translation>Pastes</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="252"/>
-        <location filename="ui/historyview.cpp" line="253"/>
+        <location filename="ui/historyview.cpp" line="265"/>
+        <location filename="ui/historyview.cpp" line="266"/>
         <source>Menu</source>
         <translation>菜单</translation>
     </message>
     <message>
-        <location filename="ui/searchbar.cpp" line="126"/>
+        <location filename="ui/searchbar.cpp" line="149"/>
         <source>Type to search</source>
         <translation>输入即可搜索</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="144"/>
+        <location filename="ui/historyview.cpp" line="163"/>
         <source>%1 items</source>
         <translation>%1 条记录</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="145"/>
+        <location filename="ui/historyview.cpp" line="164"/>
         <source>%1 of %2 items</source>
         <translation>%2 条记录中找到 %1 条</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="149"/>
+        <location filename="ui/historyview.cpp" line="168"/>
         <source>Copy something to get started</source>
         <translation>复制一段文字或一张图片，从这里开始</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="149"/>
+        <location filename="ui/historyview.cpp" line="168"/>
         <source>No matching items</source>
         <translation>没有找到匹配的内容</translation>
     </message>
@@ -255,44 +255,44 @@
         <translation>按 Ctrl+%1 粘贴</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="35"/>
+        <location filename="ui/previewdialog.cpp" line="36"/>
         <source>Image preview</source>
         <translation>图片预览</translation>
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="65"/>
-        <location filename="ui/previewdialog.cpp" line="119"/>
+        <location filename="ui/previewdialog.cpp" line="115"/>
         <source>Close (Esc)</source>
         <translation>关闭（Esc）</translation>
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="66"/>
-        <location filename="ui/previewdialog.cpp" line="120"/>
+        <location filename="ui/previewdialog.cpp" line="116"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="172"/>
+        <location filename="ui/previewdialog.cpp" line="170"/>
         <source>%1 files</source>
         <translation>%1 个文件</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="174"/>
+        <location filename="ui/previewdialog.cpp" line="172"/>
         <source>%1 characters</source>
         <translation>%1 个字符</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="185"/>
+        <location filename="ui/previewdialog.cpp" line="183"/>
         <source>Copy without closing the preview</source>
         <translation>仅复制，保留预览窗口</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="196"/>
+        <location filename="ui/previewdialog.cpp" line="194"/>
         <source>Copied</source>
         <translation>已复制</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="203"/>
+        <location filename="ui/previewdialog.cpp" line="201"/>
         <source>Paste into the previous application (Enter)</source>
         <translation>粘贴到原来的应用（Enter）</translation>
     </message>
@@ -305,17 +305,17 @@
         <translation type="vanished">预览（Space）</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="321"/>
+        <location filename="ui/historyview.cpp" line="334"/>
         <source>Removed from history</source>
         <translation>已从历史记录移除</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="325"/>
+        <location filename="ui/historyview.cpp" line="338"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="326"/>
+        <location filename="ui/historyview.cpp" line="339"/>
         <source>Undo deletion (Ctrl+Z)</source>
         <translation>撤销删除（Ctrl+Z）</translation>
     </message>
@@ -514,7 +514,7 @@
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="304"/>
+        <location filename="ui/historyview.cpp" line="317"/>
         <location filename="ui/mainwindow.cpp" line="185"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
@@ -580,49 +580,49 @@ Then quit and reopen Pastes.</source>
 然后退出并重新打开 Pastes。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="76"/>
+        <location filename="sync/synccontent.cpp" line="77"/>
         <source>An image is too large to sync (maximum 20 megapixels).</source>
         <translation>图片超过同步上限（最高 2000 万像素），已跳过。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="81"/>
-        <location filename="sync/synccontent.cpp" line="86"/>
+        <location filename="sync/synccontent.cpp" line="82"/>
+        <location filename="sync/synccontent.cpp" line="87"/>
         <source>An item is too large to sync (maximum 20 MB).</source>
         <translation>条目超过同步上限（最大 20 MB），已跳过。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="103"/>
+        <location filename="sync/synccontent.cpp" line="104"/>
         <source>Invalid text in sync data.</source>
         <translation>同步数据中的文字无效。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="108"/>
-        <location filename="sync/synccontent.cpp" line="113"/>
+        <location filename="sync/synccontent.cpp" line="109"/>
+        <location filename="sync/synccontent.cpp" line="114"/>
         <source>Invalid links in sync data.</source>
         <translation>同步数据中的链接无效。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="121"/>
+        <location filename="sync/synccontent.cpp" line="122"/>
         <source>Invalid or oversized image in sync data.</source>
         <translation>同步数据中的图片无效或过大。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="123"/>
+        <location filename="sync/synccontent.cpp" line="124"/>
         <source>Unsupported sync content.</source>
         <translation>不支持此同步内容。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="150"/>
+        <location filename="sync/synccontent.cpp" line="152"/>
         <source>Sync data exceeds the size limit.</source>
         <translation>同步数据超过大小限制。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="161"/>
+        <location filename="sync/synccontent.cpp" line="163"/>
         <source>Invalid sync record or incompatible version.</source>
         <translation>同步记录无效或版本不兼容。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="168"/>
+        <location filename="sync/synccontent.cpp" line="170"/>
         <source>The sync record failed its content check.</source>
         <translation>同步记录未通过内容校验。</translation>
     </message>
@@ -647,9 +647,8 @@ Then quit and reopen Pastes.</source>
         <translation>无法访问系统密码存储，请解锁密钥环后重试。</translation>
     </message>
     <message>
-        <location filename="platform/macos/secretstore.mm" line="17"/>
         <source>Could not access the system credential store: %1</source>
-        <translation>无法访问系统密码存储：%1</translation>
+        <translation type="vanished">无法访问系统密码存储：%1</translation>
     </message>
     <message>
         <location filename="platform/windows/secretstore.cpp" line="15"/>
@@ -660,6 +659,36 @@ Then quit and reopen Pastes.</source>
         <location filename="platform/windows/secretstore.cpp" line="33"/>
         <source>Could not save to Windows Credential Manager.</source>
         <translation>无法保存至 Windows 凭据管理器。</translation>
+    </message>
+    <message>
+        <location filename="platform/localcredentialstore.cpp" line="24"/>
+        <source>Save your WebDAV password once in Settings → Sync to enable automatic sync on this device.</source>
+        <translation>请在「设置 → 同步」保存一次 WebDAV 密码，即可在本机自动同步。</translation>
+    </message>
+    <message>
+        <location filename="platform/localcredentialstore.cpp" line="30"/>
+        <source>Could not read the locally saved WebDAV password.</source>
+        <translation>无法读取本机保存的 WebDAV 密码。</translation>
+    </message>
+    <message>
+        <location filename="platform/localcredentialstore.cpp" line="40"/>
+        <source>The locally saved WebDAV password is damaged. Save it again in Settings → Sync.</source>
+        <translation>本机保存的 WebDAV 密码已损坏，请在「设置 → 同步」重新保存。</translation>
+    </message>
+    <message>
+        <location filename="platform/localcredentialstore.cpp" line="51"/>
+        <source>The WebDAV password is too long to save.</source>
+        <translation>WebDAV 密码过长，无法保存。</translation>
+    </message>
+    <message>
+        <location filename="platform/localcredentialstore.cpp" line="61"/>
+        <source>Could not save the WebDAV password locally.</source>
+        <translation>无法将 WebDAV 密码保存到本机。</translation>
+    </message>
+    <message>
+        <location filename="platform/localcredentialstore.cpp" line="78"/>
+        <source>Could not create a private folder for the WebDAV password.</source>
+        <translation>无法为 WebDAV 密码创建专用文件夹。</translation>
     </message>
 </context>
 <context>
@@ -732,7 +761,7 @@ Then quit and reopen Pastes.</source>
     <name>WebDavSync</name>
     <message>
         <location filename="sync/webdavsync.cpp" line="17"/>
-        <location filename="sync/webdavsync.cpp" line="96"/>
+        <location filename="sync/webdavsync.cpp" line="103"/>
         <source>Sync is off.</source>
         <translation>同步已关闭。</translation>
     </message>
@@ -747,42 +776,42 @@ Then quit and reopen Pastes.</source>
         <translation>账号含有不支持的字符。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="91"/>
+        <location filename="sync/webdavsync.cpp" line="98"/>
         <source>Could not save sync settings.</source>
         <translation>无法保存同步设置。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="96"/>
+        <location filename="sync/webdavsync.cpp" line="103"/>
         <source>Ready to sync.</source>
         <translation>已就绪，可以同步。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="125"/>
+        <location filename="sync/webdavsync.cpp" line="134"/>
         <source>Connection verified: read, write and delete are available.</source>
         <translation>连接成功，读取、写入和删除均可用。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="129"/>
+        <location filename="sync/webdavsync.cpp" line="138"/>
         <source>Up to date.</source>
         <translation>已同步至最新。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="129"/>
+        <location filename="sync/webdavsync.cpp" line="138"/>
         <source>Sync finished with skipped items: %1</source>
         <translation>同步完成，部分条目已跳过：%1</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="169"/>
+        <location filename="sync/webdavsync.cpp" line="178"/>
         <source>Enable sync to share your clipboard history.</source>
         <translation>请先开启同步，再同步剪贴板历史。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="179"/>
+        <location filename="sync/webdavsync.cpp" line="188"/>
         <source>Testing connection…</source>
         <translation>正在测试连接…</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="179"/>
+        <location filename="sync/webdavsync.cpp" line="188"/>
         <source>Syncing items…</source>
         <translation>正在逐条同步…</translation>
     </message>

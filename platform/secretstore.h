@@ -4,5 +4,6 @@
 #include <memory>
 namespace Platform {
 std::unique_ptr<SecretStore> createSecretStore(void);
+std::unique_ptr<SecretStore> createLocalSecretStore(const QString &directory);
 }
 #endif

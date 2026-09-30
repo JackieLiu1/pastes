@@ -77,9 +77,16 @@ bool WebDavSync::save(const SyncSettings &input, const QString &password, QStrin
 	const bool unchanged = settings.url == m_settings.url && settings.username == m_settings.username;
 	if (unchanged && password.isEmpty() && settings.enabled == m_settings.enabled && m_configured) return true;
 	QString secret = password;
+	bool credentialsLoaded = !secret.isEmpty();
 	if (secret.isEmpty()) {
-		secret = unchanged && m_credentialsLoaded ? m_password : m_secrets.read(account(settings), error);
-		if (!error->isEmpty()) return false;
+		if (unchanged && m_credentialsLoaded) {
+			secret = m_password;
+			credentialsLoaded = true;
+		} else if (settings.enabled) {
+			secret = m_secrets.read(account(settings), error);
+			if (!error->isEmpty()) return false;
+			credentialsLoaded = true;
+		}
 	} else if (!m_secrets.write(account(settings), secret, error)) return false;
 	QSettings preferences;
 	preferences.setValue("sync/url", settings.url);
@@ -89,7 +96,7 @@ bool WebDavSync::save(const SyncSettings &input, const QString &password, QStrin
 	if (!sameAccount) preferences.remove("sync/lastSuccess");
 	preferences.sync();
 	if (preferences.status() != QSettings::NoError) { *error = tr("Could not save sync settings."); return false; }
-	m_settings = settings; m_password = secret; m_credentialsLoaded = true;
+	m_settings = settings; m_password = secret; m_credentialsLoaded = credentialsLoaded;
 	if (!sameAccount) m_lastSuccess = {};
 	configure();
 	if (m_settings.enabled && m_ready) { bootstrap(); m_timer.start(2000); }

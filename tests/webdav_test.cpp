@@ -1,12 +1,17 @@
 #include "tests/testsupport.h"
 #include "sync/webdavsync.h"
+#include "platform/secretstore.h"
 #include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTemporaryDir>
 #include <QThread>
 #include <QFile>
 #include <QSettings>
+#include <QDir>
+#include <QFileInfo>
+#include <QProcess>
 
 namespace {
 class DavServer final : public QTcpServer
@@ -41,6 +46,7 @@ public:
 					else if (redirect) status = 302;
 					else if (method == "MKCOL") status = 201;
 					else if (method == "PROPFIND") {
+						++listings;
 						status = 207; response = "<d:multistatus xmlns:d=\"DAV:\">";
 						for (auto it = files.begin(); it != files.end(); ++it)
 							response += "<d:response><d:href>"+it.key().toUtf8()+"</d:href></d:response>";
@@ -66,7 +72,7 @@ public:
 	}
 	SyncSettings settings() const { return {QUrl(QString("http://127.0.0.1:%1/").arg(serverPort())), "user", true}; }
 	QHash<QString,QByteArray> files;
-	int puts = 0, gets = 0;
+	int puts = 0, gets = 0, listings = 0;
 	bool failPut = false, corrupt = false, redirect = false, badListing = false;
 };
 class Client final : public QObject
@@ -284,10 +290,104 @@ void sourceIconRoundTrip()
 	require(history.entries().size() == 1 && history.entries().first()->id == entryId &&
 		history.entries().first()->icon == item->icon, "Icon upgrade replaced or duplicated the visible item");
 }
+
+void localCredentialFiles()
+{
+	QTemporaryDir temp;
+	const QString directory = temp.path()+"/credentials";
+	auto store = Platform::createLocalSecretStore(directory);
+	QString error;
+	require(store->read("first", &error).isEmpty() && !error.isEmpty(), "Missing password did not explain how to save it");
+	error.clear();
+	const QString secret = QString::fromUtf8("test-only 密码 \"with\\escapes\"\n");
+	require(store->write("first", secret, &error) && error.isEmpty(), "Could not save local credential fixture");
+	require(store->write("../../second", "other-test-secret", &error), "Could not save isolated account");
+	require(store->read("first", &error) == secret && store->read("../../second", &error) == "other-test-secret",
+		"Account switching mixed up saved passwords");
+	const auto files = QDir(directory).entryList(QDir::Files);
+	require(files.size() == 2 && QDir(temp.path()).entryList(QDir::Files).isEmpty(), "Account escaped the credential directory");
+#ifdef Q_OS_UNIX
+	const auto publicPermissions = QFileDevice::ReadGroup | QFileDevice::WriteGroup | QFileDevice::ExeGroup |
+		QFileDevice::ReadOther | QFileDevice::WriteOther | QFileDevice::ExeOther;
+	require(!(QFileInfo(directory).permissions() & publicPermissions), "Credential directory is accessible to other users");
+	for (const auto &file : files)
+		require(!(QFileInfo(directory+'/'+file).permissions() & publicPermissions), "Credential file is accessible to other users");
+#endif
+	/* A new process must recover the saved password without system prompts. */
+	QProcess restart;
+	restart.start(QCoreApplication::applicationFilePath(), {"--read-local-password", directory});
+	require(restart.waitForFinished(5000) && restart.exitStatus() == QProcess::NormalExit && restart.exitCode() == 0,
+		"Restart did not recover the locally saved password");
+	require(!store->write("first", QString(70*1024, 'x'), &error) && !error.isEmpty(), "Oversized credential unexpectedly saved");
+	error.clear();
+	require(store->read("first", &error) == secret && error.isEmpty(), "Failed save destroyed the previous password");
+	store.reset();
+	store = Platform::createLocalSecretStore(directory);
+	require(store->write("first", "replacement", &error) && store->read("first", &error) == "replacement",
+		"Password replacement did not persist");
+	const QString damagedAccount = "first";
+	const QString damaged = directory+'/'+QString::fromLatin1(
+		QCryptographicHash::hash(damagedAccount.toUtf8(), QCryptographicHash::Sha256).toHex())+".json";
+	QFile file(damaged); require(file.open(QIODevice::WriteOnly | QIODevice::Truncate), "Cannot prepare damaged credential");
+	file.write("{broken"); file.close();
+	require(store->read(damagedAccount, &error).isEmpty() && !error.isEmpty(), "Damaged local credential was accepted");
+	QFile obstacle(temp.path()+"/not-a-directory"); require(obstacle.open(QIODevice::WriteOnly), "Cannot prepare write failure"); obstacle.close();
+	auto blocked = Platform::createLocalSecretStore(obstacle.fileName()+"/credentials");
+	error.clear(); require(!blocked->write("first", secret, &error) && !error.isEmpty(), "Write failure was silently accepted");
+#ifdef Q_OS_UNIX
+	/* Never follow an unexpected link while tightening permissions or saving. */
+	require(QFile::remove(damaged) && QFile::link(obstacle.fileName(), damaged), "Cannot prepare linked credential");
+	error.clear(); require(store->read(damagedAccount, &error).isEmpty() && !error.isEmpty(), "Read followed a credential symlink");
+	error.clear(); require(!store->write(damagedAccount, secret, &error) && !error.isEmpty(), "Write followed a credential symlink");
+	require(QFileInfo(obstacle.fileName()).size() == 0, "Credential operation modified a symlink target");
+#endif
+}
+
+void localCredentialSyncRestart()
+{
+	DavServer server; QTemporaryDir temp;
+	QSettings::setDefaultFormat(QSettings::IniFormat);
+	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, temp.path()+"/preferences");
+	const QString directory = temp.path()+"/credentials";
+	{
+		auto secrets = Platform::createLocalSecretStore(directory);
+		MemoryRepository repository; HistoryService history(repository);
+		WebDavSync service(history, *secrets, temp.path()+"/cache");
+		history.load(); repository.finishLoad({textEntry("local credential sync fixture")});
+		QString error;
+		require(!service.save(server.settings(), {}, &error), "Sync enabled without a saved local password");
+		auto disabled = server.settings(); disabled.enabled = false;
+		error.clear(); require(service.save(disabled, {}, &error), "Disabling sync required a missing password");
+		require(service.save(server.settings(), "pass", &error), "Could not save a local sync password");
+		service.synchronize(); waitUntil([&] { return !service.busy(); });
+		require(service.lastSuccess().isValid() && server.files.size() == 1, "Local password was not used for WebDAV authentication");
+	}
+	{
+		auto secrets = Platform::createLocalSecretStore(directory);
+		MemoryRepository repository; HistoryService history(repository);
+		WebDavSync service(history, *secrets, temp.path()+"/cache");
+		history.load(); repository.finishLoad();
+		const int previousListings = server.listings;
+		/* Let the normal startup timer synchronize; no save or sync command. */
+		waitUntil([&] { return server.listings > previousListings && !service.busy(); }, 5000);
+		require(service.lastSuccess().isValid(), "Startup could not auto-sync with the local password");
+		QString error;
+		require(service.save(server.settings(), {}, &error), "Blank password did not preserve saved credentials");
+		QFile settings(QSettings().fileName()); require(settings.open(QIODevice::ReadOnly), "Missing saved settings");
+		require(!settings.readAll().contains("pass"), "Credential leaked into ordinary settings");
+		for (const auto &record : server.files)
+			require(!record.contains("pass"), "Credential leaked into a WebDAV record");
+	}
+}
 }
 int main(int argc, char **argv)
 {
 	QCoreApplication app(argc, argv);
+	if (app.arguments().size() == 3 && app.arguments()[1] == "--read-local-password") {
+		auto store = Platform::createLocalSecretStore(app.arguments()[2]);
+		QString error;
+		return store->read("first", &error) == QString::fromUtf8("test-only 密码 \"with\\escapes\"\n") && error.isEmpty() ? 0 : 1;
+	}
 	QCoreApplication::setOrganizationName("PastesSyncTests");
 	QCoreApplication::setApplicationName("Contracts");
 	qRegisterMetaType<SyncDelivery>();
@@ -299,5 +399,7 @@ int main(int argc, char **argv)
 	failures += runTest("service settings and disabled-session persistence", servicePersistence);
 	failures += runTest("image content and timestamp round trip", imageRoundTrip);
 	failures += runTest("source icon resolution and incremental upgrades", sourceIconRoundTrip);
+	failures += runTest("private local credential files and process restart", localCredentialFiles);
+	failures += runTest("saved local credentials resume automatic sync", localCredentialSyncRestart);
 	return failures ? 1 : 0;
 }
