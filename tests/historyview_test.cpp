@@ -791,6 +791,9 @@ void sourceIconPresentation(void)
 			"Source icon canvas or HiDPI scale differs between platforms");
 		const QRect visible = bounds(first);
 		require(visible == bounds(second), "Transparent padding changed the visible icon size or center");
+		if (qAbs(visible.width()-2*visible.height()) > 1 ||
+			qAbs(visible.center().x()-(pixels-1)/2) > 1 || qAbs(visible.center().y()-(pixels-1)/2) > 1)
+			qWarning() << "Icon bounds" << logicalSize << ratio << pixels << visible;
 		require(qAbs(visible.width()-2*visible.height()) <= 1 &&
 			qAbs(visible.center().x()-(pixels-1)/2) <= 1 &&
 			qAbs(visible.center().y()-(pixels-1)/2) <= 1,
@@ -804,9 +807,38 @@ void sourceIconPresentation(void)
 		"Source DPR metadata changed the rendered icon size");
 }
 
+void sourceIconDownsampling(void)
+{
+	/* Detail above the display's pixel frequency must average into gray,
+	 * rather than alias into black/white speckles when the icon shrinks. */
+	QImage detail(128, 128, QImage::Format_ARGB32_Premultiplied);
+	for (int y = 0; y < detail.height(); ++y) {
+		auto *row = reinterpret_cast<QRgb *>(detail.scanLine(y));
+		for (int x = 0; x < detail.width(); ++x)
+			row[x] = (x+y)%2 ? qRgb(255, 255, 255) : qRgb(0, 0, 0);
+	}
+	for (int size : {20, 24}) for (qreal ratio : {1.0, 1.25, 1.5, 2.0, 3.0}) {
+		const QImage rendered = SourceIconView::pixmap(detail, size, ratio).toImage().convertToFormat(QImage::Format_ARGB32);
+		const int pixels = qRound(size*ratio);
+		require(rendered.size() == QSize(pixels, pixels), "Fine-detail source icon failed to render at its display size");
+		const int margin = qCeil(rendered.width()*0.2);
+		for (int y = margin; y < rendered.height()-margin; ++y) {
+			const auto *row = reinterpret_cast<const QRgb *>(rendered.constScanLine(y));
+			for (int x = margin; x < rendered.width()-margin; ++x)
+				require(qRed(row[x]) >= 112 && qRed(row[x]) <= 144 && qAlpha(row[x]) == 255,
+					"Source icon minification aliased fine detail instead of averaging its pixels");
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
+	if (app.arguments().contains("--icons-only")) {
+		int failures = runTest("source icons retain size and bounds", sourceIconPresentation);
+		failures += runTest("source icon minification filters fine detail", sourceIconDownsampling);
+		return failures ? 1 : 0;
+	}
 	if (app.arguments().contains("--svg-only")) {
 		int failures = runTest("SVG files render lazily and preserve file copy identity", svgFilePreviews);
 		failures += runTest("SVG HSL colors retain wave artwork and transparency", svgColorPreviews);
@@ -826,5 +858,6 @@ int main(int argc, char **argv)
 	failures += runTest("mixed image copies retain pixels independently of file paths", mixedImageCopies);
 	failures += runTest("bounded card excerpts retain complete search, copy and preview", longTextCards);
 	failures += runTest("source icons keep uniform visible bounds on HiDPI screens", sourceIconPresentation);
+	failures += runTest("source icon minification filters fine detail", sourceIconDownsampling);
 	return failures ? 1 : 0;
 }

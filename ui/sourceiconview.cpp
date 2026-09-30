@@ -35,18 +35,19 @@ QPixmap SourceIconView::pixmap(const QImage &image, int logicalSize, qreal devic
 	 * original canvas. QImage::copy fills any out-of-bounds area with zero. */
 	const int margin = qCeil(qMax(bounds.width(), bounds.height())/18.0);
 	source = source.copy(bounds.adjusted(-margin, -margin, margin, margin));
-	bounds.moveTopLeft(QPoint(margin, margin));
 	const int pixels = qMax(1, qRound(logicalSize*devicePixelRatio));
 	const int artworkPixels = qMax(1, qRound(pixels*0.9));
 	const qreal scale = qreal(artworkPixels)/qMax(bounds.width(), bounds.height());
-	const QPointF center(bounds.x()+bounds.width()/2.0, bounds.y()+bounds.height()/2.0);
+	/* QPainter's smooth transform samples neighboring pixels but can alias
+	 * details when a large native icon shrinks to a small header. Use the
+	 * image scaler's area filter, then place the result on physical pixels. */
+	source = source.scaled(QSize(qMax(1, qRound(source.width()*scale)), qMax(1, qRound(source.height()*scale))),
+		Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 	QImage rendered(pixels, pixels, QImage::Format_ARGB32_Premultiplied);
 	rendered.fill(Qt::transparent);
 	QPainter painter(&rendered);
-	painter.setRenderHint(QPainter::SmoothPixmapTransform);
 	/* Draw the whole image so antialiasing and shadows can use the margin. */
-	painter.drawImage(QRectF(QPointF(pixels/2.0, pixels/2.0)-center*scale,
-		QSizeF(source.size())*scale), source);
+	painter.drawImage(QPoint((pixels-source.width())/2, (pixels-source.height())/2), source);
 	painter.end();
 	rendered.setDevicePixelRatio(devicePixelRatio);
 	return QPixmap::fromImage(rendered);
