@@ -32,11 +32,16 @@ add_executable(historyview_test historyview_test.cpp ../sources.qrc)
 target_link_libraries(historyview_test PRIVATE pastes_ui)
 add_test(NAME historyview_contract COMMAND historyview_test)
 
+add_executable(mainwindow_test mainwindow_test.cpp ../sources.qrc)
+target_link_libraries(mainwindow_test PRIVATE pastes_ui)
+add_test(NAME mainwindow_contract COMMAND mainwindow_test)
+
 # These test injected adapters and widget commands, not native window focus.
-set_tests_properties(clipboard_contract historyview_contract PROPERTIES
+set_tests_properties(clipboard_contract historyview_contract mainwindow_contract PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 set_tests_properties(history_contract database_contract clipboard_contract
-    historyview_contract PROPERTIES TIMEOUT 30)
+    historyview_contract mainwindow_contract PROPERTIES TIMEOUT 30)
+set_property(TEST mainwindow_contract APPEND PROPERTY ENVIRONMENT "QT_FORCE_STDERR_LOGGING=1")
 
 if(WIN32)
     # CTest child processes need the Qt/compiler runtime directory even when
@@ -44,7 +49,7 @@ if(WIN32)
     set(test_path "$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}")
     string(REPLACE ";" "\\;" test_path "${test_path}")
     set_property(TEST history_contract database_contract clipboard_contract diagnostics_contract
-        historyview_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
+        historyview_contract mainwindow_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
 endif()
 
 add_test(NAME architecture_dependencies

@@ -287,7 +287,6 @@ const PanelAppearance &panelAppearance(void)
 		value.spacing = 8;
 		value.shadow = false;
 		value.nativeBackdrop = true;
-		value.hideForDialog = true;
 		return value;
 	}();
 	return appearance;

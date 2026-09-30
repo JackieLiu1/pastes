@@ -118,7 +118,7 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::show_window(void)
 {
-	if (__app_dialog_open && Platform::panelAppearance().hideForDialog) return;
+	if (__app_dialog_open) return;
 	if (__hide_state) __paste_target->captureTarget(this);
 	__clipboard.flushPending();
 	const QRect geometry = Platform::panelGeometry();
@@ -214,6 +214,7 @@ void MainWindow::setupTrayIcon(void)
 		panel_menu->addSeparator();
 
 	QAction *about_me = new QAction(QObject::tr("About Pastes"), this);
+	about_me->setObjectName("AboutAction");
 	QObject::connect(about_me, &QAction::triggered, [this](void) {
 		AboutDialog dialog(this);
 		this->execAppDialog(dialog);
@@ -279,7 +280,6 @@ void MainWindow::execAppDialog(AppDialog &dialog)
 	/* Cover the activation events dispatched by the modal event loop,
 	 * including those emitted before Qt registers the active dialog. */
 	QScopedValueRollback<bool> dialogOpen(this->__app_dialog_open, true);
-	if (Platform::panelAppearance().hideForDialog)
-		this->hide_window();
+	this->hide_window();
 	dialog.exec();
 }

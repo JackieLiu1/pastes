@@ -18,7 +18,6 @@ struct PanelAppearance
 	int spacing = 10;
 	bool shadow = true;
 	bool nativeBackdrop = false;
-	bool hideForDialog = false;
 };
 
 struct DialogAppearance
