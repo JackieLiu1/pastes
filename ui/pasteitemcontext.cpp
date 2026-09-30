@@ -43,6 +43,25 @@ void TextFrame::resizeEvent(QResizeEvent *event)
 
 namespace {
 
+constexpr int textPreviewLimit = 256;
+constexpr int textPreviewLines = 12;
+constexpr int richPreviewLimit = 4096;
+
+QString textPreview(const QString &text)
+{
+	int length = int(qMin<qsizetype>(text.size(), textPreviewLimit));
+	int lines = 1;
+	for (int i = 0; i < length; ++i) {
+		if (text.at(i) == '\n' && lines++ == textPreviewLines) {
+			length = i;
+			break;
+		}
+	}
+	if (length == text.size()) return text;
+	if (text.at(length-1).isHighSurrogate()) --length;
+	return text.left(length) + QChar(0x2026);
+}
+
 QColor blend(const QColor &background, const QColor &foreground, qreal amount)
 {
 	return QColor(qRound(background.red()*(1-amount) + foreground.red()*amount),
@@ -296,7 +315,10 @@ void StackedWidget::setText(QString &s)
 	}
 	TextFrame *text_frame = new TextFrame(this);
 
-	text_frame->setText(s);
+	/* Cards only display a short excerpt. Keep the full value in the entry
+	 * and search text, without making QLabel lay out a multi-megabyte log. */
+	text_frame->setTextFormat(Qt::PlainText);
+	text_frame->setText(textPreview(s));
 	text_frame->setIndent(4);
 	text_frame->setMaskFrameText(QString("%1 ").arg(s.size()) + QObject::tr("characters"));
 
@@ -311,8 +333,12 @@ void StackedWidget::setRichText(QString &richText, QString &plainText)
 	}
 	TextFrame *richtext_frame = new TextFrame(this);
 
-	richtext_frame->setText(richText);
-	richtext_frame->setTextFormat(Qt::RichText);
+	/* Do not slice HTML through tags. Oversized markup uses the plain-text
+	 * excerpt; ordinary rich snippets retain their original formatting. */
+	const QString preview = textPreview(plainText);
+	const bool excerpt = richText.size() > richPreviewLimit || preview != plainText;
+	richtext_frame->setTextFormat(excerpt ? Qt::PlainText : Qt::RichText);
+	richtext_frame->setText(excerpt ? preview : richText);
 	richtext_frame->setMaskFrameText(QString("%1 ").arg(plainText.size()) + QObject::tr("characters"));
 
 	this->addWidget(richtext_frame);

@@ -494,9 +494,13 @@ void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 	}
 	if (change == HistoryChange::Captured) m_list->setCurrentRow(0);
 	card->setSelected(item->isSelected());
-	resetItemTabOrder();
-	updateSummary();
-	emit countChanged();
+	/* The loaded signal finalizes the batch once. Rebuilding navigation and
+	 * numbering for every persisted entry makes startup quadratic. */
+	if (change != HistoryChange::Loaded) {
+		resetItemTabOrder();
+		updateSummary();
+		emit countChanged();
+	}
 }
 
 void HistoryView::removeEntry(EntryId id, HistoryChange change)

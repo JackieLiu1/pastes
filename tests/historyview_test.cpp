@@ -70,6 +70,69 @@ void viewCommands(void)
 		"Undisplayable persisted entry was retained");
 }
 
+void longTextCards(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	HistoryView view(history, &window);
+	const QString fullText = QString(1500000, 'x') + " searchable tail";
+	auto plain = textEntry(fullText);
+	auto rich = textEntry(fullText);
+	rich->mimeData->setHtml("<p>" + fullText + "</p>");
+	auto markup = textEntry("<b>literal clipboard text</b>");
+	auto formatted = textEntry("formatted");
+	formatted->mimeData->setHtml("<b>formatted</b>");
+	auto medium = textEntry(QString(2000, 'm'));
+	auto lines = textEntry(QString("short line\n").repeated(50) + "last line");
+	auto unicode = textEntry(QString(255, 'u') + QString::fromUtf8("😀") + QString(100, 'v'));
+	int countChanges = 0;
+	QObject::connect(&view, &HistoryView::countChanged, &view, [&] { ++countChanges; });
+	history.load();
+	repository.finishLoad({plain, rich, markup, formatted, medium, lines, unicode});
+	auto *list = view.findChild<QListWidget *>();
+	require(list->count() == 7 && countChanges == 1, "History load did not finalize its card batch once");
+	for (int row : {0, 1}) {
+		auto *card = qobject_cast<PasteItem *>(list->itemWidget(list->item(row)));
+		auto *label = card->findChild<QLabel *>("ContextTextFrame");
+		require(label && label->text().size() <= 257 && label->text().endsWith(QChar(0x2026)),
+			"Long card text was not reduced to an excerpt");
+		require(label->textFormat() == Qt::PlainText && card->text() == fullText,
+			"Card excerpt replaced the searchable content");
+		require(card->entry()->mimeData->text() == fullText, "Card excerpt truncated clipboard content");
+		require(label->findChild<QLabel *>()->text().startsWith(QString::number(fullText.size())),
+			"Card footer reported the excerpt length instead of the full length");
+	}
+	auto *literal = list->itemWidget(list->item(2))->findChild<QLabel *>("ContextTextFrame");
+	auto *styled = list->itemWidget(list->item(3))->findChild<QLabel *>("ContextTextFrame");
+	require(literal->textFormat() == Qt::PlainText && literal->text() == markup->mimeData->text(),
+		"Plain clipboard markup was interpreted as HTML");
+	require(styled->textFormat() == Qt::RichText && styled->text() == formatted->mimeData->html(),
+		"Ordinary rich-text formatting was lost");
+	auto *mediumLabel = list->itemWidget(list->item(4))->findChild<QLabel *>("ContextTextFrame");
+	require(mediumLabel->text().size() <= 257 && mediumLabel->text().endsWith(QChar(0x2026)),
+		"A medium-size record still filled the card with thousands of characters");
+	auto *lineLabel = list->itemWidget(list->item(5))->findChild<QLabel *>("ContextTextFrame");
+	require(lineLabel->text().count('\n') < 12 && lineLabel->text().endsWith(QChar(0x2026)),
+		"Short lines exceeded the card excerpt's line budget");
+	auto *unicodeLabel = list->itemWidget(list->item(6))->findChild<QLabel *>("ContextTextFrame");
+	require(QString::fromUtf8(unicodeLabel->text().toUtf8()) == unicodeLabel->text(),
+		"Card excerpt split a Unicode surrogate pair");
+	view.findChild<LineEdit *>()->setText("searchable tail");
+	require(!list->item(0)->isHidden() && !list->item(1)->isHidden() && list->item(2)->isHidden(),
+		"Search could not find text beyond the card excerpt");
+	HistoryEntry copied;
+	QObject::connect(&view, &HistoryView::copyRequested, &view,
+		[&](HistoryEntry entry, bool, bool) { copied = entry; });
+	QKeyEvent copy(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+	QCoreApplication::sendEvent(list->itemWidget(list->item(1)), &copy);
+	require(copied == rich && copied->mimeData->html() == rich->mimeData->html(),
+		"Copy command lost the original rich content");
+	PreviewDialog preview(*plain, &window);
+	require(preview.findChild<QPlainTextEdit *>("PreviewText")->toPlainText() == fullText,
+		"Explicit preview was truncated with the card excerpt");
+}
+
 void syncedSelection()
 {
 	MemoryRepository repository;
@@ -529,6 +592,7 @@ int main(int argc, char **argv)
 	failures += runTest("search composition keeps candidate keys", composingSearchCommands);
 	failures += runTest("search filtering preserves uninterrupted input focus", searchKeepsInputFocus);
 	failures += runTest("image files preview on demand and retain missing paths", imageFilePreviews);
+	failures += runTest("bounded card excerpts retain complete search, copy and preview", longTextCards);
 	failures += runTest("source icons keep uniform visible bounds on HiDPI screens", sourceIconPresentation);
 	return failures ? 1 : 0;
 }
