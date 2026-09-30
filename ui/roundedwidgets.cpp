@@ -229,13 +229,13 @@ void DialogCloseButton::paintEvent(QPaintEvent *)
 	painter.setRenderHint(QPainter::Antialiasing);
 	const QRectF bounds = QRectF(rect()).adjusted(0.75, 0.75, -0.75, -0.75);
 	QColor fill(Qt::transparent);
-	if (underMouse()) fill = QColor(dark ? "#333333" : "#E3EAE0");
-	if (isDown()) fill = QColor(dark ? "#3D3D3D" : "#D7E1D3");
+	if (underMouse()) fill = QColor("#E81123");
+	if (isDown()) fill = QColor("#C50F1F");
 	painter.setBrush(fill);
 	painter.setPen(hasFocus() && m_keyboardFocus ?
 		QPen(QColor(dark ? "#76C5AA" : "#359782"), 1.5) : QPen(Qt::NoPen));
 	painter.drawRoundedRect(bounds, 8, 8);
-	const QColor ink(dark ? (underMouse() ? "#F1F1F1" : "#B5B5B5") : "#43514B");
+	const QColor ink(underMouse() || isDown() ? "#FFFFFF" : (dark ? "#B5B5B5" : "#43514B"));
 	painter.setPen(QPen(ink, 1.5, Qt::SolidLine, Qt::RoundCap));
 	const QPointF center(width()/2.0, height()/2.0);
 	painter.drawLine(center+QPointF(-4.5, -4.5), center+QPointF(4.5, 4.5));
