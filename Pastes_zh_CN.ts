@@ -4,27 +4,27 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="ui/appdialog.cpp" line="133"/>
+        <location filename="ui/appdialog.cpp" line="127"/>
         <source>Allow direct paste</source>
         <translation>允许直接粘贴</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="135"/>
+        <location filename="ui/appdialog.cpp" line="129"/>
         <source>To paste into the previous app, allow Pastes to control other apps in System Settings → Privacy &amp; Security.</source>
         <translation>要直接粘贴到原来的应用，请在“系统设置 → 隐私与安全”中允许 Pastes 控制其他应用。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="148"/>
+        <location filename="ui/appdialog.cpp" line="142"/>
         <source>The selected item is on the clipboard. You can press ⌘V to paste it.</source>
         <translation>选中的条目已放入剪贴板，你也可以按 ⌘V 手动粘贴。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="155"/>
+        <location filename="ui/appdialog.cpp" line="149"/>
         <source>Not now</source>
         <translation>暂不</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="161"/>
+        <location filename="ui/appdialog.cpp" line="155"/>
         <source>Open System Settings</source>
         <translation>打开系统设置</translation>
     </message>
@@ -34,7 +34,7 @@
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="465"/>
+        <location filename="ui/historyview.cpp" line="470"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
@@ -50,19 +50,19 @@
         <translation>托盘图标</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="120"/>
+        <location filename="ui/pasteitem.cpp" line="121"/>
         <source>Image</source>
         <translation>图片</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="141"/>
-        <location filename="ui/pasteitem.cpp" line="162"/>
+        <location filename="ui/pasteitem.cpp" line="142"/>
+        <location filename="ui/pasteitem.cpp" line="163"/>
         <source>Link</source>
         <translation>超链接</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="144"/>
-        <location filename="ui/pasteitem.cpp" line="165"/>
+        <location filename="ui/pasteitem.cpp" line="145"/>
+        <location filename="ui/pasteitem.cpp" line="166"/>
         <source>Color</source>
         <translation>颜色</translation>
     </message>
@@ -75,28 +75,28 @@
         <translation type="vanished">富文本</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="195"/>
+        <location filename="ui/pasteitem.cpp" line="196"/>
         <source>Files</source>
         <translation>个文件</translation>
     </message>
     <message>
-        <location filename="ui/pasteitemcontext.cpp" line="285"/>
+        <location filename="ui/pasteitemcontext.cpp" line="327"/>
         <source>px</source>
         <translation>像素</translation>
     </message>
     <message>
-        <location filename="ui/pasteitemcontext.cpp" line="301"/>
-        <location filename="ui/pasteitemcontext.cpp" line="316"/>
+        <location filename="ui/pasteitemcontext.cpp" line="346"/>
+        <location filename="ui/pasteitemcontext.cpp" line="365"/>
         <source>characters</source>
         <translation>字符</translation>
     </message>
     <message>
-        <location filename="ui/pasteitemcontext.cpp" line="331"/>
+        <location filename="ui/pasteitemcontext.cpp" line="380"/>
         <source>MultiPath</source>
         <translation>多个文件</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="170"/>
+        <location filename="ui/appdialog.cpp" line="164"/>
         <location filename="ui/mainwindow.cpp" line="216"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
@@ -159,53 +159,53 @@
         <translation>条记录</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="309"/>
+        <location filename="ui/historyview.cpp" line="312"/>
         <source>Clipboard</source>
         <translation>剪贴板历史</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="149"/>
-        <location filename="ui/pasteitem.cpp" line="168"/>
+        <location filename="ui/pasteitem.cpp" line="150"/>
+        <location filename="ui/pasteitem.cpp" line="169"/>
         <source>Text</source>
         <translation>文本</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="149"/>
+        <location filename="ui/pasteitem.cpp" line="150"/>
         <source>Code</source>
         <translation>代码</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="200"/>
+        <location filename="ui/previewdialog.cpp" line="195"/>
         <source>Paste</source>
         <translation>粘贴</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="277"/>
+        <location filename="ui/pasteitem.cpp" line="278"/>
         <source>Copy as Plain Text</source>
         <translation>复制为纯文本</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="276"/>
-        <location filename="ui/previewdialog.cpp" line="182"/>
-        <location filename="ui/previewdialog.cpp" line="189"/>
+        <location filename="ui/pasteitem.cpp" line="277"/>
+        <location filename="ui/previewdialog.cpp" line="177"/>
+        <location filename="ui/previewdialog.cpp" line="184"/>
         <source>Copy to Clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="183"/>
+        <location filename="ui/pasteitem.cpp" line="184"/>
         <source>File path</source>
         <translation>文件路径</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="281"/>
-        <location filename="ui/previewdialog.cpp" line="74"/>
-        <location filename="ui/previewdialog.cpp" line="101"/>
-        <location filename="ui/previewdialog.cpp" line="163"/>
+        <location filename="ui/pasteitem.cpp" line="282"/>
+        <location filename="ui/previewdialog.cpp" line="75"/>
+        <location filename="ui/previewdialog.cpp" line="102"/>
+        <location filename="ui/previewdialog.cpp" line="158"/>
         <source>Preview</source>
         <translation>预览</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="282"/>
+        <location filename="ui/pasteitem.cpp" line="283"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
@@ -250,49 +250,47 @@
         <translation type="vanished">← → 浏览   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="ui/pasteitem.cpp" line="80"/>
+        <location filename="ui/pasteitem.cpp" line="81"/>
         <source>Ctrl+%1 to paste</source>
         <translation>按 Ctrl+%1 粘贴</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="36"/>
+        <location filename="ui/previewdialog.cpp" line="37"/>
         <source>Image preview</source>
         <translation>图片预览</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="65"/>
-        <location filename="ui/previewdialog.cpp" line="115"/>
+        <location filename="ui/roundedwidgets.cpp" line="219"/>
         <source>Close (Esc)</source>
         <translation>关闭（Esc）</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="66"/>
-        <location filename="ui/previewdialog.cpp" line="116"/>
+        <location filename="ui/roundedwidgets.cpp" line="220"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="170"/>
+        <location filename="ui/previewdialog.cpp" line="165"/>
         <source>%1 files</source>
         <translation>%1 个文件</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="172"/>
+        <location filename="ui/previewdialog.cpp" line="167"/>
         <source>%1 characters</source>
         <translation>%1 个字符</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="183"/>
+        <location filename="ui/previewdialog.cpp" line="178"/>
         <source>Copy without closing the preview</source>
         <translation>仅复制，保留预览窗口</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="194"/>
+        <location filename="ui/previewdialog.cpp" line="189"/>
         <source>Copied</source>
         <translation>已复制</translation>
     </message>
     <message>
-        <location filename="ui/previewdialog.cpp" line="201"/>
+        <location filename="ui/previewdialog.cpp" line="196"/>
         <source>Paste into the previous application (Enter)</source>
         <translation>粘贴到原来的应用（Enter）</translation>
     </message>
@@ -305,17 +303,17 @@
         <translation type="vanished">预览（Space）</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="334"/>
+        <location filename="ui/historyview.cpp" line="339"/>
         <source>Removed from history</source>
         <translation>已从历史记录移除</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="338"/>
+        <location filename="ui/historyview.cpp" line="343"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="339"/>
+        <location filename="ui/historyview.cpp" line="344"/>
         <source>Undo deletion (Ctrl+Z)</source>
         <translation>撤销删除（Ctrl+Z）</translation>
     </message>
@@ -330,42 +328,42 @@
         <translation>松开即可删除</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="181"/>
+        <location filename="ui/appdialog.cpp" line="175"/>
         <source>Version %1</source>
         <translation>版本 %1</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="184"/>
+        <location filename="ui/appdialog.cpp" line="178"/>
         <source>Keep useful copies close at hand.</source>
         <translation>把常用的复制内容留在手边。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="205"/>
+        <location filename="ui/appdialog.cpp" line="199"/>
         <source>Created by</source>
         <translation>开发者</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="206"/>
+        <location filename="ui/appdialog.cpp" line="200"/>
         <source>License</source>
         <translation>许可证</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="207"/>
+        <location filename="ui/appdialog.cpp" line="201"/>
         <source>History</source>
         <translation>历史记录</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="207"/>
+        <location filename="ui/appdialog.cpp" line="201"/>
         <source>Stored locally · Last %1 days</source>
         <translation>本地保存 · 最近 %1 天</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="211"/>
+        <location filename="ui/appdialog.cpp" line="205"/>
         <source>Project page</source>
         <translation>项目主页</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="219"/>
+        <location filename="ui/appdialog.cpp" line="213"/>
         <location filename="ui/settingsdialog.cpp" line="217"/>
         <source>Done</source>
         <translation>完成</translation>
@@ -514,7 +512,7 @@
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="317"/>
+        <location filename="ui/historyview.cpp" line="322"/>
         <location filename="ui/mainwindow.cpp" line="185"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
@@ -580,49 +578,49 @@ Then quit and reopen Pastes.</source>
 然后退出并重新打开 Pastes。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="77"/>
+        <location filename="sync/synccontent.cpp" line="80"/>
         <source>An image is too large to sync (maximum 20 megapixels).</source>
         <translation>图片超过同步上限（最高 2000 万像素），已跳过。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="82"/>
-        <location filename="sync/synccontent.cpp" line="87"/>
+        <location filename="sync/synccontent.cpp" line="85"/>
+        <location filename="sync/synccontent.cpp" line="90"/>
         <source>An item is too large to sync (maximum 20 MB).</source>
         <translation>条目超过同步上限（最大 20 MB），已跳过。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="104"/>
+        <location filename="sync/synccontent.cpp" line="107"/>
         <source>Invalid text in sync data.</source>
         <translation>同步数据中的文字无效。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="109"/>
-        <location filename="sync/synccontent.cpp" line="114"/>
+        <location filename="sync/synccontent.cpp" line="112"/>
+        <location filename="sync/synccontent.cpp" line="117"/>
         <source>Invalid links in sync data.</source>
         <translation>同步数据中的链接无效。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="122"/>
+        <location filename="sync/synccontent.cpp" line="125"/>
         <source>Invalid or oversized image in sync data.</source>
         <translation>同步数据中的图片无效或过大。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="124"/>
+        <location filename="sync/synccontent.cpp" line="127"/>
         <source>Unsupported sync content.</source>
         <translation>不支持此同步内容。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="152"/>
+        <location filename="sync/synccontent.cpp" line="155"/>
         <source>Sync data exceeds the size limit.</source>
         <translation>同步数据超过大小限制。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="163"/>
+        <location filename="sync/synccontent.cpp" line="166"/>
         <source>Invalid sync record or incompatible version.</source>
         <translation>同步记录无效或版本不兼容。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="170"/>
+        <location filename="sync/synccontent.cpp" line="173"/>
         <source>The sync record failed its content check.</source>
         <translation>同步记录未通过内容校验。</translation>
     </message>
@@ -704,27 +702,27 @@ Then quit and reopen Pastes.</source>
         <translation>通过自己的 WebDAV 服务同步文字、链接和图片。文件与文件夹仅保留在本机。</translation>
     </message>
     <message>
-        <location filename="ui/syncsettingspage.cpp" line="32"/>
+        <location filename="ui/syncsettingspage.cpp" line="33"/>
         <source>Leave blank to keep the saved password</source>
         <translation>留空则保留已保存的密码</translation>
     </message>
     <message>
-        <location filename="ui/syncsettingspage.cpp" line="34"/>
+        <location filename="ui/syncsettingspage.cpp" line="35"/>
         <source>Server folder</source>
         <translation>服务器目录</translation>
     </message>
     <message>
-        <location filename="ui/syncsettingspage.cpp" line="35"/>
+        <location filename="ui/syncsettingspage.cpp" line="36"/>
         <source>Account</source>
         <translation>账号</translation>
     </message>
     <message>
-        <location filename="ui/syncsettingspage.cpp" line="36"/>
+        <location filename="ui/syncsettingspage.cpp" line="37"/>
         <source>Password / app password</source>
         <translation>密码 / 应用密码</translation>
     </message>
     <message>
-        <location filename="ui/syncsettingspage.cpp" line="37"/>
+        <location filename="ui/syncsettingspage.cpp" line="38"/>
         <source>Enable automatic sync</source>
         <translation>开启自动同步</translation>
     </message>
@@ -747,12 +745,12 @@ Then quit and reopen Pastes.</source>
         <translation>立即同步</translation>
     </message>
     <message>
-        <location filename="ui/syncsettingspage.cpp" line="52"/>
+        <location filename="ui/syncsettingspage.cpp" line="53"/>
         <source>Each item keeps its copy time. History is retained for 30 days. Items over 20 MB or images over 20 megapixels are skipped. The server can read the synced content; use a private account.</source>
         <translation>逐条同步并保留复制时间，历史保留 30 天。跳过超过 20 MB 或 2000 万像素的内容。服务端可读取同步内容，请使用私人账号。</translation>
     </message>
     <message>
-        <location filename="ui/syncsettingspage.cpp" line="73"/>
+        <location filename="ui/syncsettingspage.cpp" line="74"/>
         <source>Last sync: %1</source>
         <translation>上次同步：%1</translation>
     </message>

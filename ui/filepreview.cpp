@@ -29,25 +29,37 @@ QUrl FilePreview::localUrl(const QString &text)
 	return QUrl::fromLocalFile(file.absoluteFilePath());
 }
 
+bool FilePreview::isSvg(const QUrl &url)
+{
+	return url.isLocalFile() &&
+		QMimeDatabase().mimeTypeForFile(url.fileName(), QMimeDatabase::MatchExtension).inherits("image/svg+xml");
+}
+
 QImage FilePreview::loadImage(const QUrl &url, int maxPixels)
 {
 	if (!url.isLocalFile() || maxPixels <= 0)
 		return QImage();
-	/* Only explicit previews read file contents; missing files, folders
-	 * and special files retain the path representation. */
+	/* Missing files, folders and special files retain their file or path
+	 * representation rather than creating a picture preview. */
 	const QFileInfo file(url.toLocalFile());
 	if (!file.isFile())
 		return QImage();
 	/* Image plugins may also decode documents such as PDF. Only actual
 	 * image content belongs in the picture preview. */
-	if (!QMimeDatabase().mimeTypeForFile(file, QMimeDatabase::MatchContent).name().startsWith("image/"))
+	const QMimeType type = QMimeDatabase().mimeTypeForFile(file, QMimeDatabase::MatchContent);
+	if (!type.name().startsWith("image/") &&
+		!(isSvg(url) && (type.inherits("application/xml") || type.inherits("application/gzip"))))
 		return QImage();
 	QImageReader reader(url.toLocalFile());
 	reader.setAutoTransform(true);
 	if (!reader.canRead())
 		return QImage();
 	QSize size = reader.size();
-	if (size.isValid() && (size.width() > maxPixels || size.height() > maxPixels)) {
+	const QByteArray format = reader.format();
+	/* Vector artwork is rendered at the requested resolution, including
+	 * small intrinsic canvases. Scaling its original raster would blur it. */
+	const bool vector = format == "svg" || format == "svgz";
+	if (size.isValid() && (vector || size.width() > maxPixels || size.height() > maxPixels)) {
 		size.scale(maxPixels, maxPixels, Qt::KeepAspectRatio);
 		reader.setScaledSize(size);
 	}

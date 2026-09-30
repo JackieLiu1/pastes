@@ -1,4 +1,6 @@
 #include "platform/fileicon.h"
+#include "ui/filepreview.h"
+#include "core/clipboarddata.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,6 +15,7 @@
 #include <QList>
 #include <QGraphicsDropShadowEffect>
 #include <QDebug>
+#include <QtMath>
 
 #include "ui/pasteitemcontext.h"
 
@@ -184,14 +187,18 @@ bool FileFrame::setUrls(QList<QUrl> &urls)
 			continue;
 		ret = true;
 
-		/* File cards show icons only. Read image contents when explicitly
-		 * previewed, and keep missing paths available after a restart. */
+		/* Load file icons without decoding image contents during history
+		 * binding. SVG artwork is resolved lazily by the first visible paint. */
 		const QFileInfo fileinfo(url.toLocalFile());
 		QIcon icon = fileinfo.exists() ? Platform::fileIcon(fileinfo.absoluteFilePath()) : QIcon();
 		if (icon.isNull())
 			icon = QFileIconProvider().icon(QFileIconProvider::File);
 		const QPixmap pixmap = icon.pixmap(256, 256);
 		QLabel *label = new QLabel(this);
+		if (FilePreview::isSvg(url)) {
+			label->setObjectName("SvgFilePreview");
+			m_svg_sources.append({int(m_labels.size()), url, pixmap});
+		}
 		label->setAttribute(Qt::WA_TranslucentBackground);
 		/* The shadow effect only has to be attached once, not on every resize */
 		QGraphicsDropShadowEffect *shadow = new QGraphicsDropShadowEffect(label);
@@ -206,6 +213,21 @@ bool FileFrame::setUrls(QList<QUrl> &urls)
 	m_last_label_size = -1;
 	this->update();
 	return ret;
+}
+
+void FileFrame::updateSvgPreviews(void)
+{
+	if (m_svg_sources.isEmpty() || m_labels.isEmpty()) return;
+	const int size = m_labels.first().first->width();
+	if (size <= 0) return;
+	const int pixels = qBound(1, qCeil(size*devicePixelRatioF()), ClipboardData::previewPixels);
+	if (pixels == m_svg_preview_pixels) return;
+	m_svg_preview_pixels = pixels;
+	for (const auto &source : m_svg_sources) {
+		const QImage image = FilePreview::loadImage(source.url, pixels);
+		m_labels[source.label].second = image.isNull() ? source.icon : QPixmap::fromImage(image);
+		m_last_label_size = -1;
+	}
 }
 
 void FileFrame::updatePreviewPixmaps(void)
@@ -229,6 +251,7 @@ void FileFrame::updatePreviewPixmaps(void)
 
 void FileFrame::paintEvent(QPaintEvent *event)
 {
+	this->updateSvgPreviews();
 	this->updatePreviewPixmaps();
 	TextFrame::paintEvent(event);
 }

@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QPixmap>
 #include <QWidget>
+#include <QUrl>
 #include <QStackedWidget>
 #include <QPainter>
 #include <QStyleOption>
@@ -84,8 +85,12 @@ protected:
 	void paintEvent(QPaintEvent *event) override;
 
 private:
+	void updateSvgPreviews(void);
 	void updatePreviewPixmaps(void);
 	QList<QPair<QLabel *, QPixmap>> m_labels;
+	struct SvgSource { int label; QUrl url; QPixmap icon; };
+	QList<SvgSource> m_svg_sources;
+	int m_svg_preview_pixels = 0;
 	QString				m_filename;
 	/* Cache by logical size and display scale to skip redundant resizes. */
 	int				m_last_label_size = -1;

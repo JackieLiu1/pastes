@@ -7,6 +7,7 @@
 #include "ui/elasticscroll.h"
 #include "ui/previewdialog.h"
 #include "ui/sourceiconview.h"
+#include "ui/filepreview.h"
 #include <QApplication>
 #include <QFile>
 #include <QInputMethodEvent>
@@ -539,6 +540,82 @@ void imageFilePreviews(void)
 		reloadRepository.removals.isEmpty(), "Missing source file deleted its history record");
 }
 
+void svgFilePreviews(void)
+{
+	QTemporaryDir directory;
+	const QString path = directory.filePath(QString::fromUtf8("矢量 preview.svg"));
+	const QUrl url = QUrl::fromLocalFile(path);
+	const QByteArray svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"8\" viewBox=\"0 0 16 8\">"
+		"<rect width=\"16\" height=\"8\" fill=\"COLOR\"/>"
+		"<circle cx=\"4\" cy=\"4\" r=\"2\" fill=\"#287E68\"/>"
+		"<path d=\"M10 2h4M10 4h4M10 6h2\" stroke=\"white\" stroke-width=\"0.6\"/></svg>";
+	auto writeSvg = [&](const char *color) {
+		QFile file(path);
+		require(file.open(QIODevice::WriteOnly), "Cannot write SVG fixture");
+		const QByteArray contents = QByteArray(svg).replace("COLOR", color);
+		require(file.write(contents) == contents.size(), "Incomplete SVG fixture");
+	};
+	writeSvg("#111111");
+	const QImage large = FilePreview::loadImage(url, 320);
+	require(!large.isNull(), "SVG image plugin cannot render the local file");
+	require(large.size() == QSize(320, 160), "Small SVG was not rasterized at the requested resolution");
+	auto entry = textEntry(path);
+	entry->mimeData->setUrls({url});
+	QImage fileIcon(8, 8, QImage::Format_RGB32); fileIcon.fill(Qt::green);
+	entry->mimeData->setImageData(fileIcon);
+	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
+	const QByteArray fingerprint = entry->md5;
+	PasteItem card;
+	card.setAttribute(Qt::WA_DontShowOnScreen);
+	card.resize(280, 260);
+	require(card.setEntry(entry, true), "SVG file card did not load");
+	/* The file changes after card construction: the first paint must read
+	 * the visible source, not eagerly decode it during history loading. */
+	writeSvg("#E06F20");
+	card.show();
+	card.grab();
+	auto *thumbnail = card.findChild<QLabel *>("SvgFilePreview");
+	require(thumbnail && !thumbnail->pixmap().isNull(), "SVG card retained a generic file icon");
+	auto centerColor = [&] {
+		const QImage image = thumbnail->pixmap().toImage();
+		return image.pixelColor(image.width()/2, image.height()/2);
+	};
+	require(centerColor() == QColor("#E06F20"), "SVG card did not draw the visible source artwork");
+	writeSvg("#135BDA");
+	card.grab();
+	require(centerColor() == QColor("#E06F20"), "Repeated SVG paints reread the source instead of the cache");
+	const int oldSize = thumbnail->width();
+	card.resize(280, 360);
+	card.grab();
+	require(thumbnail->width() != oldSize && centerColor() == QColor("#135BDA"),
+		"SVG thumbnail did not rerender for a changed display size");
+	HistoryEntry copied;
+	QObject::connect(&card, &PasteItem::copyRequested, &card,
+		[&](HistoryEntry value, bool, bool) { copied = value; });
+	card.copyData();
+	require(copied == entry && entry->mimeData->urls() == QList<QUrl>{url} &&
+		ClipboardContent::fingerprint(*entry->mimeData) == fingerprint &&
+		qvariant_cast<QImage>(entry->mimeData->imageData()) == fileIcon,
+		"SVG display replaced the original file payload or persisted identity");
+	PreviewDialog preview(*entry);
+	require(!preview.findChild<QPlainTextEdit *>("PreviewText"), "SVG preview fell back to its file path");
+	const QString renderDirectory = qApp->arguments().value(qApp->arguments().indexOf("--render-dir")+1);
+	if (qApp->arguments().contains("--render-dir")) {
+		require(card.grab().save(renderDirectory+"/svg-file-card.png"), "Cannot save SVG card preview");
+		preview.show();
+		require(preview.grab().save(renderDirectory+"/svg-file-preview.png"), "Cannot save SVG dialog preview");
+		preview.hide();
+	}
+	require(QFile::remove(path), "Cannot remove SVG fixture");
+	PreviewDialog missing(*entry);
+	auto *text = missing.findChild<QPlainTextEdit *>("PreviewText");
+	require(text && text->toPlainText() == path, "Missing SVG file lost its path fallback");
+	QFile invalid(path);
+	require(invalid.open(QIODevice::WriteOnly), "Cannot create invalid SVG fixture");
+	invalid.write("<svg invalid"); invalid.close();
+	require(FilePreview::loadImage(url, 320).isNull(), "Invalid SVG created a misleading image preview");
+}
+
 void mixedImageCopies(void)
 {
 	QTemporaryDir directory;
@@ -644,6 +721,8 @@ void sourceIconPresentation(void)
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
+	if (app.arguments().contains("--svg-only"))
+		return runTest("SVG files render lazily and preserve file copy identity", svgFilePreviews);
 	int failures = runTest("history view commands, filtering and ownership", viewCommands);
 	failures += runTest("pointer direction, cancellation and immediate undo", pointerCommands);
 	failures += runTest("synced items preserve selection and search", syncedSelection);
@@ -653,6 +732,7 @@ int main(int argc, char **argv)
 	failures += runTest("search composition keeps candidate keys", composingSearchCommands);
 	failures += runTest("search filtering preserves uninterrupted input focus", searchKeepsInputFocus);
 	failures += runTest("image files preview on demand and retain missing paths", imageFilePreviews);
+	failures += runTest("SVG files render lazily and preserve file copy identity", svgFilePreviews);
 	failures += runTest("mixed image copies retain pixels independently of file paths", mixedImageCopies);
 	failures += runTest("bounded card excerpts retain complete search, copy and preview", longTextCards);
 	failures += runTest("source icons keep uniform visible bounds on HiDPI screens", sourceIconPresentation);
