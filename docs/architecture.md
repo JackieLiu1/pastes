@@ -118,6 +118,7 @@ Windows 测试的 Qt 运行目录由 CMake 从 Qt 导入目标取得。
 | `history_contract` | 指纹、30 天边界、启动期间复制、来源身份、首行与相邻撤销、重新复制、迟到图片结果 |
 | `database_contract` | 值快照独立性、退出排空、二进制 MIME、图片重载、独立连接 |
 | `clipboard_contract` | 暂停/恢复、内部复制、原生同步导致快照失效、采集排除与后续复制恢复 |
+| `diagnostics_contract` | 公共日志元数据、快照去重、两代大小轮换、记录上限和写入失败 |
 | `clipboard_macos_contract` | 独立原生剪贴板的临时/自动/保密标记、多条目标记、延迟载荷不被读取；仅 macOS |
 | `historyview_contract` | 卡片绑定、复制/删除/撤销、搜索恢复、空条目清理、拖动方向锁定、回弹及即时撤销 |
 | `architecture_dependencies` | 各层禁止的源码依赖 |

@@ -1,10 +1,12 @@
 #include "platform/clipboardsource.h"
 #include "core/sourceicon.h"
+#include "platform/diagnosticlog.h"
 
 #include <QApplication>
 #include <QClipboard>
 #include <QThread>
 #include <QCache>
+#include <QJsonArray>
 #include <windows.h>
 #include <shlobj.h>
 
@@ -122,6 +124,7 @@ public:
 	QObject *worker = new QObject;
 	QThread thread;
 	QCache<QString, QImage> icons{64};
+	Platform::DiagnosticLog diagnostics{Platform::DiagnosticLog::clipboardPath()};
 };
 
 ClipboardSource::ClipboardSource(QObject *parent) : ClipboardFeed(parent),
@@ -132,6 +135,7 @@ ClipboardSource::ClipboardSource(QObject *parent) : ClipboardFeed(parent),
 	m_private->thread.start();
 	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged,
 		this, &ClipboardSource::clipboardChanged);
+	allowsCapture();
 }
 
 ClipboardSource::~ClipboardSource()
@@ -180,6 +184,24 @@ bool ClipboardSource::synchronize(void)
 
 bool ClipboardSource::allowsCapture(void) const
 {
+	/* Enumerate native format declarations without reading clipboard data. */
+	QJsonArray types;
+	const bool accessible = OpenClipboard(nullptr);
+	if (accessible) {
+		UINT format = 0;
+		while (types.size() < 32 && (format = EnumClipboardFormats(format))) {
+			wchar_t name[128];
+			const int length = GetClipboardFormatNameW(format, name, 128);
+			types.append(QJsonObject{{"id", int(format)}, {"name", length ?
+				QString::fromWCharArray(name, length) : QString("CF_%1").arg(format)}});
+		}
+		CloseClipboard();
+	}
+	DWORD owner = 0;
+	GetWindowThreadProcessId(GetClipboardOwner(), &owner);
+	m_private->diagnostics.append({{"backend", "windows"},
+		{"changeCount", qint64(GetClipboardSequenceNumber())}, {"captureAllowed", true},
+		{"sourceProcessId", qint64(owner)}, {"types", types}, {"metadataAvailable", accessible}});
 	return true;
 }
 

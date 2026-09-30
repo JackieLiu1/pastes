@@ -1,21 +1,33 @@
 #include "platform/clipboardsource.h"
+#include "platform/diagnosticlog.h"
 
 #include <QApplication>
 #include <QClipboard>
 #include <QPixmap>
 #include <QDebug>
+#include <QJsonArray>
+#include <QMimeData>
 #include <vector>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 
-class ClipboardSource::Private {};
+class ClipboardSource::Private
+{
+public:
+	quint64 changes = 0;
+	Platform::DiagnosticLog diagnostics{Platform::DiagnosticLog::clipboardPath()};
+};
 
 ClipboardSource::ClipboardSource(QObject *parent) : ClipboardFeed(parent),
 	m_private(std::make_unique<Private>())
 {
 	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged,
-		this, &ClipboardSource::clipboardChanged);
+		this, [this] {
+			++m_private->changes;
+			emit clipboardChanged();
+		});
+	m_private->diagnostics.append({{"backend", "linux"}, {"event", "session-start"}});
 }
 
 ClipboardSource::~ClipboardSource() = default;
@@ -32,6 +44,14 @@ bool ClipboardSource::synchronize(void)
 
 bool ClipboardSource::allowsCapture(void) const
 {
+	/* Qt asks X11 for format declarations, without retrieving their data. */
+	const QMimeData *mime = QApplication::clipboard()->mimeData();
+	const QStringList formats = mime ? mime->formats() : QStringList();
+	QJsonArray types;
+	for (const QString &format : formats.mid(0, 32)) types.append(format.left(128));
+	m_private->diagnostics.append({{"backend", "linux"},
+		{"changeCount", qint64(m_private->changes)}, {"captureAllowed", true},
+		{"types", types}, {"typeCount", formats.size()}});
 	return true;
 }
 

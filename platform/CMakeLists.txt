@@ -5,6 +5,7 @@ target_sources(pastes_platform PRIVATE
     clipboardsource.h pastetarget.h windowintegration.h windowintegration.cpp
     applicationintegration.h menuintegration.h menuintegration.cpp
     secretstore.h localcredentialstore.cpp
+    diagnosticlog.h diagnosticlog.cpp
     fileicon.h paths.h startupintegration.h startupintegration.cpp
     globalshortcut.h globalshortcut.cpp shortcut_p.h
 )
@@ -24,6 +25,7 @@ elseif(APPLE)
     target_sources(pastes_platform PRIVATE
         macos/secretstore.cpp
         macos/clipboardpolicy.mm macos/clipboardpolicy.h
+        macos/clipboardmetadata.mm macos/clipboardmetadata.h
         macos/clipboardsource.mm macos/pastetarget.mm macos/shortcut.cpp
         macos/windowintegration.mm macos/menuintegration.mm
         macos/applicationintegration.mm macos/fileicon.cpp macos/paths.cpp

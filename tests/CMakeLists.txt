@@ -10,6 +10,11 @@ add_executable(clipboard_test clipboard_test.cpp)
 target_link_libraries(clipboard_test PRIVATE pastes_application)
 add_test(NAME clipboard_contract COMMAND clipboard_test)
 
+add_executable(diagnosticlog_test diagnosticlog_test.cpp)
+target_link_libraries(diagnosticlog_test PRIVATE pastes_platform)
+add_test(NAME diagnostics_contract COMMAND diagnosticlog_test)
+set_tests_properties(diagnostics_contract PROPERTIES TIMEOUT 30)
+
 if(APPLE)
     add_executable(clipboard_macos_test clipboard_macos_test.mm)
     target_link_libraries(clipboard_macos_test PRIVATE pastes_platform)
@@ -38,7 +43,7 @@ if(WIN32)
     # launched from an IDE or a shell without the toolchain on its PATH.
     set(test_path "$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}")
     string(REPLACE ";" "\\;" test_path "${test_path}")
-    set_property(TEST history_contract database_contract clipboard_contract
+    set_property(TEST history_contract database_contract clipboard_contract diagnostics_contract
         historyview_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
 endif()
 

@@ -1,5 +1,7 @@
 #include "platform/clipboardsource.h"
 #include "platform/macos/clipboardpolicy.h"
+#include "platform/macos/clipboardmetadata.h"
+#include "platform/diagnosticlog.h"
 
 #include <QCache>
 #include <QClipboard>
@@ -39,7 +41,8 @@ QImage iconImage(NSImage *icon)
 class ClipboardSource::Private
 {
 public:
-	Private(void) : changeCount(NSPasteboard.generalPasteboard.changeCount)
+	Private(void) : changeCount(NSPasteboard.generalPasteboard.changeCount),
+		diagnostics(Platform::DiagnosticLog::clipboardPath())
 	{
 		setApplication(NSWorkspace.sharedWorkspace.frontmostApplication);
 	}
@@ -53,6 +56,7 @@ public:
 	{
 		/* Keep source identity after the outgoing process exits. */
 		processId = application.processIdentifier;
+		applicationBundle = QString::fromNSString(application.bundleIdentifier);
 		NSURL *url = application.bundleURL;
 		if (!url && application.bundleIdentifier.length)
 			url = [NSWorkspace.sharedWorkspace URLForApplicationWithBundleIdentifier:application.bundleIdentifier];
@@ -90,9 +94,11 @@ public:
 	NSInteger changeCount;
 	pid_t processId = 0;
 	QString applicationPath;
+	QString applicationBundle;
 	id observer = nil;
 	QImage icon;
 	QCache<QString, QImage> icons{64};
+	Platform::DiagnosticLog diagnostics;
 };
 
 ClipboardSource::ClipboardSource(QObject *parent) : ClipboardFeed(parent),
@@ -115,6 +121,8 @@ ClipboardSource::ClipboardSource(QObject *parent) : ClipboardFeed(parent),
 	 * The native counter deduplicates those events against background polls. */
 	QObject::connect(QGuiApplication::clipboard(), &QClipboard::dataChanged,
 		this, &ClipboardSource::checkClipboard);
+	/* Establish the diagnostic session without capturing pre-launch content. */
+	allowsCapture();
 }
 
 ClipboardSource::~ClipboardSource() = default;
@@ -144,7 +152,10 @@ bool ClipboardSource::synchronize(void)
 
 bool ClipboardSource::allowsCapture(void) const
 {
-	return Platform::allowsClipboardHistory(NSPasteboard.generalPasteboard);
+	NSPasteboard *pasteboard = NSPasteboard.generalPasteboard;
+	const bool allowed = Platform::allowsClipboardHistory(pasteboard);
+	m_private->diagnostics.append(Platform::clipboardMetadata(pasteboard, allowed, m_private->applicationBundle));
+	return allowed;
 }
 
 void ClipboardSource::capture(quint64 request)
