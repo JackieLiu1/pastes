@@ -166,6 +166,12 @@ void mixedImageSnapshot(void)
 		"Restoring the image discarded its original formats");
 	feed.notify(); controller.flushPending();
 	require(history.entries().size() == 1, "Restoring a mixed image changed its persisted identity");
+	auto *second = new QMimeData;
+	const QList<QUrl> viewerUrls{QUrl::fromLocalFile("/tmp/viewer/another temporary image.png")};
+	second->setUrls(viewerUrls); second->setImageData(image.convertToFormat(QImage::Format_RGB888));
+	clipboard.setMimeData(second); feed.notify(); controller.flushPending();
+	require(history.entries().size() == 1 && history.entries().first()->mimeData->urls() == viewerUrls,
+		"A copy from another location retained a duplicate image or stale file format");
 	feed.imageContent = false;
 	auto *file = new QMimeData;
 	file->setUrls({QUrl::fromLocalFile("/tmp/file-only.png")}); file->setImageData(image);

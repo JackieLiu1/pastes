@@ -7,6 +7,7 @@ HistoryEntry cloneEntry(const ItemData &source)
 	entry->mimeData = source.mimeData ? ClipboardData::duplicate(source.mimeData) : new QMimeData;
 	entry->icon = source.icon;
 	entry->md5 = source.md5;
+	entry->imageContentKey = source.imageContentKey;
 	entry->time = source.time;
 	return entry;
 }

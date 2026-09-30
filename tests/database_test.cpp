@@ -1,8 +1,10 @@
 #include "tests/testsupport.h"
 #include "storage/database.h"
+#include "application/historyservice.h"
 #include "core/clipboarddata.h"
 #include <QCoreApplication>
 #include <QTemporaryDir>
+#include <QUrl>
 
 namespace {
 
@@ -120,6 +122,41 @@ void sourceIconResolution(void)
 		require(entry->icon == expected.value(entry->md5), "Source icon resampled during persistence");
 }
 
+void imageDuplicateRestart(void)
+{
+	QTemporaryDir directory;
+	const QString path = directory.filePath("duplicates.db");
+	const QDateTime now = QDateTime::currentDateTime();
+	QByteArray newest;
+	{
+		Database repository(path);
+		QImage image(32, 24, QImage::Format_RGB32); image.fill(Qt::cyan);
+		for (int i = 0; i < 2; ++i) {
+			auto entry = textEntry("");
+			entry->mimeData->setUrls({QUrl::fromLocalFile(QString("/tmp/copy-%1.png").arg(i))});
+			entry->mimeData->setImageData(image);
+			entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
+			entry->time = now.addSecs(i);
+			repository.insert(entry);
+			newest = entry->md5;
+		}
+	}
+	{
+		Database repository(path);
+		HistoryService history(repository);
+		bool loaded = false;
+		QObject::connect(&history, &HistoryService::loaded, [&] { loaded = true; });
+		history.load(); waitUntil([&] { return loaded; });
+		require(history.entries().size() == 1 && history.entries().first()->md5 == newest,
+			"Database reload retained duplicate images with different paths");
+	}
+	Database repository(path);
+	const auto entries = read(repository);
+	require(entries.size() == 1 && entries.first()->md5 == newest &&
+		entries.first()->mimeData->urls().first().toLocalFile() == "/tmp/copy-1.png",
+		"Image duplicate removal did not persist across a second restart");
+}
+
 }
 
 int main(int argc, char **argv)
@@ -129,5 +166,6 @@ int main(int argc, char **argv)
 	failures += runTest("queued value snapshots and shutdown", persistenceAndShutdown);
 	failures += runTest("encoded images and independent connections", imagesAndConnections);
 	failures += runTest("source icon pixels survive insert, update and restart", sourceIconResolution);
+	failures += runTest("image duplicates collapse durably after restart", imageDuplicateRestart);
 	return failures ? 1 : 0;
 }

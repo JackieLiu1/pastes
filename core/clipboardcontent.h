@@ -16,6 +16,10 @@ bool prefersImage(const QMimeData &mime);
 QByteArray fingerprint(const QMimeData &mime);
 QByteArray imageFingerprint(const QImage &image);
 
+/* Pixel comparison is independent of the persisted MIME fingerprint and
+ * ignores packing, row padding and an accompanying temporary file path. */
+QByteArray imageContentKey(const QImage &image);
+
 }
 
 #endif

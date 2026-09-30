@@ -1,6 +1,8 @@
 #include "application/historyservice.h"
 #include "core/clipboarddata.h"
+#include "core/clipboardcontent.h"
 #include "core/historypolicy.h"
+#include <QCryptographicHash>
 #include <utility>
 
 HistoryService::HistoryService(HistoryRepository &repository, QObject *parent)
@@ -31,20 +33,62 @@ void HistoryService::acceptLoaded(const QList<HistoryEntry> &entries)
 {
 	if (m_ready) return;
 	const QDateTime now = QDateTime::currentDateTime();
+	QHash<QByteArray, HistoryEntry> storedImages;
 	for (const HistoryEntry &entry : entries) {
 		if (!entry || !entry->mimeData) continue;
+		bool rewrite = false;
 		if (HistoryPolicy::expired(entry->time, now)) {
 			m_repository.remove(entry->md5);
 			continue;
 		}
+		const QByteArray image = ClipboardContent::prefersImage(*entry->mimeData) ?
+			ClipboardData::storedImage(entry->mimeData) : QByteArray();
+		if (!image.isEmpty()) {
+			/* Collapse identical stored originals without decoding history on
+			 * startup. A later capture compares pixels only at matching sizes. */
+			const QByteArray key = QCryptographicHash::hash(image, QCryptographicHash::Sha256);
+			const HistoryEntry previous = storedImages.value(key);
+			if (previous) {
+				if (entry->time > previous->time) {
+					if (entry->icon.isNull()) entry->icon = previous->icon;
+					rewrite = entry->md5 == previous->md5;
+					erase(indexOf(previous->id), HistoryChange::Replaced);
+				} else {
+					if (previous->icon.isNull() && !entry->icon.isNull()) {
+						previous->icon = entry->icon;
+						m_repository.updateIcon(previous->md5, previous->icon);
+						emit entryChanged(previous->id);
+					}
+					m_repository.remove(entry->md5);
+					if (entry->md5 == previous->md5) persist(previous);
+					continue;
+				}
+			}
+			storedImages.insert(key, entry);
+		}
 		entry->id = ++m_nextId;
 		m_entries.append(entry);
+		if (rewrite) persist(entry);
 		emit entryAdded(entry, m_entries.size()-1, HistoryChange::Loaded);
 	}
 	m_ready = true;
 	const auto pending = std::exchange(m_pendingCaptures, {});
 	for (const auto &capture : pending) record(capture.entry, capture.sourceRequest);
 	emit loaded();
+}
+
+bool HistoryService::sameContent(const HistoryEntry &left, const HistoryEntry &right)
+{
+	if (left->md5 == right->md5) return true;
+	if (!ClipboardContent::prefersImage(*left->mimeData) ||
+		!ClipboardContent::prefersImage(*right->mimeData)) return false;
+	const QSize size = ClipboardData::imageSize(left->mimeData);
+	if (!size.isValid() || size != ClipboardData::imageSize(right->mimeData)) return false;
+	for (const auto &entry : {left, right})
+		if (entry->imageContentKey.isEmpty())
+			entry->imageContentKey = ClipboardContent::imageContentKey(
+				qvariant_cast<QImage>(entry->mimeData->imageData()));
+	return !left->imageContentKey.isEmpty() && left->imageContentKey == right->imageContentKey;
 }
 
 int HistoryService::indexOf(EntryId id) const
@@ -88,7 +132,7 @@ void HistoryService::record(HistoryEntry entry, quint64 sourceRequest)
 	const QDateTime now = QDateTime::currentDateTime();
 	for (int row = 0; row < m_entries.size(); ) {
 		const HistoryEntry previous = m_entries.at(row);
-		if (previous->md5 == entry->md5) {
+		if (sameContent(previous, entry)) {
 			if (entry->icon.isNull()) entry->icon = previous->icon;
 			erase(row, HistoryChange::Replaced);
 		} else if (HistoryPolicy::expired(previous->time, now)) {
@@ -179,7 +223,7 @@ HistoryService::UndoResult HistoryService::undo(void)
 	m_deleted.pop_back();
 	UndoResult result;
 	for (const auto &entry : m_entries) {
-		if (entry->md5 == removed.entry->md5) {
+		if (sameContent(entry, removed.entry)) {
 			result.entry = entry;
 			break;
 		}
@@ -202,7 +246,11 @@ void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &re
 	if (!m_ready) return;
 	for (int row = 0; row < m_entries.size(); ) {
 		const auto &previous = m_entries.at(row);
-		if (entry && previous->md5 == entry->md5 && previous->time == entry->time) {
+		const bool duplicate = entry && sameContent(previous, entry);
+		/* A delayed remote image must not replace a newer local copy, including
+		 * legacy entries whose stored identity came from a temporary URL. */
+		if (duplicate && (previous->time == entry->time ||
+			(previous->md5 != entry->md5 && previous->time > entry->time))) {
 			if (!entry->icon.isNull() && previous->icon != entry->icon) {
 				previous->icon = entry->icon;
 				m_repository.updateIcon(previous->md5, previous->icon);
@@ -210,7 +258,7 @@ void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &re
 			}
 			return;
 		}
-		if (replaced.contains(previous->md5) || (entry && previous->md5 == entry->md5))
+		if (replaced.contains(previous->md5) || duplicate)
 			erase(row, HistoryChange::Synced);
 		else ++row;
 	}

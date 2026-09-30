@@ -13,6 +13,7 @@ constexpr int previewPixels = 1024;
 QMimeData *duplicate(const QMimeData *source, bool includeImage = true);
 QMimeData *withStoredImage(const QMimeData *source, const QByteArray &encoded, int format, qreal ratio = 1);
 QByteArray storedImage(const QMimeData *source);
+QSize imageSize(const QMimeData *source);
 QImage previewImage(const QMimeData *source, QSize *originalSize);
 bool canCompressImage(const QImage &image);
 

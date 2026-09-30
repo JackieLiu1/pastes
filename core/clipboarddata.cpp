@@ -74,6 +74,17 @@ QByteArray ClipboardData::storedImage(const QMimeData *source)
 	return stored ? stored->encoded() : QByteArray();
 }
 
+QSize ClipboardData::imageSize(const QMimeData *source)
+{
+	if (const auto *stored = dynamic_cast<const StoredImageMimeData *>(source)) {
+		QBuffer buffer;
+		buffer.setData(stored->encoded());
+		buffer.open(QIODevice::ReadOnly);
+		return QImageReader(&buffer).size();
+	}
+	return qvariant_cast<QImage>(source->imageData()).size();
+}
+
 QImage ClipboardData::previewImage(const QMimeData *source, QSize *originalSize)
 {
 	if (const auto *stored = dynamic_cast<const StoredImageMimeData *>(source)) {

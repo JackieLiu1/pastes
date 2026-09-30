@@ -52,6 +52,7 @@ private:
 	void persist(const HistoryEntry &entry);
 	int indexOf(EntryId id) const;
 	int restorationRow(const DeletedEntry &removed) const;
+	static bool sameContent(const HistoryEntry &left, const HistoryEntry &right);
 
 	HistoryRepository &m_repository;
 	QList<HistoryEntry> m_entries;

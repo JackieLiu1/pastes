@@ -22,6 +22,8 @@ struct ItemData final
 	QMimeData *mimeData = nullptr;
 	QImage icon;
 	QByteArray md5;
+	/* Cached pixel comparison; the persisted MD5 and original MIME stay intact. */
+	QByteArray imageContentKey;
 	QDateTime time;
 };
 
