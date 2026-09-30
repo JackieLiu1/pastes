@@ -50,6 +50,9 @@ void activatePanel(QWidget *widget);
 void watchPanelDismissal(QWidget *widget, const std::function<void(bool)> &dismiss);
 void initializeDialog(QWidget *widget);
 void prepareDialog(QWidget *widget);
+/* Clip native glass to the dialog's rounded surface, excluding shadow gutters.
+ * The backend owns the observer and follows later moves, resizes and hides. */
+void updateDialogBackdrop(QWidget *widget, QWidget *surface);
 /* Item previews keep keyboard focus in the panel's current workspace. */
 void initializePreview(QWidget *widget);
 void preparePreview(QWidget *widget);

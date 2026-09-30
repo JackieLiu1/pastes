@@ -104,6 +104,8 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 		break;
 	case RoundedRole::Preview:
 		style.fill = QColor(dark ? "#1F1F1F" : "#F4F4EF");
+		if (widget->window()->property("pastesDialogBackdrop").toBool())
+			style.fill.setAlpha(dark ? 184 : 168);
 		style.border = QColor(dark ? "#414141" : "#DADFD4");
 		if (!dark && Platform::dialogAppearance().nativeControls)
 			style.border = QColor(0, 0, 0, 64);

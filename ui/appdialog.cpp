@@ -110,6 +110,7 @@ void AppDialog::showEvent(QShowEvent *event)
 	if (!screen) return;
 	const QRect area = screen->availableGeometry();
 	move(area.center()-QPoint(width()/2, height()/2));
+	Platform::updateDialogBackdrop(this, m_surface);
 }
 
 void AppDialog::changeEvent(QEvent *event)
@@ -118,6 +119,7 @@ void AppDialog::changeEvent(QEvent *event)
 	if (event->type() == QEvent::StyleChange)
 		Platform::prepareDialog(this);
 	if (event->type() == QEvent::StyleChange) {
+		if (isVisible()) Platform::updateDialogBackdrop(this, m_surface);
 		if (auto *shadow = qobject_cast<QGraphicsDropShadowEffect *>(m_surface->graphicsEffect()))
 			shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
 	}

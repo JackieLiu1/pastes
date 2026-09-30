@@ -4,18 +4,22 @@
 #include "ui/mainwindow.h"
 #include "ui/historyview.h"
 #include "ui/previewdialog.h"
+#include "ui/appdialog.h"
+#include "ui/settingsdialog.h"
 #include "ui/roundedwidgets.h"
 #include "platform/windowintegration.h"
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
 #include <QDialog>
+#include <QFile>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QPainter>
 #include <QPushButton>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <memory>
 
 namespace {
 class IdleFeed final : public ClipboardFeed
@@ -208,6 +212,57 @@ void previewKeepsHistoryVisible(void)
 	window.hide_window();
 	waitUntil([&] { return !window.isVisible(); });
 }
+
+void dialogGlassContrast(bool dark)
+{
+	QFile theme(dark ? ":/resources/theme-dark.qss" : ":/resources/theme-light.qss");
+	require(theme.open(QIODevice::ReadOnly), "Dialog contrast test could not load the theme");
+	qApp->setProperty("pastesDark", dark);
+	auto entry = textEntry("Readable preview text");
+	std::unique_ptr<QDialog> dialogs[] = {
+		std::make_unique<AboutDialog>(), std::make_unique<SettingsDialog>("Win+V"),
+		std::make_unique<PreviewDialog>(*entry)};
+	const QString stylesheet = QString::fromUtf8(theme.readAll());
+	for (auto &dialog : dialogs) {
+		dialog->setAttribute(Qt::WA_DontShowOnScreen);
+		dialog->setStyleSheet(stylesheet);
+		dialog->show();
+		auto *surface = dialog->findChild<QWidget *>("AppDialogSurface");
+		if (!surface) surface = dialog->findChild<QWidget *>("PreviewSurface");
+		require(surface, "Dialog surface missing");
+		RoundedSurface paint;
+		for (bool active : {false, true, false}) {
+			dialog->setProperty("pastesDialogBackdrop", active);
+			QImage tint(surface->size(), QImage::Format_ARGB32_Premultiplied);
+			tint.fill(Qt::transparent);
+			QPainter painter(&tint);
+			paint.paint(surface, RoundedRole::Preview, painter);
+			painter.end();
+			const QColor center = tint.pixelColor(tint.width()/2, tint.height()/2);
+			require(active ? center.alpha() < 192 : center.alpha() == 255,
+				"Dialog did not switch between visible glass and opaque fallback");
+			for (int x : {3, tint.width()-4})
+				for (int y : {3, tint.height()-4})
+					require(tint.pixelColor(x, y).alpha() == 0, "Dialog lost a custom corner");
+			for (const QColor &background : {QColor(Qt::black), QColor(Qt::white)}) {
+				QImage composite(tint.size(), tint.format()); composite.fill(background);
+				QPainter blend(&composite); blend.drawImage(QPoint(), tint); blend.end();
+				const QColor glass = composite.pixelColor(tint.width()/2, tint.height()/2);
+				for (QLabel *label : dialog->findChildren<QLabel *>()) {
+					if (label->text().isEmpty() || !label->isVisibleTo(dialog.get())) continue;
+					bool opaque = label->objectName() == "AboutVersion";
+					for (QWidget *parent = label->parentWidget(); parent && parent != surface; parent = parent->parentWidget())
+						if (parent->objectName() == "AppDialogCard" || parent->objectName() == "PreviewContent") opaque = true;
+					if (opaque) continue;
+					label->ensurePolished();
+					require(contrastRatio(label->palette().color(QPalette::WindowText), glass) >= 4.5,
+						(std::string("Dialog glass text lost contrast: ")+label->objectName().toStdString()).c_str());
+				}
+			}
+		}
+		dialog->hide();
+	}
+}
 }
 
 int main(int argc, char **argv)
@@ -223,5 +278,8 @@ int main(int argc, char **argv)
 	failures += runTest("light theme text remains readable over black and white backgrounds", lightThemeTextContrast);
 	failures += runTest("application dialogs hide history and block reopening", appDialogsHideHistory);
 	failures += runTest("preview keeps history visible through close and Escape", previewKeepsHistoryVisible);
+	failures += runTest("dialog glass keeps readable text and opaque fallback", [] {
+		dialogGlassContrast(false); dialogGlassContrast(true);
+	});
 	return failures ? 1 : 0;
 }

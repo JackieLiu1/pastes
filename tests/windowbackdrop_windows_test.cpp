@@ -2,6 +2,9 @@
 #include "tests/colorcontrast.h"
 #include "platform/windowintegration.h"
 #include "ui/roundedwidgets.h"
+#include "ui/appdialog.h"
+#include "ui/settingsdialog.h"
+#include "ui/previewdialog.h"
 
 #include <QApplication>
 #include <QDir>
@@ -9,6 +12,9 @@
 #include <QLabel>
 #include <QPainter>
 #include <QScreen>
+#include <QSettings>
+#include <QTemporaryDir>
+#include <memory>
 #include <QtMath>
 #include <windows.h>
 #include <dwmapi.h>
@@ -17,8 +23,10 @@ namespace {
 class Background final : public QWidget
 {
 	bool m_extremes = false;
+	bool m_bottomBand = true;
 public:
-	void setExtremes(bool extremes) { m_extremes = extremes; update(); }
+	void setExtremes(bool extremes, bool bottomBand = true)
+	{ m_extremes = extremes; m_bottomBand = bottomBand; update(); }
 private:
 	void paintEvent(QPaintEvent *) override
 	{
@@ -28,7 +36,7 @@ private:
 			painter.fillRect(QRect(width()/2, 0, width()/2, height()), Qt::white);
 			/* A contrasting band keeps both bottom corners observable even
 			 * when the light material nearly matches the white background. */
-			painter.fillRect(QRect(0, 330, width(), 40), Qt::black);
+			if (m_bottomBand) painter.fillRect(QRect(0, 330, width(), 40), Qt::black);
 			return;
 		}
 		painter.fillRect(rect(), QColor("#159BCD"));
@@ -52,31 +60,43 @@ QImage captureBackground(Background &background)
 }
 
 void verifyCornerPixels(const QImage &actual, const QImage &background, QWidget &panel,
-	const QPoint &offset)
+	const QPoint &offset, RoundedRole role = RoundedRole::Panel)
 {
 	const qreal ratio = actual.devicePixelRatio();
+	QImage expected = background;
+	if (role == RoundedRole::Preview) {
+		/* Dialog shadows belong to Qt, outside the clipped glass. Compare
+		 * against the same Qt foreground over the unobscured background. */
+		QWidget *window = panel.window();
+		const QPoint inset = panel.mapTo(window, QPoint());
+		QPainter shadow(&expected);
+		shadow.drawPixmap(QPointF(offset.x()/ratio-inset.x(), offset.y()/ratio-inset.y()), window->grab());
+	}
 	QImage contour(QSize(qCeil(panel.width()*ratio), qCeil(panel.height()*ratio)),
 		QImage::Format_ARGB32_Premultiplied);
 	contour.setDevicePixelRatio(ratio);
 	contour.fill(Qt::transparent);
 	QPainter painter(&contour);
 	RoundedSurface surface;
-	surface.paint(&panel, RoundedRole::Panel, painter);
+	surface.paint(&panel, role, painter);
 	painter.end();
 	contour.save("build/backdrop-preview/corner-contour.png");
 	const int extent = qCeil((Platform::panelAppearance().cornerRadius+2)*ratio);
 	int checked = 0, maximumDifference = 0;
-	for (int side : {0, 1}) {
+	for (int corner : {0, 1, 2, 3}) {
+		if (corner >= 2 && role == RoundedRole::Panel) continue;
+		const bool side = corner%2, bottom = corner >= 2;
 		for (int y = 0; y < extent; ++y) {
-			const auto *mask = reinterpret_cast<const QRgb *>(contour.constScanLine(y));
-			const auto *result = reinterpret_cast<const QRgb *>(actual.constScanLine(offset.y()+y));
-			const auto *original = reinterpret_cast<const QRgb *>(background.constScanLine(offset.y()+y));
+			const int rowY = bottom ? contour.height()-1-y : y;
+			const auto *mask = reinterpret_cast<const QRgb *>(contour.constScanLine(rowY));
+			const auto *result = reinterpret_cast<const QRgb *>(actual.constScanLine(offset.y()+rowY));
+			const auto *original = reinterpret_cast<const QRgb *>(expected.constScanLine(offset.y()+rowY));
 			for (int column = 0; column < extent; ++column) {
 				const int x = side ? contour.width()-1-column : column;
 				if (qAlpha(mask[x])) continue;
 				/* Exclude the one-pixel AA fringe; DWM and Qt use different filters. */
 				bool clear = true;
-				for (int neighborY = qMax(0, y-1); neighborY <= y+1; ++neighborY) {
+				for (int neighborY = qMax(0, rowY-1); neighborY <= qMin(contour.height()-1, rowY+1); ++neighborY) {
 					const auto *neighbor = reinterpret_cast<const QRgb *>(contour.constScanLine(neighborY));
 					for (int neighborX = qMax(0, x-1); neighborX <= qMin(contour.width()-1, x+1); ++neighborX)
 						if (qAlpha(neighbor[neighborX])) clear = false;
@@ -96,6 +116,7 @@ void verifyCornerPixels(const QImage &actual, const QImage &background, QWidget 
 	/* A small difference permits the native shadow. An acrylic plate changes
 	 * these patterned background pixels by tens or hundreds of RGB levels. */
 	require(maximumDifference <= 16, "Native acrylic leaked outside the painted corner contour");
+	if (role != RoundedRole::Panel) return;
 	for (int side : {0, 1}) {
 		const int x = side ? contour.width()-1-qRound(2*ratio) : qRound(2*ratio);
 		const int y = contour.height()-1-qRound(2*ratio);
@@ -236,14 +257,132 @@ void nativeBackdrop(bool capture)
 		require(variation < 180, "Backdrop stripes were transmitted without being blurred");
 	}
 }
+
+void nativeDialogBackdrops(bool capture)
+{
+	const bool native = QGuiApplication::platformName() == "windows";
+	Background background;
+	background.setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
+	background.setGeometry(QGuiApplication::primaryScreen()->availableGeometry());
+	background.setAttribute(Qt::WA_DontShowOnScreen, !capture);
+	if (capture) background.show();
+	RoundedWidget parent(RoundedRole::Panel);
+	Platform::initializePanel(&parent);
+	parent.setAttribute(Qt::WA_TranslucentBackground);
+	parent.setAttribute(Qt::WA_DontShowOnScreen, true);
+	Platform::preparePanel(&parent);
+	auto entry = textEntry("Preview contents remain readable over the glass surface.");
+	for (const QString &kind : {QStringLiteral("about"), QStringLiteral("settings"), QStringLiteral("preview")}) {
+		std::unique_ptr<QDialog> dialog;
+		if (kind == "about") dialog = std::make_unique<AboutDialog>(&parent);
+		else if (kind == "settings") dialog = std::make_unique<SettingsDialog>("Win+V", &parent);
+		else dialog = std::make_unique<PreviewDialog>(*entry, &parent);
+		dialog->setAttribute(Qt::WA_DontShowOnScreen, !capture);
+		if (capture) dialog->setWindowFlag(Qt::WindowStaysOnTopHint);
+		auto *surface = dialog->findChild<QWidget *>("AppDialogSurface");
+		if (!surface) surface = dialog->findChild<QWidget *>("PreviewSurface");
+		require(surface, "Native dialog surface missing");
+		for (const QString &stage : {QStringLiteral("light"), QStringLiteral("light-contrast"),
+			QStringLiteral("dark"), QStringLiteral("dark-contrast")}) {
+			dialog->hide();
+			background.setExtremes(stage.endsWith("-contrast"), false);
+			if (capture) background.raise();
+			settle();
+			QImage baseline;
+			if (capture) baseline = captureBackground(background);
+			const bool dark = stage.startsWith("dark");
+			qApp->setProperty("pastesDark", dark);
+			QFile theme(dark ? ":/resources/theme-dark.qss" : ":/resources/theme-light.qss");
+			require(theme.open(QFile::ReadOnly), "Native dialog theme missing");
+			dialog->setStyleSheet(QString::fromUtf8(theme.readAll()));
+			dialog->show();
+			dialog->raise();
+			settle();
+			if (!native) {
+				require(!dialog->property("pastesDialogBackdrop").toBool(), "Non-native dialog enabled Windows glass");
+				continue;
+			}
+			if (!capture) continue;
+			require(dialog->property("pastesDialogBackdrop").toBool(), "Native dialog backdrop was not enabled");
+			const HWND window = reinterpret_cast<HWND>(dialog->winId());
+			const HWND helper = GetWindow(window, GW_OWNER);
+			require(helper && IsWindowVisible(helper), "Dialog backdrop is missing or hidden");
+			require(SendMessageW(helper, WM_NCHITTEST, 0, 0) == HTTRANSPARENT, "Dialog backdrop intercepted input");
+			const qreal ratio = dialog->devicePixelRatioF();
+			const QPoint global = surface->mapToGlobal(QPoint());
+			RECT bounds{}; GetWindowRect(helper, &bounds);
+			require(qAbs(bounds.left-qRound(global.x()*ratio)) <= 1 &&
+				qAbs(bounds.top-qRound(global.y()*ratio)) <= 1 &&
+				bounds.right-bounds.left == qRound(surface->width()*ratio) &&
+				bounds.bottom-bounds.top == qRound(surface->height()*ratio),
+				"Dialog glass did not follow the surface and shadow gutters");
+			const QImage actual = captureBackground(background);
+			const QPoint offset = global-background.frameGeometry().topLeft();
+			const QPoint pixels(qRound(offset.x()*ratio), qRound(offset.y()*ratio));
+			verifyCornerPixels(actual, baseline, *surface, pixels, RoundedRole::Preview);
+			const QString suffix = qFuzzyCompare(ratio, qreal(1)) ? QString() : "-dpi-"+QString::number(ratio);
+			const QRect crop(pixels-QPoint(qRound(14*ratio), qRound(14*ratio)),
+				QSize(qRound((surface->width()+28)*ratio), qRound((surface->height()+28)*ratio)));
+			require(actual.copy(crop).save("build/backdrop-preview/dialog-"+kind+"-"+stage+suffix+".png"),
+				"Could not save the native dialog preview");
+			const QPoint first(pixels.x()+qRound(12*ratio), pixels.y()+qRound(40*ratio));
+			const QPoint second(pixels.x()+qRound((surface->width()-12)*ratio), first.y());
+			const QColor left = actual.pixelColor(first), right = actual.pixelColor(second);
+			if (stage.endsWith("-contrast")) {
+				qreal minimum = 100;
+				for (QLabel *label : dialog->findChildren<QLabel *>()) {
+					if (label->text().isEmpty() || !label->isVisibleTo(dialog.get())) continue;
+					bool opaque = label->objectName() == "AboutVersion";
+					for (QWidget *ancestor = label->parentWidget(); ancestor && ancestor != surface; ancestor = ancestor->parentWidget())
+						if (ancestor->objectName() == "AppDialogCard" || ancestor->objectName() == "PreviewContent") opaque = true;
+					if (opaque) continue;
+					const QColor ink = label->palette().color(QPalette::WindowText);
+					minimum = qMin(minimum, qMin(contrastRatio(ink, left), contrastRatio(ink, right)));
+				}
+				qInfo() << kind << stage << "glass text minimum contrast:" << minimum
+					<< "background transmission:" << right.red()-left.red();
+				require(minimum >= 4.5, "Native dialog glass made text unreadable");
+				require(right.red()-left.red() >= (dark ? 48 : 64), "Native dialog tint concealed the glass");
+			} else {
+				require(left.blue() > left.red()+4 && right.red() > right.blue()+4,
+					"Dialog glass lost background colors");
+				int variation = 0, unblurred = 0;
+				const auto *row = reinterpret_cast<const QRgb *>(actual.constScanLine(first.y()));
+				const auto *source = reinterpret_cast<const QRgb *>(baseline.constScanLine(first.y()));
+				for (int x = pixels.x()+qRound(6*ratio); x < pixels.x()+qRound(20*ratio); ++x) {
+					variation += qAbs(qGray(row[x])-qGray(row[x+1]));
+					unblurred += qAbs(qGray(source[x])-qGray(source[x+1]));
+				}
+				require(unblurred > 30 && variation < unblurred/4, "Dialog background was transparent without blur");
+			}
+			dialog->move(dialog->pos()+QPoint(3, 3));
+			dialog->setFixedHeight(dialog->height()+2);
+			settle();
+			GetWindowRect(helper, &bounds);
+			const QPoint moved = surface->mapToGlobal(QPoint());
+			require(qAbs(bounds.left-qRound(moved.x()*ratio)) <= 1 &&
+				qAbs(bounds.top-qRound(moved.y()*ratio)) <= 1 &&
+				bounds.bottom-bounds.top == qRound(surface->height()*ratio), "Dialog glass stopped following a move or resize");
+			dialog->hide();
+			settle();
+			require(!IsWindowVisible(helper), "Closing a dialog left its glass visible");
+		}
+	}
+}
 }
 
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
+	QTemporaryDir preferences;
+	QCoreApplication::setOrganizationName("PastesBackdropTests");
+	QCoreApplication::setApplicationName("Dialogs");
+	QSettings::setDefaultFormat(QSettings::IniFormat);
+	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences.path());
 	const bool capture = app.arguments().contains("--capture");
 	return runTest("Windows backdrop lifecycle and visible corner clipping", [=] {
 		nativeBackdrop(capture);
+		nativeDialogBackdrops(capture);
 		int backdrops = 0;
 		EnumWindows([](HWND window, LPARAM count) -> BOOL {
 			DWORD process = 0;

@@ -13,6 +13,7 @@ const Platform::PanelAppearance &Platform::panelAppearance(void)
 
 void Platform::preparePanel(QWidget *) {}
 void Platform::updatePanelBackdrop(QWidget *) {}
+void Platform::updateDialogBackdrop(QWidget *, QWidget *) {}
 
 void Platform::enablePanelBlur(QWidget *widget)
 {

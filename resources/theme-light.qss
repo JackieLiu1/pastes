@@ -87,8 +87,8 @@ QMenu::item:selected { background: #E0EDE4; color: #237B68; }
 QMenu::separator { height: 1px; background: #E5E8DF; margin: 5px 8px; }
 
 #PreviewDialog, #PreviewSurface, #PreviewContent { background: transparent; border: 0; }
-#PreviewTitle { color: #273E35; font-size: 18px; font-weight: 600; }
-#PreviewMeta { color: #58615D; font-size: 11px; }
+#PreviewTitle { color: #20362C; font-size: 18px; font-weight: 600; }
+#PreviewMeta { color: #293A35; font-size: 11px; }
 #PreviewText {
 	background: transparent; border: 0; padding: 10px;
 	font-size: 14px; color: #293A35;
@@ -96,7 +96,7 @@ QMenu::separator { height: 1px; background: #E5E8DF; margin: 5px 8px; }
 }
 #PreviewAction {
 	background: transparent; border: 0; padding: 9px 16px;
-	font-size: 12px; font-weight: 600; color: #237B68;
+	font-size: 12px; font-weight: 600; color: #163D2F;
 }
 #PreviewAction[primary="true"] { color: #FFFFFF; }
 #PreviewClose { background: transparent; border: 0; }
@@ -109,30 +109,30 @@ QMenu::separator { height: 1px; background: #E5E8DF; margin: 5px 8px; }
 
 #AppDialog, #AppDialogSurface, #AppDialogCard { background: transparent; border: 0; }
 #AppDialog, #AppDialog QWidget { font-family: "Microsoft YaHei UI", "Segoe UI", "Noto Sans CJK SC", sans-serif; }
-#AppDialogTitle { font-size: 20px; font-weight: 600; color: #273E35; }
-#AppDialogMuted { font-size: 12px; color: #58615D; background: transparent; }
+#AppDialogTitle { font-size: 20px; font-weight: 600; color: #20362C; }
+#AppDialogMuted { font-size: 12px; color: #293A35; background: transparent; }
 #AppDialogValue { font-size: 12px; color: #293A35; background: transparent; }
-#AboutBrand { font-size: 28px; font-weight: 600; color: #273E35; }
+#AboutBrand { font-size: 28px; font-weight: 600; color: #20362C; }
 #AboutVersion { font-size: 11px; color: #237B68; padding: 5px 11px; background: transparent; }
 #SettingsScroll, #SettingsBody { background: transparent; border: 0; }
-#SettingsSectionTitle { font-size: 12px; font-weight: 600; color: #43514B; }
+#SettingsSectionTitle { font-size: 12px; font-weight: 600; color: #293A35; }
 #SettingsRowTitle { font-size: 13px; font-weight: 600; color: #293A35; }
 #SettingsDivider { background: #E5E8DF; border: 0; }
 #SettingsChoice { background: transparent; border: 0; color: #43514B; font-size: 12px; }
 #SettingsChoice[primary="true"] { color: #FFFFFF; font-weight: 600; }
 #SettingsKey { background: transparent; border: 0; padding: 4px 8px; color: #43514B; font-size: 11px; }
-#SettingsStatus { font-size: 11px; color: #58615D; }
-#SettingsStatus[error="true"] { color: #AD4C35; }
+#SettingsStatus { font-size: 11px; color: #293A35; }
+#SettingsStatus[error="true"] { color: #51291F; }
 #RecordingStatus { font-size: 11px; color: #AD4C35; }
 #MainFrame #RecordingStatus { color: #51291F; }
 
 #SettingsTabs::pane { border: 0; background: transparent; }
-#SettingsTabs QTabBar::tab { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 24px; margin-right: 12px; color: #58615D; font-size: 13px; font-weight: 600; }
-#SettingsTabs QTabBar::tab:selected { color: #007F6C; border-bottom-color: #007F6C; }
-#SettingsTabs QTabBar::tab:hover { color: #007F6C; }
+#SettingsTabs QTabBar::tab { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 24px; margin-right: 12px; color: #293A35; font-size: 13px; font-weight: 600; }
+#SettingsTabs QTabBar::tab:selected { color: #163D2F; border-bottom-color: #007F6C; }
+#SettingsTabs QTabBar::tab:hover { color: #163D2F; }
 
 QLineEdit[syncField="true"] { border: 1px solid #B8C4BC; border-radius: 7px; padding: 3px 8px; color: #283B35; background: #FFFFFF; }
-#SyncAction { background: transparent; border: 0; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #237B68; }
+#SyncAction { background: transparent; border: 0; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #163D2F; }
 #SyncAction[primary="true"] { color: #FFFFFF; }
 #SyncAction:disabled { color: #819087; }
-#SyncStatus { color: #34554B; font-size: 12px; }
+#SyncStatus { color: #293A35; font-size: 12px; }

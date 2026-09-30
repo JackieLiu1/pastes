@@ -153,16 +153,18 @@ bool enableHostBackdrop(HWND window)
 /* Qt's layered backing store and DWM's accent material have separate clips.
  * Put a host-backdrop visual in a nonactivating owner behind the Qt window,
  * and clip that visual itself. Cards and input stay in the original HWND. */
-class PanelBackdrop final : public QObject, public QAbstractNativeEventFilter
+class WindowBackdrop final : public QObject, public QAbstractNativeEventFilter
 {
 public:
-	explicit PanelBackdrop(QWidget *widget) : QObject(widget), m_widget(widget)
+	WindowBackdrop(QWidget *widget, QWidget *surface) : QObject(widget),
+		m_widget(widget), m_surface(surface)
 	{
 		setObjectName(QStringLiteral("PastesWindowsBackdrop"));
 		widget->installEventFilter(this);
+		if (surface != widget) surface->installEventFilter(this);
 		qApp->installNativeEventFilter(this);
 	}
-	~PanelBackdrop(void) override
+	~WindowBackdrop(void) override
 	{
 		qApp->removeNativeEventFilter(this);
 		clear();
@@ -187,8 +189,9 @@ public:
 		}
 		if (m_helper && FAILED(synchronize())) { clear(); m_failed = true; }
 		const bool active = m_helper != nullptr;
-		if (m_widget->property("pastesPanelBackdrop").toBool() != active) {
-			m_widget->setProperty("pastesPanelBackdrop", active); m_widget->update();
+		const char *property = m_surface == m_widget ? "pastesPanelBackdrop" : "pastesDialogBackdrop";
+		if (m_widget->property(property).toBool() != active) {
+			m_widget->setProperty(property, active); m_surface->update();
 		}
 		m_updating = false;
 	}
@@ -206,10 +209,13 @@ public:
 		}
 		return false;
 	}
-	bool eventFilter(QObject *, QEvent *event) override
+	bool eventFilter(QObject *object, QEvent *event) override
 	{
-		if (event->type() == QEvent::Hide && m_helper) ShowWindow(m_helper, SW_HIDE);
+		if (object == m_widget && event->type() == QEvent::Hide && m_helper)
+			ShowWindow(m_helper, SW_HIDE);
 		if (event->type() == QEvent::WinIdChange || event->type() == QEvent::Show)
+			QTimer::singleShot(0, this, [this] { update(); });
+		else if (object == m_surface && (event->type() == QEvent::Move || event->type() == QEvent::Resize))
 			QTimer::singleShot(0, this, [this] { update(); });
 		return false;
 	}
@@ -251,8 +257,9 @@ private:
 		}();
 		if (!windowClass) return E_FAIL;
 		m_owner = reinterpret_cast<HWND>(GetWindowLongPtrW(m_window, GWLP_HWNDPARENT));
+		const DWORD topmost = GetWindowLongPtrW(m_window, GWL_EXSTYLE) & WS_EX_TOPMOST;
 		m_helper = CreateWindowExW(WS_EX_NOREDIRECTIONBITMAP | WS_EX_TOOLWINDOW |
-			WS_EX_NOACTIVATE | WS_EX_TRANSPARENT | WS_EX_TOPMOST, className, L"", WS_POPUP,
+			WS_EX_NOACTIVATE | WS_EX_TRANSPARENT | topmost, className, L"", WS_POPUP,
 			0, 0, 1, 1, m_owner, nullptr, GetModuleHandleW(nullptr), nullptr);
 		if (!m_helper) return E_FAIL;
 		const DWM_WINDOW_CORNER_PREFERENCE corners = DWMWCP_DONOTROUND;
@@ -277,8 +284,14 @@ private:
 		}
 		RECT rect{};
 		if (!GetWindowRect(m_window, &rect)) return E_FAIL;
-		const QSize size(rect.right-rect.left, rect.bottom-rect.top);
 		const qreal ratio = m_widget->devicePixelRatioF();
+		if (m_surface != m_widget) {
+			const QPoint offset = m_surface->mapTo(m_widget, QPoint());
+			rect.left += qRound(offset.x()*ratio); rect.top += qRound(offset.y()*ratio);
+			rect.right = rect.left+qRound(m_surface->width()*ratio);
+			rect.bottom = rect.top+qRound(m_surface->height()*ratio);
+		}
+		const QSize size(rect.right-rect.left, rect.bottom-rect.top);
 		if (size.isEmpty()) return S_OK;
 		if (size != m_size || ratio != m_ratio) {
 			const float width = size.width(), height = size.height();
@@ -290,14 +303,24 @@ private:
 			if (FAILED(status)) return status;
 			ComPtr<ID2D1GeometrySink> sink;
 			if (FAILED(status = path->Open(&sink))) return status;
-			sink->BeginFigure(D2D1::Point2F(0, height), D2D1_FIGURE_BEGIN_FILLED);
+			sink->BeginFigure(D2D1::Point2F(0, m_surface == m_widget ? height : height-radius),
+				D2D1_FIGURE_BEGIN_FILLED);
 			sink->AddLine(D2D1::Point2F(0, radius));
 			sink->AddBezier(D2D1::BezierSegment(D2D1::Point2F(0, radius-arc),
 				D2D1::Point2F(radius-arc, 0), D2D1::Point2F(radius, 0)));
 			sink->AddLine(D2D1::Point2F(width-radius, 0));
 			sink->AddBezier(D2D1::BezierSegment(D2D1::Point2F(width-radius+arc, 0),
 				D2D1::Point2F(width, radius-arc), D2D1::Point2F(width, radius)));
-			sink->AddLine(D2D1::Point2F(width, height));
+			if (m_surface == m_widget) {
+				sink->AddLine(D2D1::Point2F(width, height));
+			} else {
+				sink->AddLine(D2D1::Point2F(width, height-radius));
+				sink->AddBezier(D2D1::BezierSegment(D2D1::Point2F(width, height-radius+arc),
+					D2D1::Point2F(width-radius+arc, height), D2D1::Point2F(width-radius, height)));
+				sink->AddLine(D2D1::Point2F(radius, height));
+				sink->AddBezier(D2D1::BezierSegment(D2D1::Point2F(radius-arc, height),
+					D2D1::Point2F(0, height-radius+arc), D2D1::Point2F(0, height-radius)));
+			}
 			sink->EndFigure(D2D1_FIGURE_END_CLOSED);
 			if (FAILED(status = sink->Close())) return status;
 			ComPtr<ABI::Windows::Graphics::IGeometrySource2D> source;
@@ -336,7 +359,7 @@ private:
 		if (m_helper) DestroyWindow(m_helper);
 		m_helper = nullptr; m_owner = nullptr; m_size = QSize(); m_ratio = 0;
 	}
-	QWidget *m_widget;
+	QWidget *m_widget, *m_surface;
 	HWND m_window = nullptr, m_helper = nullptr, m_owner = nullptr;
 	ComPtr<Composition::ICompositor> m_compositor;
 	ComPtr<Composition::ICompositionTarget> m_target;
@@ -350,14 +373,15 @@ private:
 	bool m_initialized = false, m_allowed = false, m_failed = false, m_updating = false;
 };
 
-void updateBackdrop(QWidget *widget, bool refreshSystem)
+void updateBackdrop(QWidget *widget, QWidget *surface, bool refreshSystem)
 {
 	if (QGuiApplication::platformName() != QStringLiteral("windows")) {
-		widget->setProperty("pastesPanelBackdrop", false); return;
+		widget->setProperty(surface == widget ? "pastesPanelBackdrop" : "pastesDialogBackdrop", false);
+		return;
 	}
-	auto *backdrop = static_cast<PanelBackdrop *>(widget->findChild<QObject *>(
+	auto *backdrop = static_cast<WindowBackdrop *>(widget->findChild<QObject *>(
 		QStringLiteral("PastesWindowsBackdrop"), Qt::FindDirectChildrenOnly));
-	if (!backdrop) backdrop = new PanelBackdrop(widget);
+	if (!backdrop) backdrop = new WindowBackdrop(widget, surface);
 	backdrop->update(refreshSystem);
 }
 }
@@ -372,6 +396,8 @@ const Platform::PanelAppearance &Platform::panelAppearance(void)
 	return appearance;
 }
 
-void Platform::enablePanelBlur(QWidget *widget) { updateBackdrop(widget, true); }
-void Platform::preparePanel(QWidget *widget) { updateBackdrop(widget, true); }
-void Platform::updatePanelBackdrop(QWidget *widget) { updateBackdrop(widget, false); }
+void Platform::enablePanelBlur(QWidget *widget) { updateBackdrop(widget, widget, true); }
+void Platform::preparePanel(QWidget *widget) { updateBackdrop(widget, widget, true); }
+void Platform::updatePanelBackdrop(QWidget *widget) { updateBackdrop(widget, widget, false); }
+void Platform::updateDialogBackdrop(QWidget *widget, QWidget *surface)
+{ updateBackdrop(widget, surface, true); }

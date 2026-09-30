@@ -6,6 +6,7 @@
 #include <QScreen>
 #include <QCursor>
 #include <QTimer>
+#include <QEvent>
 #import <AppKit/AppKit.h>
 
 static QScreen *panelScreen(void)
@@ -123,28 +124,31 @@ void Platform::watchPanelDismissal(QWidget *widget, const std::function<void(boo
 		new MacPanelObserver(widget, dismiss);
 }
 
-static NSImage *panelMask(void)
+static NSImage *windowMask(bool topOnly)
 {
 	/* Equal caps keep AppKit's stretch region in the opaque center,
 	 * rather than stretching the top arcs down the side edges. */
 	const CGFloat radius = Platform::panelAppearance().cornerRadius;
 	const CGFloat side = radius*2+2;
-	static NSImage *mask = [[NSImage imageWithSize:NSMakeSize(side, side)
+	static NSImage *masks[2] = {nil, nil};
+	if (masks[topOnly]) return masks[topOnly];
+	NSImage *mask = [[NSImage imageWithSize:NSMakeSize(side, side)
 		flipped:NO drawingHandler:^BOOL(NSRect) {
 		NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:
 			NSMakeRect(0, 0, side, side) xRadius:radius yRadius:radius];
 		[[NSColor whiteColor] setFill];
 		[path fill];
 		/* Fill the lower corners so the panel reaches the screen bottom. */
-		NSRectFill(NSMakeRect(0, 0, side, radius+2));
+		if (topOnly) NSRectFill(NSMakeRect(0, 0, side, radius+2));
 		return YES;
 	}] retain];
 	mask.capInsets = NSEdgeInsetsMake(radius, radius, radius, radius);
 	mask.resizingMode = NSImageResizingModeStretch;
+	masks[topOnly] = mask;
 	return mask;
 }
 
-void Platform::updatePanelBackdrop(QWidget *widget)
+static void updateWindowBackdrop(QWidget *widget, QWidget *surface)
 {
 	NSView *view = nativeView(widget);
 	NSView *parent = view.superview;
@@ -164,19 +168,55 @@ void Platform::updatePanelBackdrop(QWidget *widget)
 		backdrop.material = NSVisualEffectMaterialHUDWindow;
 		backdrop.blendingMode = NSVisualEffectBlendingModeBehindWindow;
 		backdrop.state = NSVisualEffectStateActive;
-		backdrop.maskImage = panelMask();
+		backdrop.maskImage = windowMask(surface == widget);
 		backdrop.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 		/* Keep Qt's content view and responder intact. A sibling below it
 		 * supplies the blur without covering the cards or taking input. */
 		[parent addSubview:backdrop positioned:NSWindowBelow relativeTo:view];
 		[backdrop release];
 	}
-	backdrop.frame = view.frame;
+	if (surface == widget) {
+		backdrop.frame = view.frame;
+	} else {
+		const QPoint offset = surface->mapTo(widget, QPoint());
+		const CGFloat y = view.flipped ? offset.y() : view.bounds.size.height-offset.y()-surface->height();
+		backdrop.frame = [view convertRect:NSMakeRect(offset.x(), y, surface->width(), surface->height())
+			toView:parent];
+	}
 	backdrop.appearance = [NSAppearance appearanceNamed:
 		qApp->property("pastesDark").toBool() ?
 		NSAppearanceNameDarkAqua : NSAppearanceNameAqua];
-	widget->setProperty("pastesPanelBackdrop", true);
-	widget->update();
+	widget->setProperty(surface == widget ? "pastesPanelBackdrop" : "pastesDialogBackdrop", true);
+	surface->update();
+}
+
+void Platform::updatePanelBackdrop(QWidget *widget) { updateWindowBackdrop(widget, widget); }
+
+class MacDialogBackdrop final : public QObject
+{
+public:
+	MacDialogBackdrop(QWidget *widget, QWidget *surface) : QObject(widget),
+		m_widget(widget), m_surface(surface)
+	{
+		setObjectName(QStringLiteral("PastesMacDialogBackdrop"));
+		widget->installEventFilter(this); surface->installEventFilter(this);
+	}
+private:
+	bool eventFilter(QObject *, QEvent *event) override
+	{
+		if (event->type() == QEvent::Show || event->type() == QEvent::Move ||
+			event->type() == QEvent::Resize || event->type() == QEvent::StyleChange)
+			QTimer::singleShot(0, this, [this] { updateWindowBackdrop(m_widget, m_surface); });
+		return false;
+	}
+	QWidget *m_widget, *m_surface;
+};
+
+void Platform::updateDialogBackdrop(QWidget *widget, QWidget *surface)
+{
+	if (!widget->findChild<QObject *>(QStringLiteral("PastesMacDialogBackdrop"), Qt::FindDirectChildrenOnly))
+		new MacDialogBackdrop(widget, surface);
+	updateWindowBackdrop(widget, surface);
 }
 
 static void prepareFloatingWindow(QWidget *widget)

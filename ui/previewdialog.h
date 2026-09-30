@@ -17,6 +17,7 @@ public:
 protected:
 	bool eventFilter(QObject *object, QEvent *event) override;
 	void showEvent(QShowEvent *event) override;
+	void changeEvent(QEvent *event) override;
 	void keyPressEvent(QKeyEvent *event) override;
 
 signals:

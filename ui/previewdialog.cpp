@@ -249,6 +249,7 @@ void PreviewDialog::showEvent(QShowEvent *event)
 	const QSize size(qMin(760, area.width()-32), qMin(560, area.height()-32));
 	setFixedSize(size);
 	move(area.center()-QPoint(width()/2, height()/2));
+	Platform::updateDialogBackdrop(this, m_surface);
 	QTimer::singleShot(0, this, [this](void) {
 		if (isVisible()) Platform::activatePreview(this);
 	});
@@ -262,4 +263,13 @@ void PreviewDialog::keyPressEvent(QKeyEvent *event)
 		return;
 	}
 	QDialog::keyPressEvent(event);
+}
+
+void PreviewDialog::changeEvent(QEvent *event)
+{
+	QDialog::changeEvent(event);
+	if (event->type() == QEvent::StyleChange && isVisible()) {
+		Platform::preparePreview(this);
+		Platform::updateDialogBackdrop(this, m_surface);
+	}
 }

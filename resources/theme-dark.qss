@@ -84,7 +84,7 @@ QMenu::separator { height: 1px; background: #414141; margin: 5px 8px; }
 
 #PreviewDialog, #PreviewSurface, #PreviewContent { background: transparent; border: 0; }
 #PreviewTitle { color: #E6E6E6; font-size: 18px; font-weight: 600; }
-#PreviewMeta { color: #9C9C9C; font-size: 11px; }
+#PreviewMeta { color: #D9D9D9; font-size: 11px; }
 #PreviewText {
 	background: transparent; border: 0; padding: 10px;
 	font-size: 14px; color: #E6E6E6;
@@ -92,7 +92,7 @@ QMenu::separator { height: 1px; background: #414141; margin: 5px 8px; }
 }
 #PreviewAction {
 	background: transparent; border: 0; padding: 9px 16px;
-	font-size: 12px; font-weight: 600; color: #A3DCC5;
+	font-size: 12px; font-weight: 600; color: #BCE9D8;
 }
 #PreviewAction[primary="true"] { color: #173B30; }
 #PreviewClose { background: transparent; border: 0; }
@@ -106,28 +106,29 @@ QMenu::separator { height: 1px; background: #414141; margin: 5px 8px; }
 #AppDialog, #AppDialogSurface, #AppDialogCard { background: transparent; border: 0; }
 #AppDialog, #AppDialog QWidget { font-family: "Microsoft YaHei UI", "Segoe UI", "Noto Sans CJK SC", sans-serif; }
 #AppDialogTitle { font-size: 20px; font-weight: 600; color: #F1F1F1; }
-#AppDialogMuted { font-size: 12px; color: #9C9C9C; background: transparent; }
+#AppDialogMuted { font-size: 12px; color: #D9D9D9; background: transparent; }
+#AppDialogCard #AppDialogMuted { color: #9C9C9C; }
 #AppDialogValue { font-size: 12px; color: #E6E6E6; background: transparent; }
 #AboutBrand { font-size: 28px; font-weight: 600; color: #F1F1F1; }
 #AboutVersion { font-size: 11px; color: #A3DCC5; padding: 5px 11px; background: transparent; }
 #SettingsScroll, #SettingsBody { background: transparent; border: 0; }
-#SettingsSectionTitle { font-size: 12px; font-weight: 600; color: #B5B5B5; }
+#SettingsSectionTitle { font-size: 12px; font-weight: 600; color: #D9D9D9; }
 #SettingsRowTitle { font-size: 13px; font-weight: 600; color: #E6E6E6; }
 #SettingsDivider { background: #3D3D3D; border: 0; }
 #SettingsChoice { background: transparent; border: 0; color: #B5B5B5; font-size: 12px; }
 #SettingsChoice[primary="true"] { color: #173B30; font-weight: 600; }
 #SettingsKey { background: transparent; border: 0; padding: 4px 8px; color: #B8B8B8; font-size: 11px; }
-#SettingsStatus { font-size: 11px; color: #9C9C9C; }
-#SettingsStatus[error="true"] { color: #E7A28C; }
+#SettingsStatus { font-size: 11px; color: #D9D9D9; }
+#SettingsStatus[error="true"] { color: #FFD3C3; }
 #RecordingStatus { font-size: 11px; color: #E7A28C; }
 
 #SettingsTabs::pane { border: 0; background: transparent; }
-#SettingsTabs QTabBar::tab { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 24px; margin-right: 12px; color: #B5B5B5; font-size: 13px; font-weight: 600; }
-#SettingsTabs QTabBar::tab:selected { color: #76C5AA; border-bottom-color: #76C5AA; }
-#SettingsTabs QTabBar::tab:hover { color: #76C5AA; }
+#SettingsTabs QTabBar::tab { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 10px 24px; margin-right: 12px; color: #D9D9D9; font-size: 13px; font-weight: 600; }
+#SettingsTabs QTabBar::tab:selected { color: #BCE9D8; border-bottom-color: #76C5AA; }
+#SettingsTabs QTabBar::tab:hover { color: #BCE9D8; }
 
 QLineEdit[syncField="true"] { border: 1px solid #4C514F; border-radius: 7px; padding: 3px 8px; color: #F2F2F2; background: #202321; }
-#SyncAction { background: transparent; border: 0; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #A3DCC5; }
+#SyncAction { background: transparent; border: 0; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #BCE9D8; }
 #SyncAction[primary="true"] { color: #173B30; }
 #SyncAction:disabled { color: #777777; }
-#SyncStatus { color: #B5DACF; font-size: 12px; }
+#SyncStatus { color: #BCE9D8; font-size: 12px; }
