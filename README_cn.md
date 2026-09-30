@@ -3,6 +3,7 @@
 简体中文 | [English](./README.md)
 
 macOS 安装包的制作与安装方法见[打包说明](packaging/macos/README.md)。
+Windows 安装包的制作与安装方法见[打包说明](packaging/windows/README.md)。
 
 ![Release-CI](https://github.com/JackieLiu1/pastes/workflows/Release-CI/badge.svg) ![C/C++ CI](https://github.com/JackieLiu1/pastes/workflows/C/C++%20CI/badge.svg)
 
