@@ -4,10 +4,11 @@
 	background: transparent; border: 0;
 }
 #BrandTitle { font-size: 18px; font-weight: 600; color: #F1F1F1; }
+#HeaderDivider { background: rgba(230, 230, 230, 45); border: 0; }
 #HistoryTab {
 	background: transparent; border: 0;
-	font-size: 12px; font-weight: 600; color: #89CCB5;
-	padding: 7px 13px;
+	font-size: 13px; font-weight: 400; color: #B5C8C1;
+	padding: 0;
 }
 #HistoryCount, #KeyboardHint { color: #9C9C9C; font-size: 11px; }
 #EmptyState { color: #9C9C9C; font-size: 14px; background: transparent; }
