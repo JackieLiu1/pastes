@@ -16,6 +16,7 @@ struct PanelAppearance
 {
 	QMargins margins{24, 16, 24, 12};
 	int spacing = 10;
+	qreal cornerRadius = 32;
 	bool shadow = true;
 	bool nativeBackdrop = false;
 };

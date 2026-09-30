@@ -127,17 +127,19 @@ static NSImage *panelMask(void)
 {
 	/* Equal caps keep AppKit's stretch region in the opaque center,
 	 * rather than stretching the top arcs down the side edges. */
-	static NSImage *mask = [[NSImage imageWithSize:NSMakeSize(38, 38)
+	const CGFloat radius = Platform::panelAppearance().cornerRadius;
+	const CGFloat side = radius*2+2;
+	static NSImage *mask = [[NSImage imageWithSize:NSMakeSize(side, side)
 		flipped:NO drawingHandler:^BOOL(NSRect) {
 		NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:
-			NSMakeRect(0, 0, 38, 38) xRadius:18 yRadius:18];
+			NSMakeRect(0, 0, side, side) xRadius:radius yRadius:radius];
 		[[NSColor whiteColor] setFill];
 		[path fill];
 		/* Fill the lower corners so the panel reaches the screen bottom. */
-		NSRectFill(NSMakeRect(0, 0, 38, 20));
+		NSRectFill(NSMakeRect(0, 0, side, radius+2));
 		return YES;
 	}] retain];
-	mask.capInsets = NSEdgeInsetsMake(18, 18, 18, 18);
+	mask.capInsets = NSEdgeInsetsMake(radius, radius, radius, radius);
 	mask.resizingMode = NSImageResizingModeStretch;
 	return mask;
 }

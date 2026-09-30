@@ -36,16 +36,13 @@ static RoundedSurfaceStyle surfaceStyle(QWidget *widget, RoundedRole role)
 			style.border = dark ? QColor(255, 255, 255, 76) : QColor(0, 0, 0, 64);
 			/* Keep the glass outline one physical pixel wide on HiDPI displays. */
 			style.borderWidth = 1/widget->devicePixelRatioF();
-			style.radius = 18; style.corners = 1;
-			if (active && widget->window()->property("pastesPanelCornerRadius").isValid()) {
-				style.radius = widget->window()->property("pastesPanelCornerRadius").toReal();
-				style.corners = widget->window()->property("pastesPanelCorners").toInt();
-			}
 		} else {
 			style.fill = dark ? QColor("#181818") : QColor(244, 244, 239, 245);
 			style.border = dark ? QColor(190, 190, 190, 38) : QColor(66, 88, 75, 32);
-			style.radius = 18; style.borderWidth = 1; style.corners = 1;
+			style.borderWidth = 1;
 		}
+		style.radius = Platform::panelAppearance().cornerRadius;
+		style.corners = 1;
 		break;
 	case RoundedRole::Card:
 		style.fill = QColor(dark ? "#282828" : "#FFFDF8");

@@ -17,6 +17,7 @@ if(WIN32)
         windows/secretstore.cpp
         windows/clipboardsource.cpp windows/pastetarget.cpp
         windows/shortcut.cpp windows/shortcutstate.h windows/windowblur.cpp
+        windows/compositionabi.h
         windows/fileicon.cpp windows/paths.cpp windows/startupintegration.cpp
         desktop/windowintegration.cpp desktop/menuintegration.cpp
         desktop/applicationintegration.cpp
@@ -45,7 +46,8 @@ endif()
 
 if(WIN32)
     set_target_properties(pastes PROPERTIES WIN32_EXECUTABLE TRUE)
-    target_link_libraries(pastes_platform PRIVATE psapi gdi32 shell32 advapi32 dwmapi)
+    target_link_libraries(pastes_platform PRIVATE psapi gdi32 shell32 advapi32
+        dwmapi d2d1 runtimeobject)
 elseif(APPLE)
     find_library(CARBON_FRAMEWORK Carbon REQUIRED)
     find_library(APPKIT_FRAMEWORK AppKit REQUIRED)

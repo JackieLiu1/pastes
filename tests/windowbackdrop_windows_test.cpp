@@ -50,7 +50,7 @@ void verifyCornerPixels(const QImage &actual, const QImage &background, QWidget 
 	surface.paint(&panel, RoundedRole::Panel, painter);
 	painter.end();
 	contour.save("build/backdrop-preview/corner-contour.png");
-	const int extent = qCeil(20*ratio);
+	const int extent = qCeil((Platform::panelAppearance().cornerRadius+2)*ratio);
 	int checked = 0, maximumDifference = 0;
 	for (int side : {0, 1}) {
 		for (int y = 0; y < extent; ++y) {
@@ -77,10 +77,19 @@ void verifyCornerPixels(const QImage &actual, const QImage &background, QWidget 
 		}
 	}
 	qInfo() << "Outside corner pixels:" << checked << "maximum RGB difference:" << maximumDifference;
-	require(checked >= 2, "Corner comparison did not inspect both transparent corners");
+	require(checked >= 100*ratio*ratio, "Corner comparison did not inspect the larger custom corners");
 	/* A small difference permits the native shadow. An acrylic plate changes
 	 * these patterned background pixels by tens or hundreds of RGB levels. */
 	require(maximumDifference <= 16, "Native acrylic leaked outside the painted corner contour");
+	for (int side : {0, 1}) {
+		const int x = side ? contour.width()-1-qRound(2*ratio) : qRound(2*ratio);
+		const int y = contour.height()-1-qRound(2*ratio);
+		const QColor first = actual.pixelColor(offset.x()+x, offset.y()+y);
+		const QColor second = background.pixelColor(offset.x()+x, offset.y()+y);
+		const int difference = qMax(qAbs(first.red()-second.red()),
+			qMax(qAbs(first.green()-second.green()), qAbs(first.blue()-second.blue())));
+		require(difference > 16, "A native bottom corner was rounded away");
+	}
 }
 
 void nativeBackdrop(bool capture)
@@ -116,6 +125,8 @@ void nativeBackdrop(bool capture)
 			}
 			background.raise();
 			settle();
+			const HWND owner = GetWindow(reinterpret_cast<HWND>(panel.winId()), GW_OWNER);
+			if (owner) require(!IsWindowVisible(owner), "Hidden panel left its backdrop visible");
 			baseline = captureBackground(background);
 		}
 		const bool dark = stage != "light";
@@ -134,8 +145,15 @@ void nativeBackdrop(bool capture)
 			if (panel.property("pastesPanelBackdrop").toBool()) {
 				DWM_WINDOW_CORNER_PREFERENCE corners = DWMWCP_DEFAULT;
 				require(SUCCEEDED(DwmGetWindowAttribute(window, DWMWA_WINDOW_CORNER_PREFERENCE,
-					&corners, sizeof(corners))) && corners == DWMWCP_ROUND,
-					"Native backdrop did not request matching system corners");
+					&corners, sizeof(corners))) && corners == DWMWCP_DONOTROUND,
+					"System corners overrode the custom contour");
+				const HWND backdrop = GetWindow(window, GW_OWNER);
+				require(backdrop && IsWindow(backdrop), "Composition backdrop owner missing");
+				const auto style = GetWindowLongPtrW(backdrop, GWL_EXSTYLE);
+				require((style & (WS_EX_NOACTIVATE | WS_EX_TRANSPARENT)) ==
+					(WS_EX_NOACTIVATE | WS_EX_TRANSPARENT), "Backdrop could intercept input or activation");
+				require(SendMessageW(backdrop, WM_NCHITTEST, 0, 0) == HTTRANSPARENT,
+					"Backdrop intercepted mouse hit testing");
 			}
 		} else require(!panel.property("pastesPanelBackdrop").toBool(), "Non-native backend enabled Windows glass");
 		if (!capture) continue;
@@ -171,5 +189,17 @@ int main(int argc, char **argv)
 	const bool capture = app.arguments().contains("--capture");
 	return runTest("Windows backdrop lifecycle and visible corner clipping", [=] {
 		nativeBackdrop(capture);
+		int backdrops = 0;
+		EnumWindows([](HWND window, LPARAM count) -> BOOL {
+			DWORD process = 0;
+			GetWindowThreadProcessId(window, &process);
+			if (process != GetCurrentProcessId()) return TRUE;
+			wchar_t name[64]{};
+			GetClassNameW(window, name, 64);
+			if (wcscmp(name, L"PastesCompositionBackdrop") == 0)
+				++*reinterpret_cast<int *>(count);
+			return TRUE;
+		}, reinterpret_cast<LPARAM>(&backdrops));
+		require(backdrops == 0, "Panel destruction left a native backdrop window alive");
 	}) ? 1 : 0;
 }
