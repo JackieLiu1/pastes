@@ -1,5 +1,6 @@
 #include "storage/database.h"
 #include "core/clipboarddata.h"
+#include "core/sourceicon.h"
 
 #include <QBuffer>
 #include <QDir>
@@ -64,9 +65,7 @@ public slots:
 			StoredEntry entry;
 			entry.md5 = query.value("md5").toByteArray();
 			entry.time = QDateTime::fromSecsSinceEpoch(query.value("time").toLongLong());
-			entry.icon = QImage::fromData(query.value("icondata").toByteArray());
-			if (entry.icon.width() > 64 || entry.icon.height() > 64)
-				entry.icon = entry.icon.scaled(QSize(64, 64), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+			entry.icon = SourceIcon::bounded(QImage::fromData(query.value("icondata").toByteArray()));
 			QSqlQuery formats(m_db);
 			formats.prepare("select formats, format_data from data where md5 = :md5 order by id asc;");
 			formats.bindValue(":md5", entry.md5);
@@ -91,7 +90,7 @@ public slots:
 		query.prepare("insert into item (md5, imagedata, icondata, time) values (:md5, :image, :icon, :time);");
 		query.bindValue(":md5", entry.md5);
 		query.bindValue(":image", entry.encodedImage);
-		query.bindValue(":icon", encodeImage(entry.icon));
+		query.bindValue(":icon", encodeImage(SourceIcon::bounded(entry.icon)));
 		query.bindValue(":time", entry.time.toSecsSinceEpoch());
 		if (!query.exec()) { report(query.lastError()); m_db.rollback(); return; }
 		for (const auto &format : entry.formats) {
@@ -122,7 +121,7 @@ public slots:
 	{
 		QSqlQuery query(m_db);
 		query.prepare("update item set icondata = :icon where md5 = :md5;");
-		query.bindValue(":icon", encodeImage(icon));
+		query.bindValue(":icon", encodeImage(SourceIcon::bounded(icon)));
 		query.bindValue(":md5", md5);
 		if (!query.exec()) report(query.lastError());
 	}

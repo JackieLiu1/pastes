@@ -1,11 +1,12 @@
 #include "platform/clipboardsource.h"
+#include "core/sourceicon.h"
 
 #include <QApplication>
 #include <QClipboard>
 #include <QThread>
 #include <QCache>
 #include <windows.h>
-#include <shellapi.h>
+#include <shlobj.h>
 
 namespace {
 
@@ -19,10 +20,8 @@ QImage iconImage(HICON icon)
 	/* A default window-class icon conveys no source identity. */
 	HICON defaultIcon = reinterpret_cast<HICON>(LoadImageW(nullptr, MAKEINTRESOURCEW(32512),
 		IMAGE_ICON, nativeImage.width(), nativeImage.height(), LR_SHARED));
-	const QImage generic = QImage::fromHICON(defaultIcon)
-		.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-	QImage image = nativeImage.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-	return image == generic ? QImage() : image;
+	const QImage generic = QImage::fromHICON(defaultIcon);
+	return nativeImage == generic ? QImage() : SourceIcon::bounded(nativeImage);
 }
 
 QImage windowIcon(HWND window, DWORD processId, bool allSizes = false)
@@ -30,7 +29,7 @@ QImage windowIcon(HWND window, DWORD processId, bool allSizes = false)
 	DWORD actualId = 0;
 	if (!window || !GetWindowThreadProcessId(window, &actualId) || actualId != processId)
 		return QImage();
-	const WPARAM sizes[] = {ICON_SMALL2, ICON_SMALL, ICON_BIG};
+	const WPARAM sizes[] = {ICON_BIG, ICON_SMALL, ICON_SMALL2};
 	for (int i = 0; i < (allSizes ? 3 : 1); ++i) {
 		DWORD_PTR result = 0;
 		/* Never block the clipboard listener indefinitely on another app. */
@@ -41,9 +40,9 @@ QImage windowIcon(HWND window, DWORD processId, bool allSizes = false)
 				return image;
 		}
 	}
-	QImage image = iconImage(reinterpret_cast<HICON>(GetClassLongPtrW(window, GCLP_HICONSM)));
+	QImage image = iconImage(reinterpret_cast<HICON>(GetClassLongPtrW(window, GCLP_HICON)));
 	if (image.isNull())
-		image = iconImage(reinterpret_cast<HICON>(GetClassLongPtrW(window, GCLP_HICON)));
+		image = iconImage(reinterpret_cast<HICON>(GetClassLongPtrW(window, GCLP_HICONSM)));
 	return image;
 }
 
@@ -69,15 +68,15 @@ Source captureSource(void)
 		if (source.icon.isNull() && foreground != owner)
 			source.icon = windowIcon(foreground, source.processId);
 	}
-	if (source.icon.isNull()) {
-		HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, source.processId);
-		if (process) {
-			wchar_t filename[32768];
-			DWORD size = sizeof(filename)/sizeof(filename[0]);
-			if (QueryFullProcessImageNameW(process, 0, filename, &size))
-				source.executable = QString::fromWCharArray(filename, size);
-			CloseHandle(process);
-		}
+	/* A usable caption icon can still be only 16 px. Always retain the path
+	 * so the worker can request a larger executable resource. */
+	HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, source.processId);
+	if (process) {
+		wchar_t filename[32768];
+		DWORD size = sizeof(filename)/sizeof(filename[0]);
+		if (QueryFullProcessImageNameW(process, 0, filename, &size))
+			source.executable = QString::fromWCharArray(filename, size);
+		CloseHandle(process);
 	}
 	return source;
 }
@@ -104,14 +103,14 @@ QImage executableIcon(const QString &path)
 {
 	if (path.isEmpty())
 		return QImage();
-	HICON large = nullptr, small = nullptr;
-	/* Read the real executable resource, not an icon inferred from .exe. */
-	ExtractIconExW(reinterpret_cast<const wchar_t *>(path.utf16()), 0, &large, &small, 1);
-	QImage image = iconImage(large ? large : small);
-	if (large)
-		DestroyIcon(large);
-	if (small)
-		DestroyIcon(small);
+	HICON icon = nullptr;
+	/* ExtractIconEx uses the system's small/large metrics (often 16/32 px).
+	 * Ask the shell for a HiDPI resource instead, on the worker thread. */
+	SHDefExtractIconW(reinterpret_cast<const wchar_t *>(path.utf16()), 0, 0,
+		&icon, nullptr, SourceIcon::maxPixels);
+	QImage image = iconImage(icon);
+	if (icon)
+		DestroyIcon(icon);
 	return image;
 }
 
@@ -148,13 +147,8 @@ void ClipboardSource::capture(quint64 request)
 	QMetaObject::invokeMethod(m_private->worker, [this, source, request](void) {
 		if (m_private->thread.isInterruptionRequested())
 			return;
-		QImage image = source.icon;
-		if (image.isNull() && source.processId) {
-			WindowSearch search{source.processId, QImage()};
-			EnumWindows(findSourceWindow, reinterpret_cast<LPARAM>(&search));
-			image = search.icon;
-		}
-		if (image.isNull() && !source.executable.isEmpty()) {
+		QImage image;
+		if (!source.executable.isEmpty()) {
 			if (const QImage *cached = m_private->icons.object(source.executable))
 				image = *cached;
 			else {
@@ -162,6 +156,13 @@ void ClipboardSource::capture(quint64 request)
 				if (!image.isNull())
 					m_private->icons.insert(source.executable, new QImage(image));
 			}
+		}
+		if (image.isNull())
+			image = source.icon;
+		if (image.isNull() && source.processId) {
+			WindowSearch search{source.processId, QImage()};
+			EnumWindows(findSourceWindow, reinterpret_cast<LPARAM>(&search));
+			image = search.icon;
 		}
 		emit iconReady(request, image);
 	}, Qt::QueuedConnection);

@@ -6,6 +6,7 @@
 #include "ui/cardswipe.h"
 #include "ui/elasticscroll.h"
 #include "ui/previewdialog.h"
+#include "ui/sourceiconview.h"
 #include <QApplication>
 #include <QFile>
 #include <QInputMethodEvent>
@@ -474,6 +475,48 @@ void imageFilePreviews(void)
 		reloadRepository.removals.isEmpty(), "Missing source file deleted its history record");
 }
 
+void sourceIconPresentation(void)
+{
+	QImage tight(64, 32, QImage::Format_ARGB32_Premultiplied);
+	tight.fill(Qt::green);
+	QImage padded(128, 128, QImage::Format_ARGB32_Premultiplied);
+	padded.fill(Qt::transparent);
+	{
+		QPainter painter(&padded);
+		painter.drawImage(20, 70, tight); // Deliberately asymmetric source padding.
+	}
+	auto bounds = [](const QPixmap &pixmap) {
+		const QImage image = pixmap.toImage().convertToFormat(QImage::Format_ARGB32);
+		QRect result;
+		for (int y = 0; y < image.height(); ++y) {
+			const auto *line = reinterpret_cast<const QRgb *>(image.constScanLine(y));
+			for (int x = 0; x < image.width(); ++x)
+				if (qAlpha(line[x]) >= 128) result |= QRect(x, y, 1, 1);
+		}
+		return result;
+	};
+	for (int logicalSize : {20, 24}) for (qreal ratio : {1.0, 1.25, 2.0, 3.0}) {
+		const QPixmap first = SourceIconView::pixmap(tight, logicalSize, ratio);
+		const QPixmap second = SourceIconView::pixmap(padded, logicalSize, ratio);
+		const int pixels = qRound(logicalSize*ratio);
+		require(first.size() == QSize(pixels, pixels) && second.size() == first.size() &&
+			first.devicePixelRatio() == ratio && second.devicePixelRatio() == ratio,
+			"Source icon canvas or HiDPI scale differs between platforms");
+		const QRect visible = bounds(first);
+		require(visible == bounds(second), "Transparent padding changed the visible icon size or center");
+		require(qAbs(visible.width()-2*visible.height()) <= 1 &&
+			qAbs(visible.center().x()-(pixels-1)/2) <= 1 &&
+			qAbs(visible.center().y()-(pixels-1)/2) <= 1,
+			"Source icon artwork was distorted or not centered");
+	}
+	QImage transparent(64, 64, QImage::Format_ARGB32); transparent.fill(Qt::transparent);
+	require(SourceIconView::pixmap(transparent, 20, 2).isNull(), "Empty icon created visible artwork");
+	/* PNG transfer can discard DPR metadata; it must not affect geometry. */
+	padded.setDevicePixelRatio(2);
+	require(bounds(SourceIconView::pixmap(tight, 20, 2)) == bounds(SourceIconView::pixmap(padded, 20, 2)),
+		"Source DPR metadata changed the rendered icon size");
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
@@ -486,5 +529,6 @@ int main(int argc, char **argv)
 	failures += runTest("search composition keeps candidate keys", composingSearchCommands);
 	failures += runTest("search filtering preserves uninterrupted input focus", searchKeepsInputFocus);
 	failures += runTest("image files preview on demand and retain missing paths", imageFilePreviews);
+	failures += runTest("source icons keep uniform visible bounds on HiDPI screens", sourceIconPresentation);
 	return failures ? 1 : 0;
 }

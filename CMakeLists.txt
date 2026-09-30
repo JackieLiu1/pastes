@@ -23,6 +23,7 @@ add_library(pastes_core STATIC
     core/clipboarddata.cpp core/clipboarddata.h
     core/clipboardcontent.cpp core/clipboardcontent.h
     core/historypolicy.h
+    core/sourceicon.h
 )
 # Core has no Qt meta-object declarations; avoid an empty moc archive member.
 set_target_properties(pastes_core PROPERTIES AUTOMOC OFF)
@@ -80,6 +81,7 @@ set(PASTES_UI_SOURCES
     ui/roundedwidgets.h
     ui/searchbar.cpp
     ui/searchbar.h
+    ui/sourceiconview.cpp ui/sourceiconview.h
     ui/syncsettingspage.cpp ui/syncsettingspage.h
     ui/settingsdialog.cpp
     ui/settingsdialog.h

@@ -2,6 +2,7 @@
 #include "core/clipboarddata.h"
 #include "core/clipboardcontent.h"
 #include "core/historypolicy.h"
+#include "core/sourceicon.h"
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QImageReader>
@@ -90,7 +91,7 @@ QJsonObject encode(Snapshot value, QString *error)
 		payload["urls"] = QJsonArray::fromStringList(value.urls);
 	} else return {};
 	if (!value.icon.isNull()) payload["icon"] = QString::fromLatin1(pngBytes(
-		value.icon.scaled(128, 128, Qt::KeepAspectRatio, Qt::SmoothTransformation)).toBase64());
+		SourceIcon::bounded(value.icon)).toBase64());
 	return payload;
 }
 Snapshot decode(const QJsonObject &payload, QString *error)
@@ -122,7 +123,8 @@ Snapshot decode(const QJsonObject &payload, QString *error)
 		value.md5 = ClipboardContent::imageFingerprint(value.image);
 	} else { *error = QObject::tr("Unsupported sync content."); return {}; }
 	const QByteArray icon = QByteArray::fromBase64(payload.value("icon").toString().toLatin1());
-	if (icon.size() < 128*1024) value.icon = readImage(icon, 128*128);
+	if (icon.size() < 128*1024) value.icon = SourceIcon::bounded(
+		readImage(icon, SourceIcon::maxPixels*SourceIcon::maxPixels));
 	return value;
 }
 QString digest(const QByteArray &value)

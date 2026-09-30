@@ -1,4 +1,5 @@
 #include "ui/previewdialog.h"
+#include "ui/sourceiconview.h"
 #include "core/itemdata.h"
 #include "core/clipboarddata.h"
 #include "ui/roundedwidgets.h"
@@ -94,12 +95,7 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	icon->setFixedSize(30, 30);
 	icon->setAlignment(Qt::AlignCenter);
 	if (!data.icon.isNull()) {
-		const qreal ratio = devicePixelRatioF();
-		const int pixels = qRound(24*ratio);
-		QPixmap pixmap = QPixmap::fromImage(data.icon).scaled(pixels, pixels,
-			Qt::KeepAspectRatio, Qt::SmoothTransformation);
-		pixmap.setDevicePixelRatio(ratio);
-		icon->setPixmap(pixmap);
+		icon->setPixmap(SourceIconView::pixmap(data.icon, 24, devicePixelRatioF()));
 	} else
 		icon->setPixmap(QIcon(":/resources/pastes.svg").pixmap(QSize(26, 26), devicePixelRatioF()));
 	QLabel *title = new QLabel(QObject::tr("Preview"), m_header);

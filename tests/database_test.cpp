@@ -90,6 +90,36 @@ void imagesAndConnections(void)
 	require(read(second).isEmpty(), "Independent repositories shared a connection");
 }
 
+void sourceIconResolution(void)
+{
+	QTemporaryDir directory;
+	const QString path = directory.filePath("icons.db");
+	QHash<QByteArray, QImage> expected;
+	{
+		Database repository(path);
+		for (int size : {16, 32, 64, 128}) {
+			auto entry = textEntry(QString::number(size));
+			QImage image(size, size, QImage::Format_ARGB32);
+			image.fill(Qt::green); image.setPixelColor(3, 5, Qt::red);
+			entry->icon = image;
+			expected.insert(entry->md5, image);
+			repository.insert(entry);
+		}
+		/* Late source lookup must keep its high-resolution pixels too. */
+		auto late = textEntry("late icon");
+		repository.insert(late);
+		QImage icon(128, 96, QImage::Format_ARGB32);
+		icon.fill(Qt::blue); icon.setPixelColor(60, 30, Qt::white);
+		expected.insert(late->md5, icon);
+		repository.updateIcon(late->md5, icon);
+	}
+	Database repository(path);
+	const auto entries = read(repository);
+	require(entries.size() == expected.size(), "Source icon records lost after restart");
+	for (const auto &entry : entries)
+		require(entry->icon == expected.value(entry->md5), "Source icon resampled during persistence");
+}
+
 }
 
 int main(int argc, char **argv)
@@ -98,5 +128,6 @@ int main(int argc, char **argv)
 	int failures = 0;
 	failures += runTest("queued value snapshots and shutdown", persistenceAndShutdown);
 	failures += runTest("encoded images and independent connections", imagesAndConnections);
+	failures += runTest("source icon pixels survive insert, update and restart", sourceIconResolution);
 	return failures ? 1 : 0;
 }

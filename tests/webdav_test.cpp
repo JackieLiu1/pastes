@@ -243,6 +243,47 @@ void imageRoundTrip()
 	require(decoded.size() == image.size() && decoded.pixelColor(0,0) == image.pixelColor(0,0), "Image pixels changed");
 	require(received->time == item->time, "Original copy time was changed");
 }
+
+void sourceIconRoundTrip()
+{
+	for (int size : {16, 32, 64, 128}) {
+		auto entry = textEntry("source icon");
+		entry->icon = QImage(size, size, QImage::Format_ARGB32);
+		entry->icon.fill(Qt::green); entry->icon.setPixelColor(3, 5, Qt::red);
+		QString error;
+		const auto decoded = SyncContent::decode(SyncContent::encode(SyncContent::snapshot(*entry), &error), &error);
+		require(error.isEmpty() && decoded.icon == entry->icon, "Sync enlarged or resampled a source icon");
+	}
+	auto large = textEntry("large icon");
+	large->icon = QImage(256, 192, QImage::Format_ARGB32); large->icon.fill(Qt::blue);
+	QString error;
+	const auto decoded = SyncContent::decode(SyncContent::encode(SyncContent::snapshot(*large), &error), &error);
+	require(error.isEmpty() && decoded.icon.size() == QSize(128, 96), "Oversized source icon was not bounded");
+
+	/* A later source lookup upgrades the same item without changing its
+	 * content identity, copy time or number of visible history entries. */
+	DavServer server; QTemporaryDir directory;
+	Client first(server.settings(), directory.path()+"/a"), second(server.settings(), directory.path()+"/b");
+	auto item = textEntry("icon upgrade", QDateTime::currentDateTime().addSecs(-30));
+	item->icon = QImage(16, 16, QImage::Format_ARGB32); item->icon.fill(Qt::green);
+	first.capture(item); first.run(); second.run();
+	require(first.success && second.success && second.deliveries.size() == 1, "Initial source icon sync failed");
+	MemoryRepository repository; HistoryService history(repository);
+	history.load(); repository.finishLoad();
+	const auto initial = second.deliveries.first();
+	history.mergeSynced(SyncContent::materialize(initial.content), initial.replaced);
+	const auto entryId = history.entries().first()->id;
+	item->icon = QImage(128, 128, QImage::Format_ARGB32); item->icon.fill(Qt::blue);
+	item->icon.setPixelColor(7, 8, Qt::white);
+	first.capture(item); first.run(); second.run();
+	require(first.success && second.success && second.deliveries.size() == 1, "High-resolution icon upgrade was not delivered");
+	const auto updated = second.deliveries.first();
+	require(updated.content.icon == item->icon && updated.content.time == item->time,
+		"Icon upgrade changed pixels or the original copy time");
+	history.mergeSynced(SyncContent::materialize(updated.content), updated.replaced);
+	require(history.entries().size() == 1 && history.entries().first()->id == entryId &&
+		history.entries().first()->icon == item->icon, "Icon upgrade replaced or duplicated the visible item");
+}
 }
 int main(int argc, char **argv)
 {
@@ -257,5 +298,6 @@ int main(int argc, char **argv)
 	failures += runTest("file exclusion and server validation", limitsAndIntegrity);
 	failures += runTest("service settings and disabled-session persistence", servicePersistence);
 	failures += runTest("image content and timestamp round trip", imageRoundTrip);
+	failures += runTest("source icon resolution and incremental upgrades", sourceIconRoundTrip);
 	return failures ? 1 : 0;
 }
