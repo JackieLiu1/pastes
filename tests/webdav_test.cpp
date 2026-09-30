@@ -251,6 +251,7 @@ void servicePersistence()
 		require(service.lastSuccess().isValid() && server.files.size() == 1, "Service did not bootstrap local history");
 		QFile config(QSettings().fileName()); require(config.open(QIODevice::ReadOnly), "Test settings missing");
 		require(!config.readAll().contains("pass"), "Password leaked into ordinary preferences");
+		config.close(); // Allow QSettings to replace the INI file on Windows.
 		auto disabled = server.settings(); disabled.enabled = false;
 		require(service.save(disabled, {}, &error), "Could not disable sync");
 	}
