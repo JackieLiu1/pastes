@@ -39,9 +39,14 @@
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="191"/>
-        <source>Show (%1)</source>
-        <translation>显示（%1）</translation>
+        <location filename="ui/mainwindow.cpp" line="208"/>
+        <source>Show History (%1)</source>
+        <translation>显示历史（%1）</translation>
+    </message>
+    <message>
+        <location filename="ui/mainwindow.cpp" line="209"/>
+        <source>Hide History (%1)</source>
+        <translation>隐藏历史（%1）</translation>
     </message>
     <message>
         <location filename="platform/macos/shortcut.cpp" line="36"/>
@@ -97,7 +102,7 @@
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="164"/>
-        <location filename="ui/mainwindow.cpp" line="216"/>
+        <location filename="ui/mainwindow.cpp" line="232"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
     </message>
@@ -154,7 +159,7 @@
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="184"/>
+        <location filename="ui/mainwindow.cpp" line="193"/>
         <source>records</source>
         <translation>条记录</translation>
     </message>
@@ -513,7 +518,7 @@
     </message>
     <message>
         <location filename="ui/historyview.cpp" line="322"/>
-        <location filename="ui/mainwindow.cpp" line="185"/>
+        <location filename="ui/mainwindow.cpp" line="194"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
     </message>

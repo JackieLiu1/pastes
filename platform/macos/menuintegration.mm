@@ -159,7 +159,6 @@ const Platform::MenuAppearance &Platform::menuAppearance(void)
 {
 	static const MenuAppearance appearance = [] {
 		MenuAppearance value;
-		value.showPanelAction = false;
 		value.standardShortcuts = true;
 		value.preferencesSeparator = true;
 		return value;

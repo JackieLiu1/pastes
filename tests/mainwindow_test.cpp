@@ -41,6 +41,34 @@ struct WindowFixture
 	MainWindow window{history, clipboard};
 };
 
+void trayPanelActionFollowsVisibility(void)
+{
+	WindowFixture fixture;
+	auto &window = fixture.window;
+	auto *action = window.findChild<QAction *>("ShowHistoryAction");
+	require(action, "Tray history action missing");
+	const QString showLabel = action->text();
+	action->trigger();
+	require(window.isVisible(), "Tray action did not open history");
+	require(action->text() != showLabel, "Visible history still offers a show action");
+	action->trigger();
+	require(action->text() == showLabel, "Hide animation did not update the tray action");
+	action->trigger(); // Reverse the pending hide before QWidget becomes hidden.
+	require(window.isVisible() && action->text() != showLabel,
+		"Reopening during hide left the tray action stale");
+	window.toggle_window(); // The same entry point used by the global shortcut.
+	waitUntil([&] { return !window.isVisible(); });
+	require(action->text() == showLabel, "Shortcut dismissal left the tray action stale");
+	window.show_window();
+	window.hide(); // Secondary instances and immediate platform dismissal.
+	require(action->text() == showLabel, "Direct dismissal left a hide action");
+	window.toggle_window();
+	require(window.isVisible() && action->text() != showLabel,
+		"Shortcut toggle could not reopen after direct dismissal");
+	window.hide_window();
+	waitUntil([&] { return !window.isVisible(); });
+}
+
 void backdropUsesOpaqueFallback(void)
 {
 	QWidget panel;
@@ -274,7 +302,8 @@ int main(int argc, char **argv)
 	QCoreApplication::setApplicationName("Dialogs");
 	QSettings::setDefaultFormat(QSettings::IniFormat);
 	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences.path());
-	int failures = runTest("backdrop activation and fallback preserve readable surfaces", backdropUsesOpaqueFallback);
+	int failures = runTest("tray history action follows visibility and pending animations", trayPanelActionFollowsVisibility);
+	failures += runTest("backdrop activation and fallback preserve readable surfaces", backdropUsesOpaqueFallback);
 	failures += runTest("light theme text remains readable over black and white backgrounds", lightThemeTextContrast);
 	failures += runTest("application dialogs hide history and block reopening", appDialogsHideHistory);
 	failures += runTest("preview keeps history visible through close and Escape", previewKeepsHistoryVisible);

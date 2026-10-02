@@ -25,6 +25,7 @@ public:
 	MainWindow(HistoryService &history, ClipboardController &clipboard, QWidget *parent = nullptr, SyncService *sync = nullptr);
 
 public slots:
+	void toggle_window(void);
 	void show_window(void);
 	void hide_window(void);
 
@@ -38,6 +39,7 @@ private:
 	void setupTrayIcon(void);
 	void updateTrayTooltip(void);
 	void updateShortcutHint(void);
+	void updateTrayPanelAction(void);
 	void applyTheme(const QString &name);
 	void showSettings(void);
 	void execAppDialog(AppDialog &dialog);

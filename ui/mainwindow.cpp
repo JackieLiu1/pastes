@@ -65,9 +65,7 @@ MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, 
 	});
 	__shortcut = new GlobalShortcut(this);
 	__primary_shortcut = __shortcut->primaryShortcut();
-	connect(__shortcut, &GlobalShortcut::pasteActivated, this, [this](void) {
-		if (__hide_state) show_window(); else hide_window();
-	});
+	connect(__shortcut, &GlobalShortcut::pasteActivated, this, &MainWindow::toggle_window);
 	connect(__shortcut, &GlobalShortcut::primaryShortcutChanged, this, [this](const QString &shortcut) {
 		__primary_shortcut = shortcut;
 		updateShortcutHint();
@@ -103,18 +101,26 @@ void MainWindow::showEvent(QShowEvent *event)
 {
 	__main_frame->focusCurrent();
 	QMainWindow::showEvent(event);
+	updateTrayPanelAction();
 }
 
 void MainWindow::hideEvent(QHideEvent *event)
 {
 	__main_frame->cancelInteractions();
 	QMainWindow::hideEvent(event);
+	updateTrayPanelAction();
 }
 
 void MainWindow::resizeEvent(QResizeEvent *event)
 {
 	QMainWindow::resizeEvent(event);
 	Platform::updatePanelBackdrop(this);
+}
+
+void MainWindow::toggle_window(void)
+{
+	if (__hide_state || !isVisible()) show_window();
+	else hide_window();
 }
 
 void MainWindow::show_window(void)
@@ -132,6 +138,7 @@ void MainWindow::show_window(void)
 	__hide_animation->start();
 	__hide_state = false;
 	show();
+	updateTrayPanelAction();
 	Platform::activatePanel(this);
 }
 
@@ -144,6 +151,7 @@ void MainWindow::hide_window(void)
 	__hide_animation->setEndValue(QPoint(x(), y()+height()));
 	__hide_animation->start();
 	__hide_state = true;
+	updateTrayPanelAction();
 }
 
 void MainWindow::copyEntry(HistoryEntry entry, bool plainText, bool paste)
@@ -189,8 +197,16 @@ void MainWindow::updateTrayTooltip(void)
 void MainWindow::updateShortcutHint(void)
 {
 	__main_frame->setPrimaryShortcut(__primary_shortcut);
-	if (__show_action) __show_action->setText(QObject::tr("Show (%1)").arg(__primary_shortcut));
+	updateTrayPanelAction();
 	updateTrayTooltip();
+}
+
+void MainWindow::updateTrayPanelAction(void)
+{
+	if (!__show_action) return;
+	const bool hidden = __hide_state || !isVisible();
+	__show_action->setText((hidden ? QObject::tr("Show History (%1)") :
+		QObject::tr("Hide History (%1)")).arg(__primary_shortcut));
 }
 
 void MainWindow::setupTrayIcon(void)
@@ -200,9 +216,8 @@ void MainWindow::setupTrayIcon(void)
 
 	if (Platform::menuAppearance().showPanelAction) {
 		this->__show_action = new QAction(this);
-		QObject::connect(this->__show_action, &QAction::triggered, [this](void) {
-			this->show_window();
-		});
+		this->__show_action->setObjectName("ShowHistoryAction");
+		QObject::connect(this->__show_action, &QAction::triggered, this, &MainWindow::toggle_window);
 		tray_menu->addAction(this->__show_action);
 		tray_menu->addSeparator();
 	}
@@ -240,13 +255,7 @@ void MainWindow::setupTrayIcon(void)
 	this->__tray_icon->setIcon(Platform::trayIcon());
 	this->__tray_icon->setToolTip("Pastes");
 	this->__tray_icon->setContextMenu(tray_menu);
-	QObject::connect(this->__tray_icon, &TrayIcon::activated, this, [this](void) {
-		/* left click / double click toggles the window */
-		if (this->isVisible())
-			this->hide_window();
-		else
-			this->show_window();
-	});
+	QObject::connect(this->__tray_icon, &TrayIcon::activated, this, &MainWindow::toggle_window);
 
 	if (!TrayIcon::isAvailable())
 		qWarning() << "Pastes: no system tray available";

@@ -1,11 +1,16 @@
 #include "tests/testsupport.h"
 #include "platform/applicationintegration.h"
 #include "platform/trayicon.h"
+#include "application/clipboardcontroller.h"
+#include "application/historyservice.h"
+#include "ui/mainwindow.h"
 
 #include <QApplication>
 #include <QIcon>
 #include <QMenu>
+#include <QSettings>
 #include <QSystemTrayIcon>
+#include <QTemporaryDir>
 #import <AppKit/AppKit.h>
 
 /* A menu-bar gesture on macOS 27 can arrive with a non-mouse currentEvent.
@@ -28,6 +33,50 @@
 @end
 
 namespace {
+
+class IdleFeed final : public ClipboardFeed
+{
+public:
+	int settleInterval(void) const override { return 0; }
+	void capture(quint64) override {}
+	bool synchronize(void) override { return false; }
+	bool allowsCapture(void) const override { return false; }
+	QImage snapshotIcon(void) override { return {}; }
+};
+
+void nativeHistoryToggle(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	IdleFeed feed;
+	ClipboardController clipboard(history, feed, *QApplication::clipboard(), false);
+	MainWindow window(history, clipboard);
+	auto *action = window.findChild<QAction *>("ShowHistoryAction");
+	require(action, "Native tray history action missing");
+	QMenu *menu = nullptr;
+	for (QMenu *candidate : window.findChildren<QMenu *>()) {
+		if (candidate->actions().contains(action)) {
+			menu = candidate;
+			break;
+		}
+	}
+	require(menu, "Native tray menu missing");
+	NSMenu *native = menu->toNSMenu();
+	const QString showLabel = action->text();
+	for (int i = 0; i < 2; ++i) {
+		require([native.itemArray.firstObject.title isEqualToString:showLabel.toNSString()],
+			"Native menu did not offer show history");
+		[native performActionForItemAtIndex:0];
+		waitUntil([&] { return window.isVisible(); });
+		require(action->text() != showLabel &&
+			[native.itemArray.firstObject.title isEqualToString:action->text().toNSString()],
+			"Native menu did not update to hide history");
+		[native performActionForItemAtIndex:0];
+		waitUntil([&] { return !window.isVisible(); });
+		require(action->text() == showLabel,
+			"Native menu did not hide history or reset its title");
+	}
+}
 
 void repeatedMenuTracking(bool legacy)
 {
@@ -91,8 +140,17 @@ int main(int argc, char **argv)
 		[PastesTrayTestApplication sharedApplication];
 		QApplication app(argc, argv);
 		[NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+		QTemporaryDir preferences;
+		QCoreApplication::setOrganizationName("PastesTrayTests");
+		QCoreApplication::setApplicationName("NativeMenu");
+		QSettings::setDefaultFormat(QSettings::IniFormat);
+		QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences.path());
 		const bool legacy = app.arguments().contains(QStringLiteral("--legacy-qt-tray"));
-		return runTest("native tray tracking with non-mouse events and action delivery",
+		int failures = runTest("native tray tracking with non-mouse events and action delivery",
 			[&] { repeatedMenuTracking(legacy); });
+		if (!legacy)
+			failures += runTest("native tray menu shows and hides history with matching titles",
+				nativeHistoryToggle);
+		return failures ? 1 : 0;
 	}
 }
