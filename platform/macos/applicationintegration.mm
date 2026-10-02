@@ -6,13 +6,7 @@
 
 const Platform::ApplicationBehavior &Platform::applicationBehavior(void)
 {
-	static const ApplicationBehavior behavior = [] {
-		ApplicationBehavior value;
-		value.showOnLaunch = true;
-		value.showOnActivation = true;
-		value.showOnSecondInstance = true;
-		return value;
-	}();
+	static const ApplicationBehavior behavior;
 	return behavior;
 }
 
