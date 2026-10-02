@@ -1,6 +1,8 @@
 #ifndef PLATFORM_APPLICATIONINTEGRATION_H
 #define PLATFORM_APPLICATIONINTEGRATION_H
 
+class QIcon;
+
 namespace Platform {
 
 struct ApplicationBehavior
@@ -12,6 +14,7 @@ struct ApplicationBehavior
 
 const ApplicationBehavior &applicationBehavior(void);
 void configureApplication(void);
+QIcon trayIcon(void);
 
 }
 #endif

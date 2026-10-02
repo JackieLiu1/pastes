@@ -29,7 +29,7 @@ MainWindow / HistoryView / PasteItem / AppDialog / SettingsDialog
 | `globalshortcut.h` | 全局唤出信号、默认快捷键和注册结果通知 | UI 不依赖后台线程；内部类型在 `shortcut_p.h` |
 | `windowintegration.h` | 面板几何、卡片尺寸、背板、窗口归属、激活、关闭通知及弹窗装饰 | GUI 线程调用；观察器随所属窗口销毁 |
 | `menuintegration.h` | 原生菜单弹出、标准设置/退出动作和菜单布局约定 | GUI 线程调用；动作触发后的业务行为仍由 UI 决定 |
-| `applicationintegration.h` | 应用激活策略、首次启动与第二实例的显示约定 | 创建 QApplication 后调用 |
+| `applicationintegration.h` | 应用激活策略、首次启动与第二实例的显示约定、托盘图标 | 创建 QApplication 后调用 |
 | `fileicon.h` | 文件图标查询与原生图标转换 | GUI 线程调用；返回 `QIcon` |
 | `paths.h` | 数据库和翻译目录 | 不访问 SQL；目录准备由存储工作线程负责 |
 | `startupintegration.h` | 查询和修改系统开机启动项及权限提示 | 状态来自系统项；公共层校验输入，平台实现返回错误 |
@@ -58,6 +58,8 @@ UI 使用有明确名称的能力与布局配置，例如 `nativeControls`、`na
   时间、系统变化编号、各条目的格式名称、前台应用和过滤结果。
   前台应用仅表示当时的前台上下文，不能据此断言它是实际写入方。
 - macOS 使用 Shift+Cmd+V，运行时没有 Dock 项；面板贴屏幕底部，使用 AppKit 背板和菜单。
+  菜单栏使用独立的透明底单色模板图标，由系统适配菜单栏外观与高亮状态；
+  应用图标及 Windows、Linux 托盘继续使用原有彩色图标。
   全屏空间切换通知、弹窗激活保护、原生关闭按钮和高分辨率来源图标仍由 macOS 实现处理。
   面板使用状态窗口层级，预览仅高一级，覆盖 Dock 但位于标准菜单和截图遮罩之下。
   面板菜单与条目右键菜单共用原生菜单外观；右键菜单按点击位置弹出，

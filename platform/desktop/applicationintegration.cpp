@@ -1,5 +1,7 @@
 #include "platform/applicationintegration.h"
 
+#include <QIcon>
+
 const Platform::ApplicationBehavior &Platform::applicationBehavior(void)
 {
 	static const ApplicationBehavior behavior;
@@ -7,3 +9,8 @@ const Platform::ApplicationBehavior &Platform::applicationBehavior(void)
 }
 
 void Platform::configureApplication(void) {}
+
+QIcon Platform::trayIcon(void)
+{
+	return QIcon(QStringLiteral(":/resources/pastes.svg"));
+}

@@ -22,3 +22,11 @@ void Platform::configureApplication(void)
 	if (QGuiApplication::platformName() == QStringLiteral("cocoa"))
 		[NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
 }
+
+QIcon Platform::trayIcon(void)
+{
+	QIcon icon(QStringLiteral(":/resources/pastes-menubar.svg"));
+	// Cocoa renders mask icons as template images for the menu bar appearance.
+	icon.setIsMask(true);
+	return icon;
+}

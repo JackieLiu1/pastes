@@ -4,6 +4,7 @@
 #include "ui/settingsdialog.h"
 #include "ui/previewdialog.h"
 #include "application/clipboardcontroller.h"
+#include "platform/applicationintegration.h"
 #include "platform/globalshortcut.h"
 #include "platform/pastetarget.h"
 #include "platform/windowintegration.h"
@@ -236,7 +237,7 @@ void MainWindow::setupTrayIcon(void)
 	});
 
 	this->__tray_icon = new QSystemTrayIcon(this);
-	this->__tray_icon->setIcon(QIcon(":/resources/pastes.svg"));
+	this->__tray_icon->setIcon(Platform::trayIcon());
 	this->__tray_icon->setToolTip("Pastes");
 	this->__tray_icon->setContextMenu(tray_menu);
 	QObject::connect(this->__tray_icon, &QSystemTrayIcon::activated, [this](QSystemTrayIcon::ActivationReason reason) {
