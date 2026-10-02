@@ -9,6 +9,7 @@
 #include "platform/pastetarget.h"
 #include "platform/windowintegration.h"
 #include "platform/menuintegration.h"
+#include "platform/trayicon.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -19,7 +20,6 @@
 #include <QScopedValueRollback>
 #include <QScreen>
 #include <QSettings>
-#include <QSystemTrayIcon>
 #include <QTimer>
 
 MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, QWidget *parent, SyncService *sync)
@@ -236,21 +236,19 @@ void MainWindow::setupTrayIcon(void)
 		Platform::popupMenu(panel_menu, this->__main_frame->menuAnchor());
 	});
 
-	this->__tray_icon = new QSystemTrayIcon(this);
+	this->__tray_icon = new TrayIcon(this);
 	this->__tray_icon->setIcon(Platform::trayIcon());
 	this->__tray_icon->setToolTip("Pastes");
 	this->__tray_icon->setContextMenu(tray_menu);
-	QObject::connect(this->__tray_icon, &QSystemTrayIcon::activated, [this](QSystemTrayIcon::ActivationReason reason) {
+	QObject::connect(this->__tray_icon, &TrayIcon::activated, this, [this](void) {
 		/* left click / double click toggles the window */
-		if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
-			if (this->isVisible())
-				this->hide_window();
-			else
-				this->show_window();
-		}
+		if (this->isVisible())
+			this->hide_window();
+		else
+			this->show_window();
 	});
 
-	if (!QSystemTrayIcon::isSystemTrayAvailable())
+	if (!TrayIcon::isAvailable())
 		qWarning() << "Pastes: no system tray available";
 	this->__tray_icon->show();
 }

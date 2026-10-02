@@ -27,6 +27,7 @@ MainWindow / HistoryView / PasteItem / AppDialog / SettingsDialog
 | `clipboardsource.h` | 剪贴板变化通知、采集许可、复制来源图标、快照同步和等待时间 | GUI 线程调用；异步图标只传 `QImage`，用请求编号匹配条目 |
 | `pastetarget.h` | 唤出前记住目标应用，面板隐藏后恢复焦点并粘贴 | GUI 线程调用；平台实现持有原生目标和取消状态 |
 | `globalshortcut.h` | 全局唤出信号、默认快捷键和注册结果通知 | UI 不依赖后台线程；内部类型在 `shortcut_p.h` |
+| `trayicon.h` | 状态栏图标、提示和菜单；桌面托盘的点击唤出 | GUI 线程调用；菜单由调用方持有 |
 | `windowintegration.h` | 面板几何、卡片尺寸、背板、窗口归属、激活、关闭通知及弹窗装饰 | GUI 线程调用；观察器随所属窗口销毁 |
 | `menuintegration.h` | 原生菜单弹出、标准设置/退出动作和菜单布局约定 | GUI 线程调用；动作触发后的业务行为仍由 UI 决定 |
 | `applicationintegration.h` | 应用激活策略、首次启动与第二实例的显示约定、托盘图标 | 创建 QApplication 后调用 |
@@ -61,6 +62,9 @@ UI 使用有明确名称的能力与布局配置，例如 `nativeControls`、`na
   普通启动、应用激活和重复打开应用均保持后台运行，不自动展示历史面板。
   菜单栏使用独立的透明底单色模板图标，由系统适配菜单栏外观与高亮状态；
   应用图标及 Windows、Linux 托盘继续使用原有彩色图标。
+  macOS 状态栏直接使用 AppKit 的 NSStatusItem，绑定持久 QMenu 的公开原生菜单接口。
+  点击图标只打开菜单，不从菜单跟踪通知推断鼠标点击次数，避免 macOS 27 非鼠标事件
+  触发 Qt Cocoa 托盘的 clickCount 异常；Windows、Linux 继续使用 QSystemTrayIcon。
   全屏空间切换通知、弹窗激活保护、原生关闭按钮和高分辨率来源图标仍由 macOS 实现处理。
   面板使用状态窗口层级，预览仅高一级，覆盖 Dock 但位于标准菜单和截图遮罩之下。
   面板菜单与条目右键菜单共用原生菜单外观；右键菜单按点击位置弹出，

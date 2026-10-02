@@ -7,7 +7,7 @@ target_sources(pastes_platform PRIVATE
     secretstore.h localcredentialstore.cpp
     diagnosticlog.h diagnosticlog.cpp
     fileicon.h paths.h startupintegration.h startupintegration.cpp
-    globalshortcut.h globalshortcut.cpp shortcut_p.h
+    globalshortcut.h globalshortcut.cpp shortcut_p.h trayicon.h
 )
 
 # Exactly one native backend is compiled; shared desktop behavior has no SDK
@@ -20,7 +20,7 @@ if(WIN32)
         windows/compositionabi.h
         windows/fileicon.cpp windows/paths.cpp windows/startupintegration.cpp
         desktop/windowintegration.cpp desktop/menuintegration.cpp
-        desktop/applicationintegration.cpp
+        desktop/applicationintegration.cpp desktop/trayicon.cpp
     )
 elseif(APPLE)
     target_sources(pastes_platform PRIVATE
@@ -30,7 +30,7 @@ elseif(APPLE)
         macos/clipboardsource.mm macos/pastetarget.mm macos/shortcut.cpp
         macos/windowintegration.mm macos/menuintegration.mm
         macos/applicationintegration.mm macos/fileicon.cpp macos/paths.cpp
-        macos/startupintegration.mm
+        macos/startupintegration.mm macos/trayicon.mm
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_sources(pastes_platform PRIVATE
@@ -39,6 +39,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         linux/windowblur.cpp linux/fileicon.cpp linux/paths.cpp
         linux/startupintegration.cpp desktop/windowintegration.cpp
         desktop/menuintegration.cpp desktop/applicationintegration.cpp
+        desktop/trayicon.cpp
     )
 else()
     message(FATAL_ERROR "Pastes requires Windows, macOS or Linux")

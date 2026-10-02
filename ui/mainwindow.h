@@ -13,7 +13,7 @@ class PasteTarget;
 class AppDialog;
 class QPropertyAnimation;
 class QGraphicsDropShadowEffect;
-class QSystemTrayIcon;
+class TrayIcon;
 class QAction;
 
 /* Window shell. Services are assembled at the application entry point;
@@ -51,7 +51,7 @@ private:
 	QPropertyAnimation *__hide_animation = nullptr;
 	GlobalShortcut *__shortcut = nullptr;
 	PasteTarget *__paste_target = nullptr;
-	QSystemTrayIcon *__tray_icon = nullptr;
+	TrayIcon *__tray_icon = nullptr;
 	QAction *__show_action = nullptr;
 	QString __primary_shortcut;
 	QString __theme;
