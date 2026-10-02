@@ -75,6 +75,10 @@ def deploy_bundle(app, macdeployqt, qmake):
 
 def verify_bundle(app):
     """Reject host dependencies and derive requirements from shipped code."""
+    with (app / "Contents/Info.plist").open("rb") as stream:
+        info = plistlib.load(stream)
+    if info.get("LSUIElement") is not True:
+        raise RuntimeError("macOS application must declare LSUIElement for menu-bar launches")
     executable = app / "Contents/MacOS/pastes"
     architectures = run("/usr/bin/lipo", "-archs", str(executable),
                         capture=True).split()

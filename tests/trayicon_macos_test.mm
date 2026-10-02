@@ -184,20 +184,36 @@ int main(int argc, char **argv)
 	@autoreleasepool {
 		[PastesTrayTestApplication sharedApplication];
 		QApplication app(argc, argv);
-		[NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+		const bool accessoryBeforeConfiguration =
+			NSApp.activationPolicy == NSApplicationActivationPolicyAccessory;
+		Platform::configureApplication();
 		QTemporaryDir preferences;
 		QCoreApplication::setOrganizationName("PastesTrayTests");
 		QCoreApplication::setApplicationName("NativeMenu");
 		QSettings::setDefaultFormat(QSettings::IniFormat);
 		QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences.path());
 		const bool legacy = app.arguments().contains(QStringLiteral("--legacy-qt-tray"));
-		int failures = runTest("native tray tracking with non-mouse events and action delivery",
+		int failures = runTest("menu-bar launch has no Dock presence before configuration", [&] {
+			require(accessoryBeforeConfiguration,
+				"Application started as a regular Dock app before runtime configuration");
+			if (!legacy) {
+				require(app.arguments().size() > 1, "Production bundle path missing");
+				NSBundle *bundle = [NSBundle bundleWithPath:app.arguments().at(1).toNSString()];
+				require([[bundle objectForInfoDictionaryKey:@"LSUIElement"] boolValue],
+					"Production bundle did not declare a menu-bar agent application");
+			}
+		});
+		failures += runTest("native tray tracking with non-mouse events and action delivery",
 			[&] { repeatedMenuTracking(legacy); });
 		if (!legacy)
 			failures += runTest("native favorite menu add and remove", nativeFavoriteMenu);
 		if (!legacy)
 			failures += runTest("native tray menu shows and hides history with matching titles",
 				nativeHistoryToggle);
+		failures += runTest("native windows and menus preserve the menu-bar activation policy", [] {
+			require(NSApp.activationPolicy == NSApplicationActivationPolicyAccessory,
+				"Showing a window or menu restored the Dock activation policy");
+		});
 		return failures ? 1 : 0;
 	}
 }

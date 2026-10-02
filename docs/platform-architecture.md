@@ -40,6 +40,10 @@ MainWindow / HistoryView / PasteItem / AppDialog / SettingsDialog
 UI 使用有明确名称的能力与布局配置，例如 `nativeControls`、`nativeBackdrop`、`hideForDialog`，
 不推断当前系统名称。主题颜色和交互动画仍由公共 UI 管理。
 
+macOS 应用包通过 `Info.plist` 的 `LSUIElement=true` 在系统启动阶段声明菜单栏应用，
+避免首次安装后先出现 Dock 图标，再由运行时激活策略隐藏。打包必须保留此声明；
+原生测试在运行时配置前检查激活策略，并验证实际构建的应用包。
+
 ## 保持现有行为
 
 - 三个平台统一提供“显示历史 / 隐藏历史”菜单项，并显示当前唤出快捷键。

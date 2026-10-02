@@ -20,9 +20,16 @@ if(APPLE)
     target_link_libraries(clipboard_macos_test PRIVATE pastes_platform)
     add_test(NAME clipboard_macos_contract COMMAND clipboard_macos_test)
     set_tests_properties(clipboard_macos_contract PROPERTIES TIMEOUT 30)
-    add_executable(trayicon_macos_test trayicon_macos_test.mm ../sources.qrc)
+    add_executable(trayicon_macos_test MACOSX_BUNDLE trayicon_macos_test.mm ../sources.qrc)
+    set_target_properties(trayicon_macos_test PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/platform/macos/Info.plist.in"
+        MACOSX_BUNDLE_BUNDLE_NAME PastesTrayTests
+        MACOSX_BUNDLE_GUI_IDENTIFIER io.pastes.validation.tray
+    )
     target_link_libraries(trayicon_macos_test PRIVATE pastes_ui)
-    add_test(NAME trayicon_macos_contract COMMAND trayicon_macos_test)
+    add_dependencies(trayicon_macos_test pastes)
+    add_test(NAME trayicon_macos_contract COMMAND trayicon_macos_test
+        $<TARGET_BUNDLE_DIR:pastes>)
     set_tests_properties(trayicon_macos_contract PROPERTIES TIMEOUT 30)
     find_package(Python3 3.9 QUIET COMPONENTS Interpreter)
     if(Python3_Interpreter_FOUND)
