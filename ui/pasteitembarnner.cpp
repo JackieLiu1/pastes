@@ -5,13 +5,56 @@
 #include <QVBoxLayout>
 #include <QResizeEvent>
 #include <QPainter>
+#include <QPainterPath>
+#include <QPushButton>
+#include <QSignalBlocker>
 
 #include <QDebug>
+
+namespace {
+
+class FavoriteButton : public QPushButton
+{
+public:
+	explicit FavoriteButton(QWidget *parent) : QPushButton(parent) {}
+
+protected:
+	void paintEvent(QPaintEvent *) override
+	{
+		QPainter painter(this);
+		painter.setRenderHint(QPainter::Antialiasing);
+		painter.translate((width() - 16)/2.0, (height() - 16)/2.0);
+		const QColor color = palette().color(isChecked() || underMouse() || isDown() ?
+			QPalette::Highlight : QPalette::ButtonText);
+		QPainterPath star;
+		star.moveTo(8, 1);
+		star.lineTo(10.1, 5.3);
+		star.lineTo(14.9, 6);
+		star.lineTo(11.4, 9.4);
+		star.lineTo(12.2, 14.2);
+		star.lineTo(8, 11.9);
+		star.lineTo(3.8, 14.2);
+		star.lineTo(4.6, 9.4);
+		star.lineTo(1.1, 6);
+		star.lineTo(5.9, 5.3);
+		star.closeSubpath();
+		painter.setPen(QPen(color, 1.25, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+		if (isChecked()) {
+			QColor fill = color;
+			fill.setAlpha(48);
+			painter.setBrush(fill);
+		}
+		painter.drawPath(star);
+	}
+};
+
+}
 
 Barnner::Barnner(QWidget *parent) : QWidget(parent),
 	m_icon(new QLabel(this)),
 	m_text(new QLabel(this)),
-	m_time(new QLabel(this))
+	m_time(new QLabel(this)),
+	m_favorite(new FavoriteButton(this))
 {
 	this->setObjectName("Barnner");
 	this->setAttribute(Qt::WA_StyledBackground, true);
@@ -27,9 +70,28 @@ Barnner::Barnner(QWidget *parent) : QWidget(parent),
 	hboxlayout->addWidget(this->m_text);
 	hboxlayout->addStretch();
 	hboxlayout->addWidget(this->m_time);
+	hboxlayout->addWidget(this->m_favorite);
+	m_favorite->setObjectName("FavoriteButton");
+	m_favorite->setFixedSize(24, 24);
+	m_favorite->setFlat(true);
+	m_favorite->setCheckable(true);
+	m_favorite->setFocusPolicy(Qt::NoFocus);
+	m_favorite->setCursor(Qt::PointingHandCursor);
+	m_favorite->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+	setFavorite(false);
+	connect(m_favorite, &QPushButton::toggled, this, &Barnner::favoriteRequested);
 	hboxlayout->setSpacing(6);
 	hboxlayout->setContentsMargins(12, 6, 12, 4);
 	this->setLayout(hboxlayout);
+}
+
+void Barnner::setFavorite(bool favorite)
+{
+	const QSignalBlocker blocker(m_favorite);
+	m_favorite->setChecked(favorite);
+	const QString action = favorite ? QObject::tr("Remove from Favorites") : QObject::tr("Add to Favorites");
+	m_favorite->setToolTip(action);
+	m_favorite->setAccessibleName(action);
 }
 
 void Barnner::setIcon(QPixmap &pixmap)

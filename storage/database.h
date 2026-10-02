@@ -18,12 +18,14 @@ public:
 	quint64 insert(const HistoryEntry &entry) override;
 	void remove(const QByteArray &md5) override;
 	void updateIcon(const QByteArray &md5, const QImage &icon) override;
+	void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified) override;
 
 signals:
 	void loadRequested(void);
 	void insertRequested(StoredEntry entry, quint64 request);
 	void removeRequested(QByteArray md5);
 	void updateIconRequested(QByteArray md5, QImage icon);
+	void updateFavoriteRequested(QByteArray md5, bool favorite, qint64 modified);
 
 private:
 	class Worker;

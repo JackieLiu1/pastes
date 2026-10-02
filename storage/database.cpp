@@ -43,6 +43,7 @@ public slots:
 		QSqlQuery query(m_db);
 		if (!query.exec("create table if not exists item(id integer primary key autoincrement, md5 blob, imagedata blob, icondata blob, time integer)")) report(query.lastError());
 		if (!query.exec("create table if not exists data(id integer primary key autoincrement, md5 blob, formats text, format_data blob)")) report(query.lastError());
+		if (!query.exec("create table if not exists favorite(md5 blob primary key, selected integer not null, modified integer not null)")) report(query.lastError());
 	}
 
 	void close(void)
@@ -56,7 +57,7 @@ public slots:
 	{
 		QList<StoredEntry> entries;
 		QSqlQuery query(m_db);
-		if (!query.exec("select * from item order by time asc, id asc;")) {
+		if (!query.exec("select item.*, coalesce(favorite.selected, 0) as selected, coalesce(favorite.modified, 0) as modified from item left join favorite on item.md5 = favorite.md5 order by item.time asc, item.id asc;")) {
 			report(query.lastError());
 			emit loaded(entries);
 			return;
@@ -64,6 +65,8 @@ public slots:
 		while (query.next()) {
 			StoredEntry entry;
 			entry.md5 = query.value("md5").toByteArray();
+			entry.favorite = query.value("selected").toBool();
+			entry.favoriteModified = query.value("modified").toLongLong();
 			entry.time = QDateTime::fromSecsSinceEpoch(query.value("time").toLongLong());
 			entry.icon = SourceIcon::bounded(QImage::fromData(query.value("icondata").toByteArray()));
 			QSqlQuery formats(m_db);
@@ -100,6 +103,9 @@ public slots:
 			query.bindValue(":data", format.second);
 			if (!query.exec()) { report(query.lastError()); m_db.rollback(); return; }
 		}
+		if (entry.favorite || entry.favoriteModified) {
+			if (!writeFavorite(entry.md5, entry.favorite, entry.favoriteModified)) { m_db.rollback(); return; }
+		}
 		if (!m_db.commit()) { report(m_db.lastError()); m_db.rollback(); return; }
 		if (compress && !entry.encodedImage.isEmpty())
 			emit imageEncoded(request, entry.encodedImage, entry.image.format(), entry.image.devicePixelRatio());
@@ -109,7 +115,7 @@ public slots:
 	{
 		if (!m_db.transaction()) { report(m_db.lastError()); return; }
 		QSqlQuery query(m_db);
-		for (const QString &table : {QStringLiteral("item"), QStringLiteral("data")}) {
+		for (const QString &table : {QStringLiteral("item"), QStringLiteral("data"), QStringLiteral("favorite")}) {
 			query.prepare(QStringLiteral("delete from %1 where md5 = :md5;").arg(table));
 			query.bindValue(":md5", md5);
 			if (!query.exec()) { report(query.lastError()); m_db.rollback(); return; }
@@ -126,12 +132,28 @@ public slots:
 		if (!query.exec()) report(query.lastError());
 	}
 
+	void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified)
+	{
+		writeFavorite(md5, favorite, modified);
+	}
+
 signals:
 	void loaded(QList<StoredEntry> entries);
 	void imageEncoded(quint64 request, QByteArray encoded, int format, qreal ratio);
 	void failed(QString message);
 
 private:
+	bool writeFavorite(const QByteArray &md5, bool favorite, qint64 modified)
+	{
+		QSqlQuery query(m_db);
+		query.prepare("insert or replace into favorite(md5, selected, modified) values (:md5, :selected, :modified);");
+		query.bindValue(":md5", md5);
+		query.bindValue(":selected", favorite);
+		query.bindValue(":modified", modified);
+		if (query.exec()) return true;
+		report(query.lastError());
+		return false;
+	}
 	void report(const QSqlError &error) { emit failed(error.text()); }
 	QString m_path;
 	QString m_connection;
@@ -150,6 +172,7 @@ Database::Database(const QString &path, QObject *parent)
 	connect(this, &Database::insertRequested, m_worker, &Worker::insert, Qt::QueuedConnection);
 	connect(this, &Database::removeRequested, m_worker, &Worker::remove, Qt::QueuedConnection);
 	connect(this, &Database::updateIconRequested, m_worker, &Worker::updateIcon, Qt::QueuedConnection);
+	connect(this, &Database::updateFavoriteRequested, m_worker, &Worker::updateFavorite, Qt::QueuedConnection);
 	connect(m_worker, &Worker::loaded, this, [this](const QList<StoredEntry> &stored) {
 		QList<HistoryEntry> entries;
 		entries.reserve(stored.size());
@@ -180,5 +203,10 @@ quint64 Database::insert(const HistoryEntry &entry)
 
 void Database::remove(const QByteArray &md5) { emit removeRequested(md5); }
 void Database::updateIcon(const QByteArray &md5, const QImage &icon) { emit updateIconRequested(md5, icon); }
+
+void Database::updateFavorite(const QByteArray &md5, bool favorite, qint64 modified)
+{
+	emit updateFavoriteRequested(md5, favorite, modified);
+}
 
 #include "database.moc"

@@ -34,6 +34,7 @@ Snapshot snapshot(const ItemData &entry)
 	Snapshot value;
 	const auto &mime = *entry.mimeData;
 	value.md5 = entry.md5; value.time = entry.time; value.icon = entry.icon;
+	value.favorite = entry.favorite; value.favoriteModified = entry.favoriteModified;
 	if (ClipboardContent::prefersImage(mime)) {
 		value.kind = "image"; value.png = ClipboardData::storedImage(&mime);
 		if (value.png.isEmpty()) value.image = qvariant_cast<QImage>(mime.imageData());
@@ -57,6 +58,7 @@ HistoryEntry materialize(const Snapshot &value)
 {
 	auto entry = HistoryEntry::create();
 	entry->md5 = value.md5; entry->time = value.time; entry->icon = value.icon;
+	entry->favorite = value.favorite; entry->favoriteModified = value.favoriteModified;
 	entry->mimeData = new QMimeData;
 	if (value.kind == "image") {
 		auto *mime = ClipboardData::withStoredImage(entry->mimeData, value.png, QImage::Format_Invalid);
@@ -159,10 +161,16 @@ Record parse(const QByteArray &data, QString *error)
 	record.key = object.value("key").toString(); record.modified = object.value("modified").toInteger();
 	record.copied = object.value("copied").toInteger();
 	record.deleted = object.value("deleted").toBool(); record.document = object; record.id = digest(data);
+	record.favorite = object.value("favorite").toBool();
+	record.favoriteModified = object.value("favoriteModified").toInteger();
 	const auto keyBytes = record.key.toLatin1();
-	if (parseError.error != QJsonParseError::NoError || object.value("version").toInt() != 1 ||
+	const int version = object.value("version").toInt();
+	if (parseError.error != QJsonParseError::NoError || (version != 1 && version != 2) ||
 		record.key.size() != 64 || QByteArray::fromHex(keyBytes).toHex() != keyBytes ||
-		record.modified <= 0 || record.modified > QDateTime::currentMSecsSinceEpoch()+5*60*1000) {
+		record.modified <= 0 || record.modified > QDateTime::currentMSecsSinceEpoch()+5*60*1000 ||
+		(object.contains("favorite") && !object.value("favorite").isBool()) ||
+		record.favoriteModified < 0 || record.favoriteModified > record.modified ||
+		(record.favorite && (record.deleted || !record.favoriteModified))) {
 		*error = QObject::tr("Invalid sync record or incompatible version."); return {};
 	}
 	if (!record.deleted) {
@@ -177,6 +185,9 @@ Record parse(const QByteArray &data, QString *error)
 }
 bool expired(const Record &record, qint64 now)
 {
+	/* Keep favorite removal markers so an offline device cannot revive an
+	 * old favorite after ordinary deletion markers have aged out. */
+	if (record.deleted ? record.favoriteModified > 0 : record.favorite) return false;
 	const qint64 age = now-(record.deleted ? record.modified : record.copied);
 	return age >= qint64(record.deleted ? 60 : HistoryPolicy::retentionDays)*86400000;
 }

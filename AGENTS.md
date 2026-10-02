@@ -12,8 +12,8 @@ macOS 用 `Shift+Cmd+V` 或点击菜单栏图标唤出。双击条目或按 `Ent
 - 构建系统：CMake（≥ 3.16），不使用 qmake
 - 平台：Windows（Win32 API）、Linux（X11/XRecord/XTest、gio）、macOS（AppKit / Carbon / Accessibility）
 - 单实例：捆绑的 3rd/SingleApplication（静态库，源码直接编入，`QAPPLICATION_CLASS=QApplication`）
-- 持久化：SQLite（QSQLITE），两张表 `item`（md5/imagedata/icondata/time）与
-  `data`（md5/formats/format_data，每格式一行）
+- 持久化：SQLite（QSQLITE），两张历史表 `item`（md5/imagedata/icondata/time）与
+  `data`（md5/formats/format_data，每格式一行），收藏状态单独存放在 `favorite` 表
 
 ## 构建与验证
 

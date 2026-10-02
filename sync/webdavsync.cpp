@@ -39,6 +39,9 @@ WebDavSync::WebDavSync(HistoryService &history, SecretStore &secrets, const QStr
 	connect(&history, &HistoryService::entryChanged, this, [this](EntryId id) {
 		if (m_settings.enabled && !m_applying) { capture(m_history.find(id)); schedule(); }
 	});
+	connect(&history, &HistoryService::favoriteChanged, this, [this](HistoryEntry entry) {
+		if (m_configured && !m_applying) { capture(entry); schedule(); }
+	});
 	connect(&history, &HistoryService::entryErasing, this, [this](HistoryEntry entry, HistoryChange change) {
 		if (m_configured && change == HistoryChange::Deleted) {
 			capture(entry, false, true); schedule();

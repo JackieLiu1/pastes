@@ -170,7 +170,7 @@ void lightThemeTextContrast(void)
 			surface.paint(view, RoundedRole::Panel, painter);
 			painter.end();
 			const QColor panelColor = image.pixelColor(view->width()/2, view->height()/2);
-			for (const char *name : {"BrandTitle", "HistoryTab", "HistoryCount", "KeyboardHint",
+			for (const char *name : {"BrandTitle", "HistoryTab", "FavoritesTab", "HistoryCount", "KeyboardHint",
 				"EmptyState", "RecordingStatus", "UndoHint", "UndoButton", "PanelMenu"}) {
 				auto *label = view->findChild<QWidget *>(name);
 				require(label, (std::string("Panel text widget missing: ")+name).c_str());

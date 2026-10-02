@@ -46,6 +46,9 @@ protected:
 
 private:
 	void setupUi(void);
+	void applyFilter(bool resetSelection = false);
+	void updateEntry(EntryId id);
+	bool matchesFilter(PasteItem *card) const;
 	void setupShortcuts(void);
 	void addEntry(HistoryEntry entry, int row, HistoryChange change);
 	void removeEntry(EntryId id, HistoryChange change);
@@ -74,6 +77,8 @@ private:
 	QLabel *m_empty = nullptr;
 	QLabel *m_undoHint = nullptr;
 	QPushButton *m_menuButton = nullptr;
+	QPushButton *m_historyTab = nullptr;
+	QPushButton *m_favoritesTab = nullptr;
 	QPushButton *m_undoButton = nullptr;
 	QShortcut *m_undoShortcut = nullptr;
 	CardSwipeOverlay *m_swipe = nullptr;
@@ -82,6 +87,7 @@ private:
 	CardInteractionController *m_interaction = nullptr;
 	QString m_shortcutText;
 	bool m_recordingEnabled = true;
+	bool m_favoritesOnly = false;
 };
 
 #endif

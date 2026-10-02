@@ -37,6 +37,7 @@ private:
 	void list(void);
 	void downloadNext(void);
 	void uploadNext(void);
+	bool prepareRetention(void);
 	void cleanupNext(void);
 	void deliver(void);
 	void complete(const QString &error = {});

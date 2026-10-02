@@ -206,6 +206,48 @@ QString order(const HistoryService &history)
 	return texts.join(',');
 }
 
+void favoritesLifetime(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	const auto oldTime = QDateTime::currentDateTime().addDays(-45);
+	auto saved = textEntry("saved", oldTime); saved->favorite = true; saved->favoriteModified = oldTime.toMSecsSinceEpoch();
+	history.load(); repository.finishLoad({saved, textEntry("expired ordinary", oldTime)});
+	require(history.entries().size() == 1 && history.entries().first() == saved,
+		"Favorite expired with ordinary history at startup");
+	history.record(textEntry("unrelated"));
+	require(!history.find(saved->id).isNull(), "A new capture expired a favorite");
+	const auto recopy = textEntry("saved"); history.record(recopy);
+	require(recopy->favorite && recopy->favoriteModified == saved->favoriteModified,
+		"Re-copy lost the favorite metadata");
+	history.remove(recopy->id);
+	const auto restored = history.undo();
+	require(restored.inserted && restored.entry->favorite, "Delete/undo lost a favorite");
+	require(history.setFavorite(restored.entry->id, false) && history.find(restored.entry->id),
+		"Unstarring recent content deleted it");
+	auto old = textEntry("old favorite", oldTime); old->favorite = true;
+	history.mergeSynced(old, {});
+	require(!history.find(old->id).isNull(), "Incoming old favorite was rejected");
+	bool removalPublished = false;
+	QObject::connect(&history, &HistoryService::favoriteChanged, &history, [&](HistoryEntry entry) {
+		if (entry == old) removalPublished = !entry->favorite && entry->time == oldTime && history.find(entry->id);
+	});
+	require(history.setFavorite(old->id, false) && !history.find(old->id) && removalPublished,
+		"Expired unfavorite did not publish its state before removal");
+	const int updates = repository.favoriteUpdates.size();
+	require(!history.setFavorite(old->id, true) && repository.favoriteUpdates.size() == updates,
+		"A stale card identity changed favorite metadata");
+
+	auto remote = cloneEntry(*restored.entry); remote->favorite = true;
+	remote->favoriteModified = restored.entry->favoriteModified+1;
+	history.mergeSynced(remote, {});
+	require(restored.entry->favorite && history.find(restored.entry->id) == restored.entry,
+		"A metadata-only sync replaced or ignored the existing entry");
+	auto stale = cloneEntry(*remote); stale->favorite = false; stale->favoriteModified = 0;
+	history.mergeSynced(stale, {});
+	require(restored.entry->favorite, "Legacy sync cleared a newer favorite");
+}
+
 void undoPositions(void)
 {
 	for (int scenario = 0; scenario < 4; ++scenario) {
@@ -294,6 +336,7 @@ int main(int argc, char **argv)
 	failures += runTest("image copies, file references and undo", imageCopiesAndUndo);
 	failures += runTest("stored image duplicates without startup decoding", storedImageDuplicates);
 	failures += runTest("synced image duplicates preserve newest copy time", syncedImageDuplicates);
+	failures += runTest("favorite retention, recopy, undo and remote metadata", favoritesLifetime);
 	failures += runTest("undo original positions", undoPositions);
 	failures += runTest("undo re-copy and retention", undoRecopyAndLimit);
 	failures += runTest("image requests and independent snapshots", imageRequestsAndSnapshots);

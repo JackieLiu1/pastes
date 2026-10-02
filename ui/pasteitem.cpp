@@ -33,6 +33,7 @@ PasteItem::PasteItem(QWidget *parent, QListWidgetItem *item) : QWidget(parent),
 	m_frame_effect->setBlurRadius(8);
 	m_frame->setGraphicsEffect(m_frame_effect);
 	m_frame->setObjectName("PasteItemFrame");
+	connect(m_barnner, &Barnner::favoriteRequested, this, &PasteItem::favoriteRequested);
 
 	QVBoxLayout *vboxlayout = new QVBoxLayout();
 	vboxlayout->addWidget(m_barnner);
@@ -279,6 +280,8 @@ void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 	const HistoryEntry data = m_entry;
 	plainAction->setEnabled(data && data->mimeData->hasText());
 	menu.addSeparator();
+	QAction *favoriteAction = menu.addAction(data && data->favorite ?
+		QObject::tr("Remove from Favorites") : QObject::tr("Add to Favorites"));
 	QAction *previewAction = menu.addAction(QObject::tr("Preview"));
 	QAction *deleteAction = menu.addAction(QObject::tr("Delete"));
 	QAction *chosen = Platform::execMenuAt(&menu, this->window(), event->globalPos());
@@ -288,6 +291,8 @@ void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 		this->copyData(false, false);
 	else if (chosen == plainAction)
 		this->copyData(true, false);
+	else if (chosen == favoriteAction)
+		emit this->favoriteRequested();
 	else if (chosen == previewAction)
 		emit this->previewRequested();
 	else if (chosen == deleteAction)
@@ -298,6 +303,11 @@ void PasteItem::copyData(bool plainText, bool paste)
 {
 	if (!m_entry || (plainText && !m_entry->mimeData->hasText())) return;
 	emit copyRequested(m_entry, plainText, paste);
+}
+
+void PasteItem::updateFavorite(void)
+{
+	m_barnner->setFavorite(m_entry && m_entry->favorite);
 }
 
 bool PasteItem::setEntry(const HistoryEntry &entry, bool loaded)
@@ -332,6 +342,7 @@ bool PasteItem::setEntry(const HistoryEntry &entry, bool loaded)
 		else setPlainText(mime->text().trimmed());
 		hasContent = true;
 	}
+	updateFavorite();
 	setTime(entry->time);
 	setIcon(QPixmap::fromImage(entry->icon));
 	return hasContent;

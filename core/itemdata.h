@@ -25,6 +25,8 @@ struct ItemData final
 	/* Cached pixel comparison; the persisted MD5 and original MIME stay intact. */
 	QByteArray imageContentKey;
 	QDateTime time;
+	bool favorite = false;
+	qint64 favoriteModified = 0;
 };
 
 using HistoryEntry = QSharedPointer<ItemData>;

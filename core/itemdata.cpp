@@ -9,5 +9,7 @@ HistoryEntry cloneEntry(const ItemData &source)
 	entry->md5 = source.md5;
 	entry->imageContentKey = source.imageContentKey;
 	entry->time = source.time;
+	entry->favorite = source.favorite;
+	entry->favoriteModified = source.favoriteModified;
 	return entry;
 }

@@ -7,6 +7,7 @@
 #include "ui/elasticscroll.h"
 #include "platform/windowintegration.h"
 #include <QApplication>
+#include <QButtonGroup>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QListWidget>
@@ -52,13 +53,12 @@ HistoryView::HistoryView(HistoryService &history, QWidget *window)
 	connect(m_menuButton, &QPushButton::clicked, this, &HistoryView::menuRequested);
 	connect(&m_history, &HistoryService::entryAdded, this, &HistoryView::addEntry);
 	connect(&m_history, &HistoryService::entryRemoved, this, &HistoryView::removeEntry);
-	connect(&m_history, &HistoryService::entryChanged, this, [this](EntryId id) {
-		if (PasteItem *card = m_cards.value(id)) card->setIcon(QPixmap::fromImage(card->entry()->icon));
+	connect(&m_history, &HistoryService::entryChanged, this, &HistoryView::updateEntry);
+	connect(&m_history, &HistoryService::favoriteChanged, this, [this](HistoryEntry entry) {
+		updateEntry(entry->id);
 	});
 	connect(&m_history, &HistoryService::loaded, this, [this](void) {
-		m_list->setCurrentRow(0);
-		resetItemTabOrder();
-		updateSummary();
+		applyFilter(true);
 		emit countChanged();
 	});
 	connect(&m_history, &HistoryService::undoChanged, this, [this](bool available) {
@@ -160,12 +160,15 @@ void HistoryView::updateSummary(void)
 	}
 	if (this->m_count) {
 		const int count = this->m_list->count();
-		this->m_count->setText(number == count ? QObject::tr("%1 items").arg(count) :
-					     QObject::tr("%1 of %2 items").arg(number).arg(count));
+		this->m_count->setText(m_favoritesOnly ? QObject::tr("%1 favorites").arg(number) :
+			(number == count ? QObject::tr("%1 items").arg(count) :
+			 QObject::tr("%1 of %2 items").arg(number).arg(count)));
 	}
 	if (this->m_empty) {
 		this->m_empty->setText(this->m_list->count() == 0 ?
-			QObject::tr("Copy something to get started") : QObject::tr("No matching items"));
+			QObject::tr("Copy something to get started") :
+			(m_favoritesOnly && m_search->findChild<LineEdit *>()->text().isEmpty() ?
+			 QObject::tr("Star an item to keep it in Favorites") : QObject::tr("No matching items")));
 		this->m_empty->setGeometry(this->m_list->viewport()->rect());
 		this->m_empty->setVisible(number == 0);
 	}
@@ -195,6 +198,43 @@ void HistoryView::resetItemTabOrder(void)
 		QWidget::setTabOrder(first, second);
 	}
 }
+void HistoryView::updateEntry(EntryId id)
+{
+	if (PasteItem *card = m_cards.value(id)) {
+		card->setIcon(QPixmap::fromImage(card->entry()->icon));
+		card->updateFavorite();
+		if (card->widgetItem()->isHidden() == matchesFilter(card)) {
+			cancelInteractions();
+			applyFilter();
+		}
+	}
+}
+
+bool HistoryView::matchesFilter(PasteItem *card) const
+{
+	return (!m_favoritesOnly || card->entry()->favorite) &&
+		card->text().contains(m_search->findChild<LineEdit *>()->text(), Qt::CaseInsensitive);
+}
+
+void HistoryView::applyFilter(bool resetSelection)
+{
+	QWidget *focused = QApplication::focusWidget();
+	const bool cardFocused = focused && m_list->isAncestorOf(focused);
+	QListWidgetItem *first = nullptr;
+	for (int row = 0; row < m_list->count(); ++row) {
+		auto *item = m_list->item(row);
+		auto *card = qobject_cast<PasteItem *>(m_list->itemWidget(item));
+		item->setHidden(!matchesFilter(card));
+		if (!first && !item->isHidden()) first = item;
+	}
+	if (resetSelection || !m_list->currentItem() || m_list->currentItem()->isHidden())
+		m_list->setCurrentItem(first);
+	if (m_list->currentItem()) m_list->scrollToItem(m_list->currentItem());
+	resetItemTabOrder();
+	updateSummary();
+	if (cardFocused) focusCurrent();
+}
+
 void HistoryView::setupUi(void)
 {
 	this->m_search = new SearchBar(this,
@@ -202,47 +242,17 @@ void HistoryView::setupUi(void)
 	QObject::connect(this->m_search, &SearchBar::hideWindow, [this](void) {
 		emit hideRequested();
 	});
-	QObject::connect(this->m_search, &SearchBar::textChanged, [this](const QString &text) {
-		this->cancelInteractions();
-		int temp_current_item_row = -1;
-		int show_row_count = 0;
-
-		/* Store current row num when first time searching */
-		if (this->m_searchSelection == nullptr) {
-			this->m_searchSelection = this->m_list->currentItem();
-		}
-
-		for (int i = 0; i < this->m_list->count(); i++) {
-			QListWidgetItem *item = this->m_list->item(i);
-			PasteItem *widget = reinterpret_cast<PasteItem *>(this->m_list->itemWidget(item));
-			if (!widget->text().toLower().contains(text.toLower())) {
-				item->setHidden(true);
-			} else {
-				item->setHidden(false);
-				show_row_count++;
-
-				if (temp_current_item_row == -1) {
-					temp_current_item_row = i;
-				}
+	QObject::connect(this->m_search, &SearchBar::textChanged, this, [this](const QString &text) {
+		cancelInteractions();
+		if (!m_searchSelection && !text.isEmpty()) m_searchSelection = m_list->currentItem();
+		applyFilter(true);
+		if (text.isEmpty()) {
+			if (m_searchSelection && !m_searchSelection->isHidden()) {
+				m_list->setCurrentItem(m_searchSelection);
+				m_list->scrollToItem(m_searchSelection);
 			}
+			m_searchSelection = nullptr;
 		}
-
-		/* That is the first showing item */
-		if (temp_current_item_row != -1) {
-			this->m_list->setCurrentRow(temp_current_item_row);
-			this->m_list->scrollToItem(this->m_list->item(temp_current_item_row));
-		}
-
-		if (show_row_count == this->m_list->count()) {
-			/* restore current row in search before. The stored item may
-			 * already have been removed by the dedup logic meanwhile. */
-			if (this->m_searchSelection) {
-				this->m_list->setCurrentItem(this->m_searchSelection);
-				this->m_list->scrollToItem(this->m_searchSelection);
-			}
-			this->m_searchSelection = nullptr;
-		}
-		this->updateSummary();
 	});
 	QObject::connect(this->m_search, &SearchBar::selectItem, [this](void) {
 		PasteItem *widget = this->currentCard();
@@ -309,16 +319,38 @@ void HistoryView::setupUi(void)
 	QWidget *headerDivider = new QWidget(this);
 	headerDivider->setObjectName("HeaderDivider");
 	headerDivider->setFixedSize(1, 18);
-	QLabel *historyTab = new QLabel(QObject::tr("Clipboard"), this);
-	historyTab->setObjectName("HistoryTab");
-	historyTab->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+	m_historyTab = new QPushButton(this);
+	m_historyTab->setObjectName("HistoryTab");
+	m_historyTab->setText(QObject::tr("Clipboard"));
+	m_favoritesTab = new QPushButton(this);
+	m_favoritesTab->setObjectName("FavoritesTab");
+	m_favoritesTab->setText(QObject::tr("Favorites"));
+	auto *tabs = new QButtonGroup(this);
+	for (QPushButton *tab : {m_historyTab, m_favoritesTab}) {
+		tab->setCheckable(true);
+		tab->setFlat(true);
+		tab->setCursor(Qt::PointingHandCursor);
+		tab->setFixedHeight(32);
+		tab->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+		tabs->addButton(tab);
+		connect(tab, &QPushButton::toggled, this, [this, tab](bool checked) {
+			if (!checked) return;
+			cancelInteractions();
+			m_favoritesOnly = tab == m_favoritesTab;
+			m_searchSelection = nullptr;
+			applyFilter(true);
+			focusCurrent();
+		});
+	}
+	m_historyTab->setChecked(true);
 	QHBoxLayout *hlayout = new QHBoxLayout();
 	hlayout->setSpacing(10);
 	hlayout->addWidget(brandIcon);
 	hlayout->addWidget(brandTitle);
 	hlayout->addSpacing(6);
 	hlayout->addWidget(headerDivider, 0, Qt::AlignVCenter);
-	hlayout->addWidget(historyTab);
+	hlayout->addWidget(m_historyTab);
+	hlayout->addWidget(m_favoritesTab);
 	this->m_recordingStatus = new QLabel(QObject::tr("Recording paused"), this);
 	this->m_recordingStatus->setObjectName("RecordingStatus");
 	this->m_recordingStatus->setVisible(!this->m_recordingEnabled);
@@ -428,10 +460,10 @@ QWidget *HistoryView::menuAnchor(void) const { return m_menuButton; }
 
 void HistoryView::focusCurrent(void)
 {
-	if (QListWidgetItem *item = m_list->currentItem()) {
-		m_list->itemWidget(item)->setFocus();
-		m_list->scrollToItem(item);
-	}
+	if (PasteItem *card = currentCard()) {
+		card->setFocus();
+		m_list->scrollToItem(card->widgetItem());
+	} else setFocus();
 }
 
 void HistoryView::focusEntry(const QByteArray &md5)
@@ -486,6 +518,9 @@ void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 	connect(card, &PasteItem::previewRequested, this, [this, card](void) {
 		m_list->setCurrentItem(card->widgetItem()); previewCurrent();
 	});
+	connect(card, &PasteItem::favoriteRequested, this, [this, card](void) {
+		m_history.setFavorite(card->entry()->id, !card->entry()->favorite);
+	});
 	connect(card, &PasteItem::deleteRequested, this, [this, card](void) {
 		m_list->setCurrentItem(card->widgetItem()); removeCurrent();
 	});
@@ -493,17 +528,13 @@ void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 		m_history.discard(entry->id);
 		return;
 	}
-	if (change == HistoryChange::Restored || change == HistoryChange::Synced) {
-		const QString text = m_search->findChild<LineEdit *>()->text();
-		item->setHidden(!card->text().contains(text, Qt::CaseInsensitive));
-	}
-	if (change == HistoryChange::Captured) m_list->setCurrentRow(0);
+	item->setHidden(!matchesFilter(card));
+	if (change == HistoryChange::Captured && !item->isHidden()) m_list->setCurrentItem(item);
 	card->setSelected(item->isSelected());
 	/* The loaded signal finalizes the batch once. Rebuilding navigation and
 	 * numbering for every persisted entry makes startup quadratic. */
 	if (change != HistoryChange::Loaded) {
-		resetItemTabOrder();
-		updateSummary();
+		applyFilter();
 		emit countChanged();
 	}
 }

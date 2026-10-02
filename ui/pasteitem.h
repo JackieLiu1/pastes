@@ -29,6 +29,7 @@ public:
 	bool setUrls(QList<QUrl> &);
 	void setIcon(QPixmap);
 	void setTime(QDateTime &);
+	void updateFavorite(void);
 	void copyData(bool plainText = false, bool paste = true);
 	void setQuickPasteNumber(int number);
 	void setSelected(bool selected);
@@ -77,6 +78,7 @@ Q_SIGNALS:
 	void moveFocusPrevNext(bool prev, bool wrap);
 	void previewRequested(void);
 	void deleteRequested(void);
+	void favoriteRequested(void);
 };
 
 #endif // PASTEITEM_H

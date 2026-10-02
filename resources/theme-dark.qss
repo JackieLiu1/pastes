@@ -5,10 +5,19 @@
 }
 #BrandTitle { font-size: 18px; font-weight: 600; color: #F1F1F1; }
 #HeaderDivider { background: rgba(230, 230, 230, 45); border: 0; }
-#HistoryTab {
+#HistoryTab, #FavoritesTab {
 	background: transparent; border: 0;
-	font-size: 13px; font-weight: 400; color: #B5C8C1;
-	padding: 0;
+	border-bottom: 2px solid transparent;
+	font-size: 13px; font-weight: 400; color: #8C9892;
+	padding: 2px 6px 0;
+}
+#HistoryTab:hover, #FavoritesTab:hover { color: #E2E9E5; }
+#HistoryTab:checked, #FavoritesTab:checked {
+	font-weight: 600; color: #E2E9E5; border-bottom-color: #76C5AA;
+}
+#FavoriteButton {
+	background: transparent; border: 0; color: #8C9892;
+	selection-background-color: #76C5AA;
 }
 #HistoryCount, #KeyboardHint { color: #9C9C9C; font-size: 11px; }
 #EmptyState { color: #9C9C9C; font-size: 14px; background: transparent; }

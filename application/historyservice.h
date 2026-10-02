@@ -17,6 +17,7 @@ public:
 	void record(HistoryEntry entry, quint64 sourceRequest = 0);
 	void setSourceIcon(quint64 request, const QImage &icon);
 	bool remove(EntryId id);
+	bool setFavorite(EntryId id, bool favorite);
 	void discard(EntryId id);
 	void mergeSynced(HistoryEntry entry, const QList<QByteArray> &replaced);
 	void clearUndo(void);
@@ -35,6 +36,7 @@ signals:
 	void entryRemoved(EntryId id, HistoryChange change);
 	void entryErasing(HistoryEntry entry, HistoryChange change);
 	void entryChanged(EntryId id);
+	void favoriteChanged(HistoryEntry entry);
 	void loaded(void);
 	void undoChanged(bool available);
 

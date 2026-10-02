@@ -13,6 +13,8 @@ constexpr qint64 maxImagePixels = 20*1024*1024;
 struct Snapshot {
 	QByteArray md5;
 	QDateTime time;
+	bool favorite = false;
+	qint64 favoriteModified = 0;
 	QString kind;
 	QString text;
 	QString html;
@@ -27,6 +29,8 @@ struct Record {
 	qint64 modified = 0;
 	qint64 copied = 0;
 	bool deleted = false;
+	bool favorite = false;
+	qint64 favoriteModified = 0;
 	QJsonObject document;
 };
 Snapshot snapshot(const ItemData &entry);

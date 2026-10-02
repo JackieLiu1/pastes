@@ -54,6 +54,44 @@ void persistenceAndShutdown(void)
 	}
 }
 
+void favoritesPersistence(void)
+{
+	QTemporaryDir directory;
+	const QString path = directory.filePath("favorites.db");
+	QByteArray savedHash;
+	const auto copied = QDateTime::fromSecsSinceEpoch(QDateTime::currentSecsSinceEpoch()).addDays(-45);
+	const qint64 modified = QDateTime::currentMSecsSinceEpoch();
+	{
+		Database repository(path);
+		auto entry = textEntry("favorite value snapshot", copied);
+		entry->favorite = true; entry->favoriteModified = modified;
+		savedHash = entry->md5;
+		repository.insert(entry);
+		entry->favorite = false;
+		repository.insert(textEntry("ordinary"));
+	}
+	{
+		Database repository(path);
+		auto entries = read(repository);
+		HistoryEntry saved;
+		for (const auto &entry : entries) if (entry->md5 == savedHash) saved = entry;
+		require(saved && saved->favorite && saved->favoriteModified == modified && saved->time == copied,
+			"Favorite snapshot, original copy time or restart metadata changed");
+		repository.updateFavorite(savedHash, false, modified+1);
+	}
+	{
+		Database repository(path);
+		const auto entries = read(repository);
+		for (const auto &entry : entries) if (entry->md5 == savedHash)
+			require(!entry->favorite && entry->favoriteModified == modified+1,
+				"Unfavorite state was lost at shutdown");
+		repository.remove(savedHash);
+		repository.insert(textEntry("favorite value snapshot"));
+		for (const auto &entry : read(repository)) if (entry->md5 == savedHash)
+			require(!entry->favorite && !entry->favoriteModified, "Delete left orphaned favorite metadata");
+	}
+}
+
 void imagesAndConnections(void)
 {
 	QTemporaryDir directory;
@@ -137,6 +175,8 @@ void imageDuplicateRestart(void)
 			entry->mimeData->setImageData(image);
 			entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
 			entry->time = now.addSecs(i);
+			entry->favorite = i == 0;
+			entry->favoriteModified = i == 0 ? now.toMSecsSinceEpoch() : 0;
 			repository.insert(entry);
 			newest = entry->md5;
 		}
@@ -147,12 +187,12 @@ void imageDuplicateRestart(void)
 		bool loaded = false;
 		QObject::connect(&history, &HistoryService::loaded, [&] { loaded = true; });
 		history.load(); waitUntil([&] { return loaded; });
-		require(history.entries().size() == 1 && history.entries().first()->md5 == newest,
+		require(history.entries().size() == 1 && history.entries().first()->md5 == newest && history.entries().first()->favorite,
 			"Database reload retained duplicate images with different paths");
 	}
 	Database repository(path);
 	const auto entries = read(repository);
-	require(entries.size() == 1 && entries.first()->md5 == newest &&
+	require(entries.size() == 1 && entries.first()->md5 == newest && entries.first()->favorite &&
 		entries.first()->mimeData->urls().first().toLocalFile() == "/tmp/copy-1.png",
 		"Image duplicate removal did not persist across a second restart");
 }
@@ -164,6 +204,7 @@ int main(int argc, char **argv)
 	QCoreApplication app(argc, argv);
 	int failures = 0;
 	failures += runTest("queued value snapshots and shutdown", persistenceAndShutdown);
+	failures += runTest("favorite snapshots, metadata updates and shutdown", favoritesPersistence);
 	failures += runTest("encoded images and independent connections", imagesAndConnections);
 	failures += runTest("source icon pixels survive insert, update and restart", sourceIconResolution);
 	failures += runTest("image duplicates collapse durably after restart", imageDuplicateRestart);

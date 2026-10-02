@@ -143,6 +143,91 @@ void incrementalAndDelete()
 	for (const auto &delivery : second.deliveries) if (!delivery.deleted && delivery.content.text == "first item") restored = true;
 	require(restored, "Explicit re-copy did not supersede deletion");
 }
+void favoritesSync()
+{
+	DavServer server; QTemporaryDir temp;
+	const qint64 now = QDateTime::currentMSecsSinceEpoch();
+	auto entry = textEntry("long lived favorite", QDateTime::fromMSecsSinceEpoch(now-90LL*86400000));
+	entry->favorite = true; entry->favoriteModified = now-50LL*86400000;
+	Client first(server.settings(), temp.path()+"/a");
+	first.capture(entry, true); first.run();
+	require(first.success && server.files.size() == 1, "Old favorite was not uploaded");
+	Client second(server.settings(), temp.path()+"/b"); second.run();
+	require(second.success && second.deliveries.size() == 1 && second.deliveries.first().content.favorite &&
+		second.deliveries.first().content.time == entry->time, "Favorite or original copy time did not sync");
+	const auto favoriteRecord = server.files.cbegin().value();
+	QString error;
+	require(!SyncContent::expired(SyncContent::parse(favoriteRecord, &error), now+365LL*86400000),
+		"Favorite sync payload expired");
+
+	/* The device was offline while an unstarred ordinary record expired.
+	 * Preserve that newer state before deleting any old favorite payload. */
+	auto document = QJsonDocument::fromJson(favoriteRecord).object();
+	document["favorite"] = false;
+	document["favoriteModified"] = now-40LL*86400000;
+	document["modified"] = now-40LL*86400000;
+	const auto unstarred = SyncContent::bytes(document);
+	server.files["/Pastes/v1/events/"+SyncContent::digest(unstarred)+".json"] = unstarred;
+	second.run();
+	require(second.success && second.deliveries.size() == 1 && second.deliveries.first().deleted,
+		"Expired unstar resurrected an older favorite");
+	require(server.files.size() == 1, "Favorite/unfavorite payloads remained after retention cleanup");
+	error.clear();
+	const auto marker = SyncContent::parse(server.files.cbegin().value(), &error);
+	require(error.isEmpty() && marker.deleted && marker.favoriteModified &&
+		!SyncContent::expired(marker, now+365LL*86400000), "Favorite removal marker was not durable");
+	first.run();
+	require(first.success && first.deliveries.size() == 1 && first.deliveries.first().deleted,
+		"An offline cache revived a removed favorite");
+	Client fresh(server.settings(), temp.path()+"/fresh"); fresh.capture(entry, true); fresh.run();
+	require(fresh.success && fresh.deliveries.size() == 1 && fresh.deliveries.first().deleted && server.files.size() == 1,
+		"Stale bootstrap defeated the favorite removal marker");
+
+	entry->time = QDateTime::currentDateTime(); entry->favorite = false;
+	entry->favoriteModified = now; first.capture(entry); first.run(); second.run();
+	require(second.success && !second.deliveries.isEmpty() && !second.deliveries.last().deleted &&
+		!second.deliveries.last().content.favorite, "Recent unfavorite did not remain ordinary history");
+}
+
+void concurrentFavoriteMetadata()
+{
+	DavServer server; QTemporaryDir temp;
+	const qint64 now = QDateTime::currentMSecsSinceEpoch();
+	auto item = textEntry("concurrent favorite metadata");
+	QString error;
+	const auto content = SyncContent::encode(SyncContent::snapshot(*item), &error);
+	const QString key = SyncContent::key(SyncContent::decode(content, &error));
+	auto publish = [&](const QJsonObject &document) {
+		const auto data = SyncContent::bytes(document);
+		server.files["/Pastes/v1/events/"+SyncContent::digest(data)+".json"] = data;
+	};
+	QJsonObject favorite{{"version", 2}, {"key", key}, {"modified", now-4000},
+		{"copied", now-10000}, {"deleted", false}, {"favorite", true},
+		{"favoriteModified", now-4000}, {"content", content}};
+	publish(favorite);
+	auto stale = favorite;
+	stale["version"] = 1; stale.remove("favoriteModified"); stale["favorite"] = false;
+	stale["modified"] = now-500; stale["copied"] = now-1000;
+	publish(stale);
+	Client first(server.settings(), temp.path()+"/a"); first.run();
+	require(first.success && first.deliveries.size() == 1 && first.deliveries.first().content.favorite &&
+		first.deliveries.first().content.time.toMSecsSinceEpoch() == now-1000,
+		"A newer content event lost the favorite operation or latest copy time");
+	Client second(server.settings(), temp.path()+"/b"); second.run();
+	require(second.success && second.deliveries.size() == 1 && second.deliveries.first().content.favorite,
+		"Merged favorite metadata did not converge on another device");
+	const int puts = server.puts;
+	first.run(); second.run();
+	require(first.success && second.success && server.puts == puts, "Favorite metadata did not converge without repeated repairs");
+	favorite["favorite"] = false; favorite["favoriteModified"] = now-100;
+	favorite["modified"] = now-100; publish(favorite);
+	first.run(); second.run();
+	require(first.success && second.success && !second.deliveries.isEmpty() &&
+		!second.deliveries.last().content.favorite &&
+		second.deliveries.last().content.time.toMSecsSinceEpoch() == now-1000,
+		"A later unfavorite lost to an earlier star or reset the latest copy time");
+}
+
 void offlineRestartAndConcurrency()
 {
 	DavServer server; QTemporaryDir temp;
@@ -270,6 +355,38 @@ void servicePersistence()
 	bool deleted = false;
 	for (const auto &delivery : other.deliveries) deleted |= delivery.deleted;
 	require(deleted, "Disabled-session deletion was lost on restart/re-enable");
+}
+
+void disabledFavoriteRestart()
+{
+	DavServer server; QTemporaryDir temp;
+	QSettings::setDefaultFormat(QSettings::IniFormat);
+	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, temp.path()+"/preferences");
+	MemorySecrets secrets;
+	auto item = textEntry("offline favorite");
+	{
+		MemoryRepository repository; HistoryService history(repository);
+		WebDavSync service(history, secrets, temp.path()+"/cache");
+		history.load(); repository.finishLoad({item});
+		QString error;
+		require(service.save(server.settings(), "pass", &error), "Could not configure favorite sync");
+		service.synchronize(); waitUntil([&] { return !service.busy(); });
+		auto disabled = server.settings(); disabled.enabled = false;
+		require(service.save(disabled, {}, &error), "Could not disable favorite sync");
+		history.setFavorite(item->id, true);
+	}
+	{
+		MemoryRepository repository; HistoryService history(repository);
+		WebDavSync service(history, secrets, temp.path()+"/cache");
+		history.load(); repository.finishLoad({cloneEntry(*item)});
+		QString error;
+		require(service.save(server.settings(), {}, &error), "Could not re-enable favorite sync");
+		service.synchronize(); waitUntil([&] { return !service.busy(); });
+		require(service.lastSuccess().isValid(), "Offline favorite did not synchronize after restart");
+	}
+	Client other(server.settings(), temp.path()+"/other"); other.run();
+	require(other.success && other.deliveries.size() == 1 && other.deliveries.first().content.favorite,
+		"Disabled-session favorite state was lost");
 }
 
 void imageRoundTrip()
@@ -430,11 +547,14 @@ int main(int argc, char **argv)
 	qRegisterMetaType<SyncDelivery>();
 	int failures = 0;
 	failures += runTest("per-item incremental merge and deletion", incrementalAndDelete);
+	failures += runTest("favorite lifetime, unstar expiry and stale-device reconciliation", favoritesSync);
+	failures += runTest("concurrent favorite operations retain newest copy time", concurrentFavoriteMetadata);
 	failures += runTest("offline restart and concurrent devices", offlineRestartAndConcurrency);
 	failures += runTest("simultaneous independent item uploads", simultaneousWriters);
 	failures += runTest("file exclusion and server validation", limitsAndIntegrity);
 	failures += runTest("supplied clipboard images sync without accompanying local paths", mixedImageSync);
 	failures += runTest("service settings and disabled-session persistence", servicePersistence);
+	failures += runTest("favorite changes survive disabled sync and restart", disabledFavoriteRestart);
 	failures += runTest("image content and timestamp round trip", imageRoundTrip);
 	failures += runTest("source icon resolution and incremental upgrades", sourceIconRoundTrip);
 	failures += runTest("private local credential files and process restart", localCredentialFiles);

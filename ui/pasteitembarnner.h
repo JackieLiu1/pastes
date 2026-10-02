@@ -6,6 +6,8 @@
 #include <QPixmap>
 #include <QDateTime>
 
+class QPushButton;
+
 class Barnner : public QWidget
 {
 	Q_OBJECT
@@ -13,6 +15,8 @@ public:
 	explicit Barnner(QWidget *parent = nullptr);
 
 	void setIcon(QPixmap &pixmap);
+	void setFavorite(bool favorite);
+
 
 	QPixmap icon(void)
 	{
@@ -29,6 +33,9 @@ public:
 		this->m_datetime = dateTime;
 	}
 
+signals:
+	void favoriteRequested(void);
+
 protected:
 	void showEvent(QShowEvent *) override;
 	void paintEvent(QPaintEvent *event) override;
@@ -40,6 +47,7 @@ private:
 	QLabel		*m_text;
 	/* label for show date time */
 	QLabel		*m_time;
+	QPushButton *m_favorite;
 
 	/* icon data */
 	QPixmap		m_pixmap;

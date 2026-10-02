@@ -4,6 +4,11 @@
 #include "application/clipboardcontroller.h"
 #include "application/historyservice.h"
 #include "ui/mainwindow.h"
+#include "ui/historyview.h"
+#include "ui/pasteitem.h"
+#include <QContextMenuEvent>
+#include <QListWidget>
+#include <QVBoxLayout>
 
 #include <QApplication>
 #include <QIcon>
@@ -78,6 +83,46 @@ void nativeHistoryToggle(void)
 	}
 }
 
+void nativeFavoriteMenu(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	window.resize(1200, 430);
+	HistoryView view(history, &window);
+	QVBoxLayout layout(&window); layout.addWidget(&view);
+	history.load(); repository.finishLoad({textEntry("native favorite menu fixture")});
+	window.show(); window.activateWindow();
+	auto *list = view.findChild<QListWidget *>();
+	auto *card = qobject_cast<PasteItem *>(list->itemWidget(list->item(0)));
+	for (bool expected : {true, false}) {
+		const QString label = expected ? QObject::tr("Add to Favorites") : QObject::tr("Remove from Favorites");
+		__block bool selected = false;
+		id observer = [NSNotificationCenter.defaultCenter
+			addObserverForName:NSMenuDidBeginTrackingNotification object:nil queue:nil
+			usingBlock:^(NSNotification *notification) {
+				NSMenu *menu = notification.object;
+				if (![menu isKindOfClass:NSMenu.class]) return;
+				const NSInteger index = [menu indexOfItemWithTitle:label.toNSString()];
+				if (index < 0) return;
+				NSTimer *timer = [NSTimer timerWithTimeInterval:0.05 repeats:NO
+					block:^(NSTimer *) {
+						selected = true;
+						[menu performActionForItemAtIndex:index];
+						[menu cancelTracking];
+					}];
+				[NSRunLoop.mainRunLoop addTimer:timer forMode:NSRunLoopCommonModes];
+			}];
+		QContextMenuEvent event(QContextMenuEvent::Mouse, QPoint(20, 20), card->mapToGlobal(QPoint(20, 20)));
+		QCoreApplication::sendEvent(card, &event);
+		[NSNotificationCenter.defaultCenter removeObserver:observer];
+		require(selected && card->entry()->favorite == expected,
+			"Native favorite menu failed to update the existing card");
+		require(!card->isHidden() && list->currentItem() == card->widgetItem(),
+			"Native favorite menu lost the card or selection");
+	}
+}
+
 void repeatedMenuTracking(bool legacy)
 {
 	QMenu menu;
@@ -148,6 +193,8 @@ int main(int argc, char **argv)
 		const bool legacy = app.arguments().contains(QStringLiteral("--legacy-qt-tray"));
 		int failures = runTest("native tray tracking with non-mouse events and action delivery",
 			[&] { repeatedMenuTracking(legacy); });
+		if (!legacy)
+			failures += runTest("native favorite menu add and remove", nativeFavoriteMenu);
 		if (!legacy)
 			failures += runTest("native tray menu shows and hides history with matching titles",
 				nativeHistoryToggle);

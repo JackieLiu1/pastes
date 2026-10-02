@@ -9,6 +9,8 @@ struct StoredEntry
 {
 	QByteArray md5;
 	QDateTime time;
+	bool favorite = false;
+	qint64 favoriteModified = 0;
 	QImage icon;
 	QList<QPair<QString, QByteArray>> formats;
 	QByteArray encodedImage;

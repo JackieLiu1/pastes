@@ -58,6 +58,13 @@ public:
 	}
 	void remove(const QByteArray &md5) override { removals.append(md5); }
 	void updateIcon(const QByteArray &md5, const QImage &) override { iconUpdates.append(md5); }
+	void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified) override
+	{
+		favoriteUpdates.append(md5);
+		for (auto &entry : writes) if (entry->md5 == md5) {
+			entry->favorite = favorite; entry->favoriteModified = modified;
+		}
+	}
 	void finishLoad(const QList<HistoryEntry> &entries = {}) { emit loaded(entries); }
 	void finishImage(quint64 id, const QByteArray &bytes, int format, qreal ratio = 1)
 	{
@@ -68,6 +75,7 @@ public:
 	QList<HistoryEntry> writes;
 	QList<QByteArray> removals;
 	QList<QByteArray> iconUpdates;
+	QList<QByteArray> favoriteUpdates;
 };
 
 inline int runTest(const char *name, const std::function<void()> &test)
