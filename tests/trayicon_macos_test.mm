@@ -118,12 +118,15 @@ void nativeFavoriteMenu(void)
 	auto *card = qobject_cast<PasteItem *>(list->itemWidget(list->item(0)));
 	for (bool expected : {true, false}) {
 		selectCardMenu(card, expected ? QObject::tr("Add to Favorites") : QObject::tr("Remove from Favorites"));
-		require(card->entry()->favorite == expected && !card->isHidden() && list->currentItem() == card->widgetItem(),
-			"Native favorite menu lost its state, card or selection");
+		require(card->entry()->favorite == expected && !card->isHidden() && list->currentItem() == card->widgetItem() &&
+			card->findChild<QPushButton *>("FavoriteButton")->isHidden(),
+			"Native favorite menu lost its state, card or selection, or displayed a star in history");
 	}
 	history.setFavorite(card->entry()->id, true);
 	auto other = textEntry("second native favorite"); history.record(other); history.setFavorite(other->id, true);
 	view.findChild<QPushButton *>("FavoritesTab")->click();
+	require(card->findChild<QPushButton *>("FavoriteButton")->isVisible(),
+		"Favorites did not show its star after native menu changes");
 	HistoryEntry renamed;
 	QObject::connect(&view, &HistoryView::renameFavoriteRequested, &view, [&](HistoryEntry entry) { renamed = entry; });
 	selectCardMenu(card, QObject::tr("Name Favorite…"));

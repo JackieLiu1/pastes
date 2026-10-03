@@ -30,6 +30,7 @@ public:
 	void setIcon(QPixmap);
 	void setTime(QDateTime &);
 	void updateFavorite(void);
+	void setFavoriteVisible(bool visible);
 	void setFavoriteMoves(bool left, bool right);
 	void copyData(bool plainText = false, bool paste = true);
 	void setQuickPasteNumber(int number);

@@ -330,6 +330,11 @@ void PasteItem::updateFavorite(void)
 	m_barnner->setFavoriteName(name);
 }
 
+void PasteItem::setFavoriteVisible(bool visible)
+{
+	m_barnner->setFavoriteVisible(visible);
+}
+
 void PasteItem::setFavoriteMoves(bool left, bool right)
 {
 	m_moveLeft = left;

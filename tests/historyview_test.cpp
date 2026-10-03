@@ -85,10 +85,13 @@ void favoritesFilter(void)
 	auto *all = view.findChild<QPushButton *>("HistoryTab");
 	auto card = [&](int row) { return qobject_cast<PasteItem *>(list->itemWidget(list->item(row))); };
 	auto *star = card(1)->findChild<QPushButton *>("FavoriteButton");
-	star->click(); history.setFavorite(beta->id, true);
-	require(alpha->favorite && star->isChecked(), "Card star did not save its state");
+	require(star->isHidden(), "History displayed an ordinary card star");
+	card(1)->favoriteRequested(); history.setFavorite(beta->id, true);
+	require(alpha->favorite && star->isChecked() && star->isHidden(),
+		"Favorite command lost its state or displayed a star in history");
 	history.setFavoriteName(alpha->id, "<b>常用命令</b>");
 	favorites->click();
+	require(!star->isHidden(), "Favorites hid the card star");
 	require(card(0)->entry() == alpha && card(1)->entry() == beta && list->item(2)->isHidden() && list->currentRow() == 0,
 		"Favorites did not use fixed order and select the first visible card");
 	auto *name = card(0)->findChild<QLabel *>("CardType");
@@ -124,14 +127,15 @@ void favoritesFilter(void)
 		"Ordinary capture bypassed favorites or stole selection");
 	all->click();
 	for (int row = 0; row < list->count(); ++row)
-		require(!list->item(row)->isHidden() && card(row)->entry() == history.entries()[row],
-			"History tab lost its chronological order after favorite sorting");
+		require(!list->item(row)->isHidden() && card(row)->entry() == history.entries()[row] &&
+			card(row)->findChild<QPushButton *>("FavoriteButton")->isHidden(),
+			"History tab lost its chronological order or displayed a favorite star");
 	favorites->click();
 	card(0)->findChild<QPushButton *>("FavoriteButton")->click();
 	require(list->currentItem() == card(0)->widgetItem() && card(0)->entry() == recopy,
 		"Unstarring retained an invisible selection");
 	card(0)->findChild<QPushButton *>("FavoriteButton")->click();
-	require(list->currentRow() == -1 && view.findChild<QLabel *>("EmptyState")->text().contains("Star"),
+	require(list->currentRow() == -1 && view.findChild<QLabel *>("EmptyState")->text().contains("Right-click"),
 		"Empty favorites retained a hidden selection");
 }
 

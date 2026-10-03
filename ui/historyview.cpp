@@ -173,6 +173,7 @@ void HistoryView::updateSummary(void)
 		if (!widget)
 			continue;
 		widget->setQuickPasteNumber(item->isHidden() ? 0 : ++number);
+		widget->setFavoriteVisible(m_favoritesOnly && widget->entry()->favorite);
 		widget->setFavoriteMoves(m_favoritesOnly && !item->isHidden() && number > 1,
 			m_favoritesOnly && !item->isHidden() && number < visible);
 	}
@@ -186,7 +187,7 @@ void HistoryView::updateSummary(void)
 		this->m_empty->setText(this->m_list->count() == 0 ?
 			QObject::tr("Copy something to get started") :
 			(m_favoritesOnly && m_search->findChild<LineEdit *>()->text().isEmpty() ?
-			 QObject::tr("Star an item to keep it in Favorites") : QObject::tr("No matching items")));
+			 QObject::tr("Right-click an item in history to add it to Favorites") : QObject::tr("No matching items")));
 		this->m_empty->setGeometry(this->m_list->viewport()->rect());
 		this->m_empty->setVisible(number == 0);
 	}

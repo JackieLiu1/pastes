@@ -81,6 +81,7 @@ Barnner::Barnner(QWidget *parent) : QWidget(parent),
 	m_favorite->setFocusPolicy(Qt::NoFocus);
 	m_favorite->setCursor(Qt::PointingHandCursor);
 	m_favorite->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+	m_favorite->hide();
 	setFavorite(false);
 	connect(m_favorite, &QPushButton::toggled, this, &Barnner::favoriteRequested);
 	hboxlayout->setSpacing(6);
@@ -117,6 +118,11 @@ void Barnner::setFavorite(bool favorite)
 	const QString action = favorite ? QObject::tr("Remove from Favorites") : QObject::tr("Add to Favorites");
 	m_favorite->setToolTip(action);
 	m_favorite->setAccessibleName(action);
+}
+
+void Barnner::setFavoriteVisible(bool visible)
+{
+	m_favorite->setVisible(visible);
 }
 
 void Barnner::setIcon(QPixmap &pixmap)

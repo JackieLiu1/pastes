@@ -29,12 +29,12 @@
         <translation>打开系统设置</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="125"/>
+        <location filename="ui/pasteitembarnner.cpp" line="131"/>
         <source>Source unavailable</source>
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="557"/>
+        <location filename="ui/historyview.cpp" line="558"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
@@ -107,32 +107,32 @@
         <translation>关于 Pastes</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="170"/>
+        <location filename="ui/pasteitembarnner.cpp" line="176"/>
         <source>months ago</source>
         <translation>月前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="172"/>
+        <location filename="ui/pasteitembarnner.cpp" line="178"/>
         <source>days ago</source>
         <translation>天前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="174"/>
+        <location filename="ui/pasteitembarnner.cpp" line="180"/>
         <source>hours ago</source>
         <translation>小时前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="176"/>
+        <location filename="ui/pasteitembarnner.cpp" line="182"/>
         <source>minutes ago</source>
         <translation>分钟前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="178"/>
+        <location filename="ui/pasteitembarnner.cpp" line="184"/>
         <source>secs ago</source>
         <translation>秒前</translation>
     </message>
     <message>
-        <location filename="ui/pasteitembarnner.cpp" line="180"/>
+        <location filename="ui/pasteitembarnner.cpp" line="186"/>
         <source>moment ago</source>
         <translation>刚刚</translation>
     </message>
@@ -164,7 +164,7 @@
         <translation>条记录</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="379"/>
+        <location filename="ui/historyview.cpp" line="380"/>
         <source>Clipboard</source>
         <translation>剪贴板历史</translation>
     </message>
@@ -203,13 +203,13 @@
     </message>
     <message>
         <location filename="ui/pasteitem.cpp" line="287"/>
-        <location filename="ui/pasteitembarnner.cpp" line="117"/>
+        <location filename="ui/pasteitembarnner.cpp" line="118"/>
         <source>Remove from Favorites</source>
         <translation>取消收藏</translation>
     </message>
     <message>
         <location filename="ui/pasteitem.cpp" line="287"/>
-        <location filename="ui/pasteitembarnner.cpp" line="117"/>
+        <location filename="ui/pasteitembarnner.cpp" line="118"/>
         <source>Add to Favorites</source>
         <translation>加入收藏</translation>
     </message>
@@ -242,13 +242,13 @@
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="372"/>
+        <location filename="ui/historyview.cpp" line="373"/>
         <source>Pastes</source>
         <translation>Pastes</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="330"/>
         <location filename="ui/historyview.cpp" line="331"/>
+        <location filename="ui/historyview.cpp" line="332"/>
         <source>Menu</source>
         <translation>菜单</translation>
     </message>
@@ -258,37 +258,41 @@
         <translation>输入即可搜索</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="181"/>
+        <location filename="ui/historyview.cpp" line="182"/>
         <source>%1 favorites</source>
         <translation>%1 条收藏</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="182"/>
+        <location filename="ui/historyview.cpp" line="183"/>
         <source>%1 items</source>
         <translation>%1 条记录</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="183"/>
+        <location filename="ui/historyview.cpp" line="184"/>
         <source>%1 of %2 items</source>
         <translation>%2 条记录中找到 %1 条</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="187"/>
+        <location filename="ui/historyview.cpp" line="188"/>
         <source>Copy something to get started</source>
         <translation>复制一段文字或一张图片，从这里开始</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="189"/>
+        <location filename="ui/historyview.cpp" line="190"/>
         <source>No matching items</source>
         <translation>没有找到匹配的内容</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="189"/>
-        <source>Star an item to keep it in Favorites</source>
-        <translation>点击卡片上的星标，将常用内容加入收藏</translation>
+        <location filename="ui/historyview.cpp" line="190"/>
+        <source>Right-click an item in history to add it to Favorites</source>
+        <translation>右键点击历史条目，选择“加入收藏”</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="382"/>
+        <source>Star an item to keep it in Favorites</source>
+        <translation type="vanished">点击卡片上的星标，将常用内容加入收藏</translation>
+    </message>
+    <message>
+        <location filename="ui/historyview.cpp" line="383"/>
         <source>Favorites</source>
         <translation>收藏</translation>
     </message>
@@ -350,17 +354,17 @@
         <translation type="vanished">预览（Space）</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="426"/>
+        <location filename="ui/historyview.cpp" line="427"/>
         <source>Removed from history</source>
         <translation>已从历史记录移除</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="430"/>
+        <location filename="ui/historyview.cpp" line="431"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="431"/>
+        <location filename="ui/historyview.cpp" line="432"/>
         <source>Undo deletion (Ctrl+Z)</source>
         <translation>撤销删除（Ctrl+Z）</translation>
     </message>
@@ -584,7 +588,7 @@
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="409"/>
+        <location filename="ui/historyview.cpp" line="410"/>
         <location filename="ui/mainwindow.cpp" line="212"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>

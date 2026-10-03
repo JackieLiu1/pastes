@@ -17,6 +17,7 @@ public:
 
 	void setIcon(QPixmap &pixmap);
 	void setFavorite(bool favorite);
+	void setFavoriteVisible(bool visible);
 	void setFavoriteName(const QString &name);
 
 
