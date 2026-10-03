@@ -1,18 +1,14 @@
 #include "platform/globalshortcut.h"
 #include "platform/shortcut_p.h"
 
-GlobalShortcut::GlobalShortcut(QObject *parent) : QObject(parent)
+GlobalShortcut::GlobalShortcut(QObject *parent) : QObject(parent),
+	m_shortcut(std::make_unique<ShortcutPrivate>())
 {
-	this->m_shortcut = new ShortcutPrivate();
-
-	QObject::connect(this->m_shortcut, &ShortcutPrivate::pasteActivated,
+	QObject::connect(this->m_shortcut.get(), &ShortcutPrivate::pasteActivated,
 			 this, &GlobalShortcut::pasteActivated);
-	QObject::connect(this->m_shortcut, &ShortcutPrivate::primaryShortcutChanged,
+	QObject::connect(this->m_shortcut.get(), &ShortcutPrivate::primaryShortcutChanged,
 			 this, &GlobalShortcut::primaryShortcutChanged);
 	this->m_shortcut->start();
 }
 
-GlobalShortcut::~GlobalShortcut()
-{
-	delete this->m_shortcut;
-}
+GlobalShortcut::~GlobalShortcut() = default;

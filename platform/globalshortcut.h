@@ -2,6 +2,7 @@
 #define PLATFORM_GLOBALSHORTCUT_H
 
 #include <QObject>
+#include <memory>
 
 class ShortcutPrivate;
 
@@ -19,7 +20,7 @@ signals:
 	void primaryShortcutChanged(const QString &shortcut);
 
 private:
-	ShortcutPrivate		*m_shortcut;
+	std::unique_ptr<ShortcutPrivate> m_shortcut;
 };
 
 #endif // PLATFORM_GLOBALSHORTCUT_H
