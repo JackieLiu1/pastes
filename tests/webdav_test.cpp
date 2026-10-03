@@ -189,6 +189,57 @@ void favoritesSync()
 		!second.deliveries.last().content.favorite, "Recent unfavorite did not remain ordinary history");
 }
 
+void favoriteDetailsSync(void)
+{
+	DavServer server; QTemporaryDir temp;
+	Client first(server.settings(), temp.path()+"/a"), second(server.settings(), temp.path()+"/b");
+	const qint64 now = QDateTime::currentMSecsSinceEpoch();
+	auto item = textEntry("named favorite", QDateTime::fromMSecsSinceEpoch(now-10000));
+	item->favorite = true; item->favoriteModified = now-9000;
+	item->favoriteDetails = {"initial", now-9000, 1024, now-9000};
+	first.capture(item, true); first.run(); second.run();
+	require(first.success && second.success && second.deliveries.size() == 1 &&
+		second.deliveries.first().content.favoriteDetails == item->favoriteDetails,
+		"Favorite details failed to sync between devices");
+	QString error;
+	auto document = QJsonDocument::fromJson(server.files.cbegin().value()).object();
+	require(document.value("version").toInt() == 3, "Named favorites did not declare the metadata protocol");
+	auto invalid = document; invalid["favoriteName"] = QString(81, 'x');
+	SyncContent::parse(SyncContent::bytes(invalid), &error);
+	require(!error.isEmpty(), "Remote favorite name exceeded its bounds");
+	error.clear(); invalid = document; invalid["favoritePositionModified"] = now+10000;
+	SyncContent::parse(SyncContent::bytes(invalid), &error);
+	require(!error.isEmpty(), "Future favorite position clock was accepted");
+	auto publish = [&](QJsonObject value) {
+		const auto bytes = SyncContent::bytes(value);
+		server.files["/Pastes/v1/events/"+SyncContent::digest(bytes)+".json"] = bytes;
+	};
+	auto rename = document;
+	rename["modified"] = now-3000; rename["favoriteName"] = "renamed"; rename["favoriteNameModified"] = now-3000;
+	publish(rename);
+	auto reorder = document;
+	reorder["modified"] = now-2000; reorder["favoritePosition"] = 4096; reorder["favoritePositionModified"] = now-2000;
+	publish(reorder);
+	// A later legacy content update must retain both independent edits.
+	auto stale = document; stale["version"] = 2; stale["modified"] = now-1000; stale["copied"] = now-1000;
+	for (const auto &field : {"favoriteName", "favoriteNameModified", "favoritePosition", "favoritePositionModified"}) stale.remove(field);
+	publish(stale);
+	first.run(); second.run();
+	require(first.success && second.success && !second.deliveries.isEmpty(), "Concurrent favorite details failed to converge");
+	const auto merged = second.deliveries.last().content;
+	require(merged.favoriteDetails.name == "renamed" && merged.favoriteDetails.position == 4096 &&
+		merged.time.toMSecsSinceEpoch() == now-1000 && merged.favorite, "Independent name/order/copy updates overwrote each other");
+	const int puts = server.puts; first.run(); second.run();
+	require(first.success && second.success && server.puts == puts, "Favorite metadata reconciliation did not settle");
+	// Startup migration can add metadata whose clock predates the content head.
+	auto recovered = SyncContent::materialize(merged);
+	recovered->favoriteDetails.position = 512;
+	recovered->favoriteDetails.positionModified = now-500;
+	first.capture(recovered, true); first.run(); second.run();
+	require(second.success && !second.deliveries.isEmpty() && second.deliveries.last().content.favoriteDetails.position == 512,
+		"Bootstrap skipped a new metadata field behind a later content clock");
+}
+
 void concurrentFavoriteMetadata()
 {
 	DavServer server; QTemporaryDir temp;
@@ -374,6 +425,7 @@ void disabledFavoriteRestart()
 		auto disabled = server.settings(); disabled.enabled = false;
 		require(service.save(disabled, {}, &error), "Could not disable favorite sync");
 		history.setFavorite(item->id, true);
+		history.setFavoriteName(item->id, "offline name");
 	}
 	{
 		MemoryRepository repository; HistoryService history(repository);
@@ -385,7 +437,8 @@ void disabledFavoriteRestart()
 		require(service.lastSuccess().isValid(), "Offline favorite did not synchronize after restart");
 	}
 	Client other(server.settings(), temp.path()+"/other"); other.run();
-	require(other.success && other.deliveries.size() == 1 && other.deliveries.first().content.favorite,
+	require(other.success && other.deliveries.size() == 1 && other.deliveries.first().content.favorite &&
+		other.deliveries.first().content.favoriteDetails.name == "offline name",
 		"Disabled-session favorite state was lost");
 }
 
@@ -549,6 +602,7 @@ int main(int argc, char **argv)
 	failures += runTest("per-item incremental merge and deletion", incrementalAndDelete);
 	failures += runTest("favorite lifetime, unstar expiry and stale-device reconciliation", favoritesSync);
 	failures += runTest("concurrent favorite operations retain newest copy time", concurrentFavoriteMetadata);
+	failures += runTest("favorite names and independent ordering converge between devices", favoriteDetailsSync);
 	failures += runTest("offline restart and concurrent devices", offlineRestartAndConcurrency);
 	failures += runTest("simultaneous independent item uploads", simultaneousWriters);
 	failures += runTest("file exclusion and server validation", limitsAndIntegrity);

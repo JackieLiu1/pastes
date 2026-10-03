@@ -35,6 +35,7 @@ Snapshot snapshot(const ItemData &entry)
 	const auto &mime = *entry.mimeData;
 	value.md5 = entry.md5; value.time = entry.time; value.icon = entry.icon;
 	value.favorite = entry.favorite; value.favoriteModified = entry.favoriteModified;
+	value.favoriteDetails = entry.favoriteDetails;
 	if (ClipboardContent::prefersImage(mime)) {
 		value.kind = "image"; value.png = ClipboardData::storedImage(&mime);
 		if (value.png.isEmpty()) value.image = qvariant_cast<QImage>(mime.imageData());
@@ -59,6 +60,7 @@ HistoryEntry materialize(const Snapshot &value)
 	auto entry = HistoryEntry::create();
 	entry->md5 = value.md5; entry->time = value.time; entry->icon = value.icon;
 	entry->favorite = value.favorite; entry->favoriteModified = value.favoriteModified;
+	entry->favoriteDetails = value.favoriteDetails;
 	entry->mimeData = new QMimeData;
 	if (value.kind == "image") {
 		auto *mime = ClipboardData::withStoredImage(entry->mimeData, value.png, QImage::Format_Invalid);
@@ -151,6 +153,16 @@ QString key(const Snapshot &value)
 	return QString::fromLatin1(hash.result().toHex());
 }
 QByteArray bytes(const QJsonObject &document) { return QJsonDocument(document).toJson(QJsonDocument::Compact); }
+void writeFavoriteDetails(QJsonObject &document, const FavoriteDetails &details)
+{
+	if (!details.nameModified && !details.positionModified) return;
+	document["version"] = 3;
+	document["favoriteName"] = details.name;
+	document["favoriteNameModified"] = details.nameModified;
+	document["favoritePosition"] = details.position;
+	document["favoritePositionModified"] = details.positionModified;
+}
+
 Record parse(const QByteArray &data, QString *error)
 {
 	Record record;
@@ -165,7 +177,20 @@ Record parse(const QByteArray &data, QString *error)
 	record.favoriteModified = object.value("favoriteModified").toInteger();
 	const auto keyBytes = record.key.toLatin1();
 	const int version = object.value("version").toInt();
-	if (parseError.error != QJsonParseError::NoError || (version != 1 && version != 2) ||
+	if (version == 3) {
+		record.favoriteDetails = {object.value("favoriteName").toString(),
+			object.value("favoriteNameModified").toInteger(-1),
+			object.value("favoritePosition").toInteger(-1),
+			object.value("favoritePositionModified").toInteger(-1)};
+	}
+	const auto &details = record.favoriteDetails;
+	const bool invalidDetails = version == 3 &&
+		(!object.value("favoriteName").isString() || details.name.size() > FavoriteDetails::maxNameLength ||
+		 details.name != details.name.simplified() || details.nameModified < 0 || details.nameModified > record.modified ||
+		 (!details.nameModified && !details.name.isEmpty()) || details.position < 0 ||
+		 details.position > FavoriteDetails::maxPosition || details.positionModified < 0 || details.positionModified > record.modified ||
+		 (!details.positionModified && details.position != 0));
+	if (parseError.error != QJsonParseError::NoError || (version != 1 && version != 2 && version != 3) || invalidDetails ||
 		record.key.size() != 64 || QByteArray::fromHex(keyBytes).toHex() != keyBytes ||
 		record.modified <= 0 || record.modified > QDateTime::currentMSecsSinceEpoch()+5*60*1000 ||
 		(object.contains("favorite") && !object.value("favorite").isBool()) ||

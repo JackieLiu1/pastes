@@ -108,13 +108,22 @@ void WebDavWorker::capture(SyncContent::Snapshot value, bool bootstrap, bool del
 {
 	m_serial = qMax(m_serial, serial);
 	if (!m_error.isEmpty() || value.kind.isEmpty()) return;
-	const qint64 changed = qMax(value.time.toMSecsSinceEpoch(), value.favoriteModified);
+	const qint64 changed = qMax(qMax(value.time.toMSecsSinceEpoch(), value.favoriteModified),
+		qMax(value.favoriteDetails.nameModified, value.favoriteDetails.positionModified));
 	if (value.favorite && !value.favoriteModified) value.favoriteModified = changed;
 	if (!value.favorite && value.favoriteModified &&
 		QDateTime::currentMSecsSinceEpoch()-value.time.toMSecsSinceEpoch() >= qint64(HistoryPolicy::retentionDays)*86400000) deleted = true;
 	QString key = m_bindings.value(value.md5);
-	if (bootstrap && !key.isEmpty() && m_heads.contains(key) &&
-		m_records[m_heads[key]].modified >= changed) return;
+	auto hasNewMetadata = [&value](const SyncContent::Record &head) {
+		auto details = head.favoriteDetails;
+		return mergeFavoriteDetails(details, value.favoriteDetails) ||
+			value.favoriteModified > head.favoriteModified || value.time.toMSecsSinceEpoch() > head.copied;
+	};
+	if (bootstrap && m_heads.contains(key)) {
+		const auto head = m_records.value(m_heads.value(key));
+		/* Keep the cached startup fast path, including encoded images. */
+		if (head.modified >= changed && (head.deleted || !hasNewMetadata(head))) return;
+	}
 	QJsonObject payload;
 	QString error;
 	if (!deleted || key.isEmpty()) {
@@ -125,12 +134,16 @@ void WebDavWorker::capture(SyncContent::Snapshot value, bool bootstrap, bool del
 		key = SyncContent::key(decoded);
 	}
 	m_bindings[value.md5] = key;
-	qint64 modified = bootstrap ? changed : qMax(QDateTime::currentMSecsSinceEpoch(), m_clock+1);
+	qint64 modified = bootstrap ? changed : qMax(changed, qMax(QDateTime::currentMSecsSinceEpoch(), m_clock+1));
 	const auto head = m_records.value(m_heads.value(key));
-	if (bootstrap && head.modified >= modified) { persistIndex(); return; }
+	if (bootstrap && head.modified >= modified) {
+		if (head.deleted || !hasNewMetadata(head)) { persistIndex(); return; }
+		modified = head.modified+1;
+	}
 	QJsonObject document{{"version", value.favoriteModified ? 2 : 1}, {"key", key}, {"modified", modified}, {"deleted", deleted}};
 	if (value.favoriteModified) document["favoriteModified"] = value.favoriteModified;
 	if (!deleted) {
+		SyncContent::writeFavoriteDetails(document, value.favoriteDetails);
 		document["favorite"] = value.favorite;
 		document["copied"] = value.time.toMSecsSinceEpoch(); document["content"] = payload;
 	}
@@ -261,7 +274,9 @@ bool WebDavWorker::prepareRetention(void)
 	const qint64 now = QDateTime::currentMSecsSinceEpoch();
 	QHash<QString, SyncContent::Record> favorites;
 	QHash<QString, qint64> copies;
+	QHash<QString, FavoriteDetails> details;
 	for (const auto &record : m_records) {
+		mergeFavoriteDetails(details[record.key], record.favoriteDetails);
 		if (!record.deleted) copies[record.key] = qMax(copies.value(record.key), record.copied);
 		if (!record.favoriteModified) continue;
 		const auto previous = favorites.value(record.key);
@@ -280,12 +295,14 @@ bool WebDavWorker::prepareRetention(void)
 			 * retaining the newest known copy time for the same content. */
 			const auto favorite = favorites.value(record.key, record);
 			const qint64 copied = copies.value(record.key, record.copied);
-			if (favorite.favoriteModified && (record.favoriteModified != favorite.favoriteModified ||
-				record.favorite != favorite.favorite || record.copied != copied)) {
+			const auto mergedDetails = details.value(record.key);
+			if ((favorite.favoriteModified && (record.favoriteModified != favorite.favoriteModified ||
+				record.favorite != favorite.favorite || record.copied != copied)) || record.favoriteDetails != mergedDetails) {
 				auto document = QJsonDocument::fromJson(read(id)).object();
 				document["version"] = 2;
 				document["favorite"] = favorite.favorite;
 				document["favoriteModified"] = favorite.favoriteModified;
+				SyncContent::writeFavoriteDetails(document, mergedDetails);
 				document["copied"] = copied;
 				document["modified"] = record.modified+1;
 				const QByteArray data = SyncContent::bytes(document);
@@ -372,6 +389,7 @@ void WebDavWorker::deliver(void)
 			delivery.content.time = QDateTime::fromMSecsSinceEpoch(record.copied).toUTC();
 			delivery.content.favorite = record.favorite;
 			delivery.content.favoriteModified = record.favoriteModified;
+			delivery.content.favoriteDetails = record.favoriteDetails;
 			m_bindings[delivery.content.md5] = record.key;
 			delivery.content.image = {}; // Only the original encoded bytes cross back.
 		}

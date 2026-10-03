@@ -15,6 +15,7 @@ struct Snapshot {
 	QDateTime time;
 	bool favorite = false;
 	qint64 favoriteModified = 0;
+	FavoriteDetails favoriteDetails;
 	QString kind;
 	QString text;
 	QString html;
@@ -31,6 +32,7 @@ struct Record {
 	bool deleted = false;
 	bool favorite = false;
 	qint64 favoriteModified = 0;
+	FavoriteDetails favoriteDetails;
 	QJsonObject document;
 };
 Snapshot snapshot(const ItemData &entry);
@@ -41,6 +43,7 @@ QString key(const Snapshot &value);
 QByteArray bytes(const QJsonObject &document);
 QString digest(const QByteArray &bytes);
 Record parse(const QByteArray &bytes, QString *error);
+void writeFavoriteDetails(QJsonObject &document, const FavoriteDetails &details);
 bool expired(const Record &record, qint64 now);
 }
 #endif
