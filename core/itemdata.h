@@ -6,6 +6,7 @@
 #include <QImage>
 #include <QMimeData>
 #include <QSharedPointer>
+#include <memory>
 
 using EntryId = quint64;
 
@@ -27,12 +28,12 @@ bool mergeFavoriteDetails(FavoriteDetails &target, const FavoriteDetails &source
 struct ItemData final
 {
 	ItemData(void) = default;
-	~ItemData(void) { delete mimeData; }
+	~ItemData(void) = default;
 	ItemData(const ItemData &) = delete;
 	ItemData &operator=(const ItemData &) = delete;
 
 	EntryId id = 0;
-	QMimeData *mimeData = nullptr;
+	std::unique_ptr<QMimeData> mimeData;
 	QImage icon;
 	QByteArray md5;
 	/* Cached pixel comparison; the persisted MD5 and original MIME stay intact. */

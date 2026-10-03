@@ -28,7 +28,8 @@ bool mergeFavoriteDetails(FavoriteDetails &target, const FavoriteDetails &source
 HistoryEntry cloneEntry(const ItemData &source)
 {
 	auto entry = HistoryEntry::create();
-	entry->mimeData = source.mimeData ? ClipboardData::duplicate(source.mimeData) : new QMimeData;
+	entry->mimeData = source.mimeData ? ClipboardData::duplicate(source.mimeData.get()) :
+		std::make_unique<QMimeData>();
 	entry->icon = source.icon;
 	entry->md5 = source.md5;
 	entry->imageContentKey = source.imageContentKey;

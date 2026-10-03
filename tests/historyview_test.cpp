@@ -784,8 +784,7 @@ void mixedImageCopies(void)
 	require(fresh.setEntry(entry) && fresh.findChild<QWidget *>("PasteItemFrame")->property("contentKind").toString() == "image",
 		"Fresh mixed clipboard pixels were displayed as a file");
 	require(fresh.text().contains(QUrl::fromLocalFile(path).toString()), "Image presentation lost its searchable file reference");
-	auto *stored = ClipboardData::withStoredImage(entry->mimeData, png(supplied), supplied.format());
-	delete entry->mimeData; entry->mimeData = stored;
+	entry->mimeData = ClipboardData::withStoredImage(entry->mimeData.get(), png(supplied), supplied.format());
 	MemoryRepository repository;
 	HistoryService history(repository);
 	QWidget window;

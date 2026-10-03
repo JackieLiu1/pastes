@@ -339,8 +339,7 @@ void mixedImageSync(void)
 	const QUrl url = QUrl::fromLocalFile(temp.filePath("missing temporary image.png"));
 	entry->mimeData->setUrls({url}); entry->mimeData->setImageData(image);
 	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
-	auto *stored = ClipboardData::withStoredImage(entry->mimeData, png(image), image.format());
-	delete entry->mimeData; entry->mimeData = stored;
+	entry->mimeData = ClipboardData::withStoredImage(entry->mimeData.get(), png(image), image.format());
 	const auto snapshot = SyncContent::snapshot(*entry);
 	require(snapshot.kind == "image" && snapshot.urls.isEmpty() && snapshot.png == png(image),
 		"An accompanying file URL excluded supplied image content from sync");
@@ -446,7 +445,7 @@ void imageRoundTrip()
 {
 	DavServer server; QTemporaryDir temp;
 	Client first(server.settings(), temp.path()+"/a"), second(server.settings(), temp.path()+"/b");
-	auto item = HistoryEntry::create(); item->mimeData = new QMimeData; item->time = QDateTime::currentDateTime();
+	auto item = HistoryEntry::create(); item->mimeData = std::make_unique<QMimeData>(); item->time = QDateTime::currentDateTime();
 	QImage image(80, 60, QImage::Format_ARGB32); image.fill(QColor(11, 129, 78, 200));
 	item->mimeData->setImageData(image); item->md5 = ClipboardContent::fingerprint(*item->mimeData);
 	first.capture(item); first.run(); second.run();

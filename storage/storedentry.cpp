@@ -14,7 +14,7 @@ StoredEntry StoredEntry::snapshot(const ItemData &entry)
 		result.formats.append({format, entry.mimeData->data(format)});
 	result.hasImage = entry.mimeData->hasImage();
 	if (result.hasImage) {
-		result.encodedImage = ClipboardData::storedImage(entry.mimeData);
+		result.encodedImage = ClipboardData::storedImage(entry.mimeData.get());
 		if (result.encodedImage.isEmpty())
 			result.image = qvariant_cast<QImage>(entry.mimeData->imageData());
 	}
@@ -30,13 +30,12 @@ HistoryEntry StoredEntry::materialize(void) const
 	entry->favoriteModified = favoriteModified;
 	entry->favoriteDetails = favoriteDetails;
 	entry->icon = icon;
-	entry->mimeData = new QMimeData;
+	entry->mimeData = std::make_unique<QMimeData>();
 	for (const auto &format : formats)
 		entry->mimeData->setData(format.first, format.second);
 	if (entry->mimeData->hasImage() && !encodedImage.isEmpty()) {
-		QMimeData *mime = ClipboardData::withStoredImage(entry->mimeData, encodedImage, QImage::Format_Invalid);
-		delete entry->mimeData;
-		entry->mimeData = mime;
+		entry->mimeData = ClipboardData::withStoredImage(entry->mimeData.get(),
+			encodedImage, QImage::Format_Invalid);
 	}
 	return entry;
 }

@@ -61,10 +61,10 @@ HistoryEntry materialize(const Snapshot &value)
 	entry->md5 = value.md5; entry->time = value.time; entry->icon = value.icon;
 	entry->favorite = value.favorite; entry->favoriteModified = value.favoriteModified;
 	entry->favoriteDetails = value.favoriteDetails;
-	entry->mimeData = new QMimeData;
+	entry->mimeData = std::make_unique<QMimeData>();
 	if (value.kind == "image") {
-		auto *mime = ClipboardData::withStoredImage(entry->mimeData, value.png, QImage::Format_Invalid);
-		delete entry->mimeData; entry->mimeData = mime;
+		entry->mimeData = ClipboardData::withStoredImage(entry->mimeData.get(),
+			value.png, QImage::Format_Invalid);
 	} else if (value.kind == "links") {
 		QList<QUrl> urls;
 		for (const auto &url : value.urls) urls.append(QUrl(url));

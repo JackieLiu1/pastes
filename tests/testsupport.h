@@ -18,7 +18,7 @@ inline void require(bool value, const char *message)
 inline HistoryEntry textEntry(const QString &text, QDateTime time = QDateTime::currentDateTime())
 {
 	auto entry = HistoryEntry::create();
-	entry->mimeData = new QMimeData;
+	entry->mimeData = std::make_unique<QMimeData>();
 	entry->mimeData->setText(text);
 	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
 	entry->time = time;

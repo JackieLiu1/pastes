@@ -2,6 +2,7 @@
 #include "application/clipboardcontroller.h"
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QPointer>
 #include <QUrl>
 #include <utility>
 
@@ -180,10 +181,59 @@ void mixedImageSnapshot(void)
 		"A synthesized file icon was retained as clipboard image content");
 }
 
+void clipboardOwnership(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	TestFeed feed;
+	QClipboard &clipboard = *QGuiApplication::clipboard();
+	ClipboardController controller(history, feed, clipboard, false);
+	auto entry = textEntry("owned payload");
+	entry->mimeData->setHtml("<b>owned payload</b>");
+	entry->mimeData->setData("application/custom", QByteArray("a\0b", 3));
+	QPointer<QMimeData> source = entry->mimeData.get();
+	require(controller.copy(*entry), "Copying an owned history payload failed");
+	QPointer<QMimeData> copied = const_cast<QMimeData *>(clipboard.mimeData());
+	require(copied && copied != source && copied->html() == "<b>owned payload</b>" &&
+		copied->data("application/custom") == QByteArray("a\0b", 3),
+		"The clipboard did not receive an independent MIME snapshot");
+	entry.clear();
+	require(source.isNull() && copied && copied->text() == "owned payload",
+		"Releasing history invalidated the system clipboard payload");
+	clipboard.clear();
+	require(copied.isNull(), "The system clipboard did not release its transferred payload");
+
+	entry = textEntry("plain payload");
+	entry->mimeData->setHtml("<b>plain payload</b>");
+	require(controller.copy(*entry, true) && clipboard.text() == "plain payload" &&
+		!clipboard.mimeData()->hasHtml() && entry->mimeData->hasHtml(),
+		"Plain text copy changed the original payload or retained rich formats");
+
+	/* Native clipboard notifications can synchronously replace a copied
+	 * payload before copy() finishes updating the X11 selection. */
+	QObject observer;
+	bool replaced = false;
+	QPointer<QMimeData> replacedPayload;
+	QObject::connect(&clipboard, &QClipboard::dataChanged, &observer, [&] {
+		if (std::exchange(replaced, true)) return;
+		replacedPayload = const_cast<QMimeData *>(clipboard.mimeData());
+		clipboard.setText("replacement during notification");
+	});
+	require(controller.copy(*entry) && replaced && replacedPayload.isNull() &&
+		clipboard.text() == "replacement during notification" && entry->mimeData->hasHtml(),
+		"Reentrant clipboard replacement invalidated the original history payload");
+	if (clipboard.supportsSelection())
+		require(clipboard.text(QClipboard::Selection) == "plain payload",
+			"Reentrant replacement changed the prepared X11 selection snapshot");
+	clipboard.clear();
+	if (clipboard.supportsSelection()) clipboard.clear(QClipboard::Selection);
+}
+
 int main(int argc, char **argv)
 {
 	QGuiApplication app(argc, argv);
 	return runTest("clipboard pause, copy and native synchronization", clipboardLifecycle) |
 		runTest("clipboard capture exclusion and recovery", capturePolicy) |
-		runTest("mixed clipboard image snapshots preserve original formats", mixedImageSnapshot);
+		runTest("mixed clipboard image snapshots preserve original formats", mixedImageSnapshot) |
+		runTest("clipboard transfer, plain text and reentrant replacement", clipboardOwnership);
 }

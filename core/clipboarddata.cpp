@@ -47,23 +47,24 @@ void copyFormats(const QMimeData *source, QMimeData *target, bool includeImage =
 
 }
 
-QMimeData *ClipboardData::duplicate(const QMimeData *source, bool includeImage)
+std::unique_ptr<QMimeData> ClipboardData::duplicate(const QMimeData *source, bool includeImage)
 {
 	if (includeImage)
 		if (const auto *stored = dynamic_cast<const StoredImageMimeData *>(source))
 			return withStoredImage(source, stored->encoded(), stored->imageFormat(), stored->imageRatio());
-	auto *mime = new QMimeData;
-	copyFormats(source, mime, includeImage);
+	auto mime = std::make_unique<QMimeData>();
+	copyFormats(source, mime.get(), includeImage);
 	if (includeImage && source->hasImage())
 		mime->setImageData(source->imageData());
 	return mime;
 }
 
-QMimeData *ClipboardData::withStoredImage(const QMimeData *source, const QByteArray &encoded, int format, qreal ratio)
+std::unique_ptr<QMimeData> ClipboardData::withStoredImage(const QMimeData *source,
+	const QByteArray &encoded, int format, qreal ratio)
 {
-	auto *mime = new StoredImageMimeData(encoded, format, ratio);
+	auto mime = std::make_unique<StoredImageMimeData>(encoded, format, ratio);
 	mime->clear();
-	copyFormats(source, mime);
+	copyFormats(source, mime.get());
 	if (!mime->hasFormat(imageType)) mime->setData(imageType, QByteArray());
 	return mime;
 }

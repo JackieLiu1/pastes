@@ -130,7 +130,7 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	content->setObjectName("PreviewContent");
 	QVBoxLayout *body = new QVBoxLayout(content);
 	body->setContentsMargins(8, 8, 8, 8);
-	const QMimeData *mime = data.mimeData;
+	const QMimeData *mime = data.mimeData.get();
 	const bool bitmap = ClipboardContent::prefersImage(*mime);
 	const QUrl textFile = (mime->hasUrls() || bitmap) ? QUrl() : FilePreview::localUrl(mime->text());
 	const QList<QUrl> files = mime->hasUrls() ? mime->urls() :

@@ -62,13 +62,16 @@ void ClipboardController::capture(void)
 bool ClipboardController::copy(const ItemData &entry, bool plainText)
 {
 	if (!entry.mimeData || (plainText && !entry.mimeData->hasText())) return false;
-	QMimeData *mime = plainText ? new QMimeData : ClipboardData::duplicate(entry.mimeData);
+	auto mime = plainText ? std::make_unique<QMimeData>() :
+		ClipboardData::duplicate(entry.mimeData.get());
 	if (plainText) mime->setText(entry.mimeData->text());
 	/* Preserve source identity without exporting an extra MIME format. */
 	mime->setProperty(sourceIconProperty, entry.icon);
-	m_clipboard.setMimeData(mime, QClipboard::Clipboard);
-	if (m_clipboard.supportsSelection())
-		m_clipboard.setMimeData(ClipboardData::duplicate(mime), QClipboard::Selection);
+	/* A synchronous clipboard notification may replace and destroy its data.
+	 * Prepare both snapshots before transferring either one to Qt. */
+	auto selection = m_clipboard.supportsSelection() ? ClipboardData::duplicate(mime.get()) : nullptr;
+	m_clipboard.setMimeData(mime.release(), QClipboard::Clipboard);
+	if (selection) m_clipboard.setMimeData(selection.release(), QClipboard::Selection);
 	/* Also cover internal writes whose native notification was synchronous. */
 	if (m_recordingEnabled) m_timer.start();
 	return true;

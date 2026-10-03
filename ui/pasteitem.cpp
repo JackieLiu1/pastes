@@ -344,7 +344,7 @@ void PasteItem::setFavoriteMoves(bool left, bool right)
 bool PasteItem::setEntry(const HistoryEntry &entry, bool loaded)
 {
 	m_entry = entry;
-	const QMimeData *mime = entry->mimeData;
+	const QMimeData *mime = entry->mimeData.get();
 	QList<QUrl> urls = mime->urls();
 	bool hasContent = false;
 	if (ClipboardContent::prefersImage(*mime) && setImage(mime)) {

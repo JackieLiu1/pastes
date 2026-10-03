@@ -5,9 +5,32 @@
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QImageReader>
+#include <QPointer>
 #include <QUrl>
 
 namespace {
+
+void payloadLifetime(void)
+{
+	auto entry = textEntry("retained payload");
+	auto retained = entry;
+	auto snapshot = cloneEntry(*entry);
+	QPointer<QMimeData> original = entry->mimeData.get();
+	entry.clear();
+	require(original && retained->mimeData->text() == "retained payload",
+		"Releasing one consumer destroyed a shared history payload");
+	retained->mimeData = ClipboardData::duplicate(retained->mimeData.get());
+	require(original.isNull(), "Replacing a history payload leaked its previous MIME data");
+	retained->mimeData->setText("replacement");
+	require(snapshot->mimeData->text() == "retained payload",
+		"Replacing a live entry modified an independent snapshot");
+	QPointer<QMimeData> replacement = retained->mimeData.get();
+	retained.clear();
+	require(replacement.isNull(), "The last history consumer did not release its payload");
+	QPointer<QMimeData> snapshotPayload = snapshot->mimeData.get();
+	snapshot.clear();
+	require(snapshotPayload.isNull(), "The last snapshot consumer did not release its payload");
+}
 
 void fingerprintContract(void)
 {
@@ -85,7 +108,7 @@ void duplicateAndSourceIdentity(void)
 HistoryEntry imageEntry(const QImage &image, const QString &path, QDateTime time)
 {
 	auto entry = HistoryEntry::create();
-	entry->mimeData = new QMimeData;
+	entry->mimeData = std::make_unique<QMimeData>();
 	entry->mimeData->setImageData(image);
 	if (!path.isEmpty()) entry->mimeData->setUrls({QUrl::fromLocalFile(path)});
 	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
@@ -158,8 +181,7 @@ void storedImageDuplicates(void)
 	const auto older = imageEntry(image, "/tmp/chat/one.png", now.addSecs(-10));
 	const auto newer = imageEntry(image, "/tmp/viewer/two.png", now);
 	for (const auto &entry : {newer, older}) {
-		QMimeData *mime = ClipboardData::withStoredImage(entry->mimeData, bytes, QImage::Format_Invalid);
-		delete entry->mimeData; entry->mimeData = mime;
+		entry->mimeData = ClipboardData::withStoredImage(entry->mimeData.get(), bytes, QImage::Format_Invalid);
 	}
 	/* Startup must not expand full images just to collapse identical originals. */
 	struct DecodeLimit {
@@ -299,7 +321,7 @@ void imageRequestsAndSnapshots(void)
 	HistoryService history(repository);
 	history.load(); repository.finishLoad();
 	auto imageEntry = HistoryEntry::create();
-	imageEntry->mimeData = new QMimeData;
+	imageEntry->mimeData = std::make_unique<QMimeData>();
 	QImage image(48, 24, QImage::Format_ARGB32); image.fill(Qt::blue);
 	image.setDevicePixelRatio(2);
 	imageEntry->mimeData->setImageData(image);
@@ -311,9 +333,9 @@ void imageRequestsAndSnapshots(void)
 	const quint64 live = repository.request;
 	const QByteArray bytes = png(image);
 	repository.finishImage(stale, bytes, image.format(), 2);
-	require(ClipboardData::storedImage(restored->mimeData).isEmpty(), "Stale encoding changed restored content");
+	require(ClipboardData::storedImage(restored->mimeData.get()).isEmpty(), "Stale encoding changed restored content");
 	repository.finishImage(live, bytes, image.format(), 2);
-	require(ClipboardData::storedImage(restored->mimeData) == bytes, "Live encoding was not retained");
+	require(ClipboardData::storedImage(restored->mimeData.get()) == bytes, "Live encoding was not retained");
 	const auto snapshot = cloneEntry(*restored);
 	history.remove(restored->id);
 	const QImage decoded = qvariant_cast<QImage>(snapshot->mimeData->imageData());
@@ -386,6 +408,7 @@ int main(int argc, char **argv)
 {
 	QCoreApplication app(argc, argv);
 	int failures = 0;
+	failures += runTest("shared payload replacement and snapshot lifetime", payloadLifetime);
 	failures += runTest("content identity", fingerprintContract);
 	failures += runTest("retention and startup", retentionAndStartup);
 	failures += runTest("deduplication and source identity", duplicateAndSourceIdentity);

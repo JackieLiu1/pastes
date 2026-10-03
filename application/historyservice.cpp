@@ -31,10 +31,8 @@ HistoryService::HistoryService(HistoryRepository &repository, QObject *parent)
 	connect(&m_repository, &HistoryRepository::imageEncoded, this,
 		[this](quint64 request, const QByteArray &encoded, int format, qreal ratio) {
 		const HistoryEntry entry = find(m_imageRequests.take(request));
-		if (!entry || !ClipboardData::storedImage(entry->mimeData).isEmpty()) return;
-		QMimeData *mime = ClipboardData::withStoredImage(entry->mimeData, encoded, format, ratio);
-		delete entry->mimeData;
-		entry->mimeData = mime;
+		if (!entry || !ClipboardData::storedImage(entry->mimeData.get()).isEmpty()) return;
+		entry->mimeData = ClipboardData::withStoredImage(entry->mimeData.get(), encoded, format, ratio);
 	});
 }
 
@@ -58,7 +56,7 @@ void HistoryService::acceptLoaded(const QList<HistoryEntry> &entries)
 			continue;
 		}
 		const QByteArray image = ClipboardContent::prefersImage(*entry->mimeData) ?
-			ClipboardData::storedImage(entry->mimeData) : QByteArray();
+			ClipboardData::storedImage(entry->mimeData.get()) : QByteArray();
 		if (!image.isEmpty()) {
 			/* Collapse identical stored originals without decoding history on
 			 * startup. A later capture compares pixels only at matching sizes. */
@@ -106,8 +104,8 @@ bool HistoryService::sameContent(const HistoryEntry &left, const HistoryEntry &r
 	if (left->md5 == right->md5) return true;
 	if (!ClipboardContent::prefersImage(*left->mimeData) ||
 		!ClipboardContent::prefersImage(*right->mimeData)) return false;
-	const QSize size = ClipboardData::imageSize(left->mimeData);
-	if (!size.isValid() || size != ClipboardData::imageSize(right->mimeData)) return false;
+	const QSize size = ClipboardData::imageSize(left->mimeData.get());
+	if (!size.isValid() || size != ClipboardData::imageSize(right->mimeData.get())) return false;
 	for (const auto &entry : {left, right})
 		if (entry->imageContentKey.isEmpty())
 			entry->imageContentKey = ClipboardContent::imageContentKey(

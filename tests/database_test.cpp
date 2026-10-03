@@ -134,7 +134,7 @@ void imagesAndConnections(void)
 	QStringList errors;
 	QObject::connect(&first, &HistoryRepository::failed, &first, [&](const QString &error) { errors.append(error); });
 	auto imageEntry = HistoryEntry::create();
-	imageEntry->mimeData = new QMimeData;
+	imageEntry->mimeData = std::make_unique<QMimeData>();
 	QImage image(72, 32, QImage::Format_ARGB32); image.fill(Qt::red);
 	imageEntry->mimeData->setImageData(image);
 	imageEntry->md5 = ClipboardContent::fingerprint(*imageEntry->mimeData);
@@ -157,9 +157,9 @@ void imagesAndConnections(void)
 	require(encodedRequest == 1 && encodedFormat == image.format(), "Encoding completion identity changed");
 	require(QImage::fromData(encodedBytes).pixelColor(0, 0) == QColor(Qt::red), "Encoded image changed");
 	require(errors.isEmpty(), "SQL reported an error");
-	require(entries.size() == 1 && !ClipboardData::storedImage(entries.first()->mimeData).isEmpty(), "Loaded image did not stay encoded");
+	require(entries.size() == 1 && !ClipboardData::storedImage(entries.first()->mimeData.get()).isEmpty(), "Loaded image did not stay encoded");
 	QSize originalSize;
-	const QImage preview = ClipboardData::previewImage(entries.first()->mimeData, &originalSize);
+	const QImage preview = ClipboardData::previewImage(entries.first()->mimeData.get(), &originalSize);
 	require(originalSize == image.size() && !preview.isNull(), "Loaded image preview changed");
 	require(read(second).isEmpty(), "Independent repositories shared a connection");
 }
