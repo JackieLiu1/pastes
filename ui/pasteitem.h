@@ -30,6 +30,7 @@ public:
 	void setIcon(QPixmap);
 	void setTime(QDateTime &);
 	void updateFavorite(void);
+	void setFavoriteMoves(bool left, bool right);
 	void copyData(bool plainText = false, bool paste = true);
 	void setQuickPasteNumber(int number);
 	void setSelected(bool selected);
@@ -71,6 +72,8 @@ private:
 	/* text for search */
 	QString				m_text;
 	HistoryEntry m_entry;
+	bool m_moveLeft = false;
+	bool m_moveRight = false;
 
 Q_SIGNALS:
 	void hideWindow(void);
@@ -79,6 +82,8 @@ Q_SIGNALS:
 	void previewRequested(void);
 	void deleteRequested(void);
 	void favoriteRequested(void);
+	void renameFavoriteRequested(void);
+	void moveFavoriteRequested(bool left);
 };
 
 #endif // PASTEITEM_H

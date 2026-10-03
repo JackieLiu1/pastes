@@ -6,6 +6,7 @@
 class QLabel;
 class QVBoxLayout;
 class RoundedWidget;
+class QLineEdit;
 
 /* Shared window chrome for small application dialogs. */
 class AppDialog : public QDialog
@@ -31,6 +32,15 @@ class AboutDialog : public AppDialog
 {
 public:
 	explicit AboutDialog(QWidget *parent = nullptr);
+};
+
+class FavoriteNameDialog : public AppDialog
+{
+public:
+	explicit FavoriteNameDialog(const QString &name, QWidget *parent = nullptr);
+	QString name(void) const;
+private:
+	QLineEdit *m_name;
 };
 
 class PastePermissionDialog : public AppDialog

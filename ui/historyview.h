@@ -38,6 +38,7 @@ signals:
 	void menuRequested(void);
 	void copyRequested(HistoryEntry entry, bool plainText, bool paste);
 	void previewRequested(HistoryEntry entry);
+	void renameFavoriteRequested(HistoryEntry entry);
 	void countChanged(void);
 
 protected:
@@ -47,6 +48,8 @@ protected:
 private:
 	void setupUi(void);
 	void applyFilter(bool resetSelection = false);
+	void sortCards(void);
+	void moveFavorite(PasteItem *card, bool left);
 	void updateEntry(EntryId id);
 	bool matchesFilter(PasteItem *card) const;
 	void setupShortcuts(void);

@@ -259,6 +259,9 @@ void PasteItem::keyPressEvent(QKeyEvent *event)
 	case Qt::Key_Delete:
 		emit this->deleteRequested();
 		return;
+	case Qt::Key_F2:
+		if (m_entry && m_entry->favorite) { emit renameFavoriteRequested(); return; }
+		break;
 	case Qt::Key_C:
 		if (event->modifiers() & Qt::ControlModifier) {
 			this->copyData(false, false);
@@ -282,6 +285,17 @@ void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 	menu.addSeparator();
 	QAction *favoriteAction = menu.addAction(data && data->favorite ?
 		QObject::tr("Remove from Favorites") : QObject::tr("Add to Favorites"));
+	QAction *renameAction = nullptr, *leftAction = nullptr, *rightAction = nullptr;
+	if (data && data->favorite) {
+		renameAction = menu.addAction(QObject::tr("Name Favorite…"));
+		renameAction->setShortcut(QKeySequence(Qt::Key_F2));
+		if (m_moveLeft || m_moveRight) {
+			leftAction = menu.addAction(QObject::tr("Move Left"));
+			rightAction = menu.addAction(QObject::tr("Move Right"));
+			leftAction->setEnabled(m_moveLeft);
+			rightAction->setEnabled(m_moveRight);
+		}
+	}
 	QAction *previewAction = menu.addAction(QObject::tr("Preview"));
 	QAction *deleteAction = menu.addAction(QObject::tr("Delete"));
 	QAction *chosen = Platform::execMenuAt(&menu, this->window(), event->globalPos());
@@ -293,6 +307,10 @@ void PasteItem::contextMenuEvent(QContextMenuEvent *event)
 		this->copyData(true, false);
 	else if (chosen == favoriteAction)
 		emit this->favoriteRequested();
+	else if (chosen && chosen == renameAction)
+		emit renameFavoriteRequested();
+	else if (chosen && (chosen == leftAction || chosen == rightAction))
+		emit moveFavoriteRequested(chosen == leftAction);
 	else if (chosen == previewAction)
 		emit this->previewRequested();
 	else if (chosen == deleteAction)
@@ -308,6 +326,14 @@ void PasteItem::copyData(bool plainText, bool paste)
 void PasteItem::updateFavorite(void)
 {
 	m_barnner->setFavorite(m_entry && m_entry->favorite);
+	const QString name = m_entry && m_entry->favorite ? m_entry->favoriteDetails.name : QString();
+	m_barnner->setFavoriteName(name);
+}
+
+void PasteItem::setFavoriteMoves(bool left, bool right)
+{
+	m_moveLeft = left;
+	m_moveRight = right;
 }
 
 bool PasteItem::setEntry(const HistoryEntry &entry, bool loaded)

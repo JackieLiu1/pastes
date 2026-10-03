@@ -16,6 +16,20 @@
 #include <QVBoxLayout>
 
 namespace {
+class HistoryListItem final : public QListWidgetItem
+{
+public:
+	int category = 0;
+	qint64 position = 0;
+	QByteArray identity;
+	bool operator<(const QListWidgetItem &other) const override
+	{
+		const auto &item = static_cast<const HistoryListItem &>(other);
+		if (category != item.category) return category < item.category;
+		return position != item.position ? position < item.position : identity < item.identity;
+	}
+};
+
 class HistoryList final : public QListWidget
 {
 public:
@@ -150,6 +164,8 @@ PasteItem *HistoryView::currentCard(void) const
 
 void HistoryView::updateSummary(void)
 {
+	int visible = 0;
+	for (int i = 0; i < m_list->count(); ++i) if (!m_list->item(i)->isHidden()) ++visible;
 	int number = 0;
 	for (int i = 0; i < this->m_list->count(); ++i) {
 		QListWidgetItem *item = this->m_list->item(i);
@@ -157,6 +173,8 @@ void HistoryView::updateSummary(void)
 		if (!widget)
 			continue;
 		widget->setQuickPasteNumber(item->isHidden() ? 0 : ++number);
+		widget->setFavoriteMoves(m_favoritesOnly && !item->isHidden() && number > 1,
+			m_favoritesOnly && !item->isHidden() && number < visible);
 	}
 	if (this->m_count) {
 		const int count = this->m_list->count();
@@ -203,7 +221,7 @@ void HistoryView::updateEntry(EntryId id)
 	if (PasteItem *card = m_cards.value(id)) {
 		card->setIcon(QPixmap::fromImage(card->entry()->icon));
 		card->updateFavorite();
-		if (card->widgetItem()->isHidden() == matchesFilter(card)) {
+		if (m_favoritesOnly || card->widgetItem()->isHidden() == matchesFilter(card)) {
 			cancelInteractions();
 			applyFilter();
 		}
@@ -212,12 +230,49 @@ void HistoryView::updateEntry(EntryId id)
 
 bool HistoryView::matchesFilter(PasteItem *card) const
 {
+	const QString query = m_search->findChild<LineEdit *>()->text();
 	return (!m_favoritesOnly || card->entry()->favorite) &&
-		card->text().contains(m_search->findChild<LineEdit *>()->text(), Qt::CaseInsensitive);
+		(card->text().contains(query, Qt::CaseInsensitive) ||
+		 (card->entry()->favorite && card->entry()->favoriteDetails.name.contains(query, Qt::CaseInsensitive)));
+}
+
+void HistoryView::sortCards(void)
+{
+	QHash<EntryId, int> rows;
+	const auto &entries = m_history.entries();
+	for (int i = 0; i < entries.size(); ++i) rows.insert(entries[i]->id, i);
+	for (int i = 0; i < m_list->count(); ++i) {
+		auto *item = static_cast<HistoryListItem *>(m_list->item(i));
+		const auto &entry = qobject_cast<PasteItem *>(m_list->itemWidget(item))->entry();
+		item->category = m_favoritesOnly && !entry->favorite ? 1 : 0;
+		item->position = m_favoritesOnly && entry->favorite ? entry->favoriteDetails.position : rows.value(entry->id);
+		item->identity = entry->md5;
+	}
+	for (int i = 1; i < m_list->count(); ++i) {
+		if (*m_list->item(i) < *m_list->item(i-1)) {
+			m_list->sortItems(Qt::AscendingOrder);
+			break;
+		}
+	}
+}
+
+void HistoryView::moveFavorite(PasteItem *card, bool left)
+{
+	if (!m_favoritesOnly) return;
+	const int step = left ? -1 : 1;
+	for (int row = m_list->row(card->widgetItem())+step; row >= 0 && row < m_list->count(); row += step) {
+		if (m_list->item(row)->isHidden()) continue;
+		const auto neighbor = qobject_cast<PasteItem *>(m_list->itemWidget(m_list->item(row)))->entry();
+		m_list->setCurrentItem(card->widgetItem());
+		m_history.moveFavorite(card->entry()->id, neighbor->id);
+		focusCurrent();
+		break;
+	}
 }
 
 void HistoryView::applyFilter(bool resetSelection)
 {
+	sortCards();
 	QWidget *focused = QApplication::focusWidget();
 	const bool cardFocused = focused && m_list->isAncestorOf(focused);
 	QListWidgetItem *first = nullptr;
@@ -506,7 +561,7 @@ void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 {
 	if (change == HistoryChange::Captured || change == HistoryChange::Synced) cancelInteractions();
 	if (change == HistoryChange::Restored) m_reflow->prepare(m_list, nullptr);
-	auto *item = new QListWidgetItem;
+	auto *item = new HistoryListItem;
 	auto *card = new PasteItem(nullptr, item);
 	item->setSizeHint(cardSize());
 	m_list->insertItem(row, item);
@@ -520,6 +575,14 @@ void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 	});
 	connect(card, &PasteItem::favoriteRequested, this, [this, card](void) {
 		m_history.setFavorite(card->entry()->id, !card->entry()->favorite);
+	});
+	connect(card, &PasteItem::renameFavoriteRequested, this, [this, card](void) {
+		cancelInteractions();
+		m_list->setCurrentItem(card->widgetItem());
+		emit renameFavoriteRequested(card->entry());
+	});
+	connect(card, &PasteItem::moveFavoriteRequested, this, [this, card](bool left) {
+		moveFavorite(card, left);
 	});
 	connect(card, &PasteItem::deleteRequested, this, [this, card](void) {
 		m_list->setCurrentItem(card->widgetItem()); removeCurrent();

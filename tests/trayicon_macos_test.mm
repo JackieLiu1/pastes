@@ -8,6 +8,7 @@
 #include "ui/pasteitem.h"
 #include <QContextMenuEvent>
 #include <QListWidget>
+#include <QPushButton>
 #include <QVBoxLayout>
 
 #include <QApplication>
@@ -83,12 +84,32 @@ void nativeHistoryToggle(void)
 	}
 }
 
+
+void selectCardMenu(PasteItem *card, const QString &label)
+{
+	__block bool selected = false;
+	id observer = [NSNotificationCenter.defaultCenter
+		addObserverForName:NSMenuDidBeginTrackingNotification object:nil queue:nil
+		usingBlock:^(NSNotification *notification) {
+			NSMenu *menu = notification.object;
+			if (![menu isKindOfClass:NSMenu.class]) return;
+			const NSInteger index = [menu indexOfItemWithTitle:label.toNSString()];
+			if (index < 0) return;
+			NSTimer *timer = [NSTimer timerWithTimeInterval:0.05 repeats:NO block:^(NSTimer *) {
+				selected = true; [menu performActionForItemAtIndex:index]; [menu cancelTracking];
+			}];
+			[NSRunLoop.mainRunLoop addTimer:timer forMode:NSRunLoopCommonModes];
+		}];
+	QContextMenuEvent event(QContextMenuEvent::Mouse, QPoint(20, 20), card->mapToGlobal(QPoint(20, 20)));
+	QCoreApplication::sendEvent(card, &event);
+	[NSNotificationCenter.defaultCenter removeObserver:observer];
+	require(selected, "Native card menu action was not delivered");
+}
+
 void nativeFavoriteMenu(void)
 {
-	MemoryRepository repository;
-	HistoryService history(repository);
-	QWidget window;
-	window.resize(1200, 430);
+	MemoryRepository repository; HistoryService history(repository);
+	QWidget window; window.resize(1200, 430);
 	HistoryView view(history, &window);
 	QVBoxLayout layout(&window); layout.addWidget(&view);
 	history.load(); repository.finishLoad({textEntry("native favorite menu fixture")});
@@ -96,31 +117,22 @@ void nativeFavoriteMenu(void)
 	auto *list = view.findChild<QListWidget *>();
 	auto *card = qobject_cast<PasteItem *>(list->itemWidget(list->item(0)));
 	for (bool expected : {true, false}) {
-		const QString label = expected ? QObject::tr("Add to Favorites") : QObject::tr("Remove from Favorites");
-		__block bool selected = false;
-		id observer = [NSNotificationCenter.defaultCenter
-			addObserverForName:NSMenuDidBeginTrackingNotification object:nil queue:nil
-			usingBlock:^(NSNotification *notification) {
-				NSMenu *menu = notification.object;
-				if (![menu isKindOfClass:NSMenu.class]) return;
-				const NSInteger index = [menu indexOfItemWithTitle:label.toNSString()];
-				if (index < 0) return;
-				NSTimer *timer = [NSTimer timerWithTimeInterval:0.05 repeats:NO
-					block:^(NSTimer *) {
-						selected = true;
-						[menu performActionForItemAtIndex:index];
-						[menu cancelTracking];
-					}];
-				[NSRunLoop.mainRunLoop addTimer:timer forMode:NSRunLoopCommonModes];
-			}];
-		QContextMenuEvent event(QContextMenuEvent::Mouse, QPoint(20, 20), card->mapToGlobal(QPoint(20, 20)));
-		QCoreApplication::sendEvent(card, &event);
-		[NSNotificationCenter.defaultCenter removeObserver:observer];
-		require(selected && card->entry()->favorite == expected,
-			"Native favorite menu failed to update the existing card");
-		require(!card->isHidden() && list->currentItem() == card->widgetItem(),
-			"Native favorite menu lost the card or selection");
+		selectCardMenu(card, expected ? QObject::tr("Add to Favorites") : QObject::tr("Remove from Favorites"));
+		require(card->entry()->favorite == expected && !card->isHidden() && list->currentItem() == card->widgetItem(),
+			"Native favorite menu lost its state, card or selection");
 	}
+	history.setFavorite(card->entry()->id, true);
+	auto other = textEntry("second native favorite"); history.record(other); history.setFavorite(other->id, true);
+	view.findChild<QPushButton *>("FavoritesTab")->click();
+	HistoryEntry renamed;
+	QObject::connect(&view, &HistoryView::renameFavoriteRequested, &view, [&](HistoryEntry entry) { renamed = entry; });
+	selectCardMenu(card, QObject::tr("Name Favorite…"));
+	require(renamed == card->entry(), "Native rename menu lost the selected entry");
+	selectCardMenu(card, QObject::tr("Move Right"));
+	require(list->row(card->widgetItem()) == 1 && list->currentItem() == card->widgetItem(),
+		"Native reorder menu lost fixed order or selected card");
+	selectCardMenu(card, QObject::tr("Move Left"));
+	require(list->row(card->widgetItem()) == 0, "Native reorder menu could not move back");
 }
 
 void repeatedMenuTracking(bool legacy)

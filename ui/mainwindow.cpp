@@ -45,6 +45,7 @@ MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, 
 	connect(__main_frame, &HistoryView::hideRequested, this, &MainWindow::hide_window);
 	connect(__main_frame, &HistoryView::copyRequested, this, &MainWindow::copyEntry);
 	connect(__main_frame, &HistoryView::previewRequested, this, &MainWindow::previewEntry);
+	connect(__main_frame, &HistoryView::renameFavoriteRequested, this, &MainWindow::renameFavorite);
 	connect(__main_frame, &HistoryView::countChanged, this, &MainWindow::updateTrayTooltip);
 	connect(&clipboard, &ClipboardController::recordingChanged, this, [this](bool enabled) {
 		__main_frame->setRecordingEnabled(enabled);
@@ -119,6 +120,7 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::toggle_window(void)
 {
+	if (__app_dialog_open) return;
 	if (__hide_state || !isVisible()) show_window();
 	else hide_window();
 }
@@ -173,6 +175,22 @@ void MainWindow::previewEntry(HistoryEntry entry)
 	} else if (isVisible()) {
 		Platform::activatePanel(this);
 		__main_frame->focusEntry(snapshot->md5);
+	}
+}
+
+void MainWindow::renameFavorite(HistoryEntry entry)
+{
+	FavoriteNameDialog dialog(entry->favoriteDetails.name, this);
+	connect(&__history, &HistoryService::entryRemoved, &dialog, [&dialog, entry](EntryId id) {
+		if (id == entry->id) dialog.reject();
+	});
+	{
+		QScopedValueRollback<bool> dialogOpen(__app_dialog_open, true);
+		if (dialog.exec() == QDialog::Accepted) __history.setFavoriteName(entry->id, dialog.name());
+	}
+	if (isVisible()) {
+		Platform::activatePanel(this);
+		__main_frame->focusEntry(entry->md5);
 	}
 }
 

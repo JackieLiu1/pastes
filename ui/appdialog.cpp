@@ -1,5 +1,6 @@
 #include "ui/appdialog.h"
 #include "core/historypolicy.h"
+#include "core/itemdata.h"
 #include "platform/pastetarget.h"
 #include "ui/roundedwidgets.h"
 #include "platform/windowintegration.h"
@@ -10,6 +11,7 @@
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMouseEvent>
 #include <QScreen>
 #include <QUrl>
@@ -124,6 +126,37 @@ void AppDialog::changeEvent(QEvent *event)
 			shadow->setColor(qApp->property("pastesDark").toBool() ? QColor(0, 0, 0, 75) : QColor(12, 30, 23, 45));
 	}
 }
+
+FavoriteNameDialog::FavoriteNameDialog(const QString &name, QWidget *parent) :
+	AppDialog(QObject::tr("Name Favorite"), 440, parent), m_name(new QLineEdit(this))
+{
+	setSubtitle(QObject::tr("Give this favorite a name. Its copied content stays the same."));
+	m_name->setObjectName("FavoriteNameEdit");
+	m_name->setProperty("syncField", true);
+	m_name->setMaxLength(FavoriteDetails::maxNameLength);
+	m_name->setPlaceholderText(QObject::tr("Leave empty to show only the content"));
+	m_name->setText(name);
+	m_name->setMinimumHeight(36);
+	bodyLayout()->addWidget(m_name);
+	auto *buttons = new QHBoxLayout;
+	buttons->addStretch();
+	auto *cancel = new RoundedButton(this);
+	cancel->setObjectName("PreviewAction"); cancel->setText(QObject::tr("Cancel"));
+	cancel->setAutoDefault(false);
+	connect(cancel, &QPushButton::clicked, this, &QDialog::reject);
+	buttons->addWidget(cancel);
+	auto *save = new RoundedButton(this);
+	save->setObjectName("PreviewAction"); save->setProperty("primary", true);
+	save->setText(QObject::tr("Save")); save->setDefault(true);
+	connect(save, &QPushButton::clicked, this, &QDialog::accept);
+	buttons->addWidget(save);
+	bodyLayout()->addLayout(buttons);
+	m_name->setFocus();
+	m_name->selectAll();
+	adjustSize();
+}
+
+QString FavoriteNameDialog::name(void) const { return m_name->text(); }
 
 PastePermissionDialog::PastePermissionDialog(QWidget *parent) :
 	AppDialog(QObject::tr("Allow direct paste"), 492, parent)

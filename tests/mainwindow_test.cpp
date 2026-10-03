@@ -15,6 +15,7 @@
 #include <QFile>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPainter>
 #include <QPushButton>
 #include <QSettings>
@@ -197,6 +198,45 @@ void lightThemeTextContrast(void)
 	}
 }
 
+void favoriteNameDialogCommands(void)
+{
+	WindowFixture fixture; auto item = textEntry("unchanged payload");
+	fixture.history.load(); fixture.repository.finishLoad({item});
+	fixture.history.setFavorite(item->id, true);
+	fixture.history.setFavoriteName(item->id, "original");
+	QEventLoop startup; QTimer::singleShot(50, &startup, &QEventLoop::quit); startup.exec();
+	auto &window = fixture.window; auto *view = window.findChild<HistoryView *>();
+	for (int mode : {0, 1, 2}) {
+		window.show_window();
+		bool inspected = false, blocked = false, validInput = false;
+		QTimer inspection;
+		QObject::connect(&inspection, &QTimer::timeout, &window, [&] {
+			auto *dialog = dynamic_cast<FavoriteNameDialog *>(QApplication::activeModalWidget());
+			if (!dialog) return;
+			inspected = true;
+			auto *edit = dialog->findChild<QLineEdit *>("FavoriteNameEdit");
+			validInput = edit && edit->maxLength() == FavoriteDetails::maxNameLength;
+			window.toggle_window(); blocked = window.isVisible();
+			if (edit) edit->setText(mode == 2 ? "" : "edited name");
+			if (mode == 0) dialog->reject(); else dialog->accept();
+		});
+		inspection.start(20);
+		QTimer::singleShot(1500, &window, [] {
+			if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget())) dialog->reject();
+		});
+		view->renameFavoriteRequested(item);
+		inspection.stop();
+		require(inspected, "Name dialog did not open");
+		require(validInput, "Name dialog lost its input length limit");
+		require(blocked, "Panel toggle was not blocked while naming");
+		require(window.isVisible(), "Name dialog did not preserve the visible panel");
+		require(item->favoriteDetails.name == (mode == 0 ? "original" : mode == 1 ? "edited name" : ""),
+			"Name dialog save, cancel or clear command failed");
+		require(item->mimeData->text() == "unchanged payload", "Name dialog modified clipboard content");
+	}
+	window.hide();
+}
+
 void previewKeepsHistoryVisible(void)
 {
 	WindowFixture fixture;
@@ -307,6 +347,7 @@ int main(int argc, char **argv)
 	failures += runTest("light theme text remains readable over black and white backgrounds", lightThemeTextContrast);
 	failures += runTest("application dialogs hide history and block reopening", appDialogsHideHistory);
 	failures += runTest("preview keeps history visible through close and Escape", previewKeepsHistoryVisible);
+	failures += runTest("favorite name dialog saves, clears, cancels and blocks panel toggles", favoriteNameDialogCommands);
 	failures += runTest("dialog glass keeps readable text and opaque fallback", [] {
 		dialogGlassContrast(false); dialogGlassContrast(true);
 	});

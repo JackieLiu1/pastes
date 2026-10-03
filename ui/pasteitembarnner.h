@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QPixmap>
 #include <QDateTime>
+#include <utility>
 
 class QPushButton;
 
@@ -16,6 +17,7 @@ public:
 
 	void setIcon(QPixmap &pixmap);
 	void setFavorite(bool favorite);
+	void setFavoriteName(const QString &name);
 
 
 	QPixmap icon(void)
@@ -25,7 +27,8 @@ public:
 
 	void setTitle(QString s)
 	{
-		this->m_text->setText(s);
+		m_title = std::move(s);
+		updateTitle();
 	}
 
 	void setTime(QDateTime &dateTime)
@@ -37,11 +40,15 @@ signals:
 	void favoriteRequested(void);
 
 protected:
+	bool eventFilter(QObject *object, QEvent *event) override;
 	void showEvent(QShowEvent *) override;
 	void paintEvent(QPaintEvent *event) override;
 
 private:
 	void updateIconPixmap(void);
+	void updateTitle(void);
+	QString m_title;
+	QString m_favoriteName;
 	QLabel		*m_icon;
 	/* The type text for Barnner */
 	QLabel		*m_text;

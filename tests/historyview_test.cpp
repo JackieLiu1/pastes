@@ -72,49 +72,67 @@ void viewCommands(void)
 		"Undisplayable persisted entry was retained");
 }
 
+
 void favoritesFilter(void)
 {
-	MemoryRepository repository;
-	HistoryService history(repository);
+	MemoryRepository repository; HistoryService history(repository);
 	QWidget window; window.resize(1200, 450);
 	HistoryView view(history, &window);
-	history.load(); repository.finishLoad({textEntry("ordinary"), textEntry("saved alpha"), textEntry("saved beta")});
+	auto ordinary = textEntry("ordinary"), alpha = textEntry("saved alpha"), beta = textEntry("saved beta");
+	history.load(); repository.finishLoad({ordinary, alpha, beta});
 	auto *list = view.findChild<QListWidget *>();
 	auto *favorites = view.findChild<QPushButton *>("FavoritesTab");
 	auto *all = view.findChild<QPushButton *>("HistoryTab");
 	auto card = [&](int row) { return qobject_cast<PasteItem *>(list->itemWidget(list->item(row))); };
 	auto *star = card(1)->findChild<QPushButton *>("FavoriteButton");
-	star->click();
-	require(card(1)->entry()->favorite && star->isChecked(), "Card star did not save its state");
-	history.setFavorite(card(2)->entry()->id, true);
+	star->click(); history.setFavorite(beta->id, true);
+	require(alpha->favorite && star->isChecked(), "Card star did not save its state");
+	history.setFavoriteName(alpha->id, "<b>常用命令</b>");
 	favorites->click();
-	require(list->item(0)->isHidden() && !list->item(1)->isHidden() && list->currentRow() == 1,
-		"Favorites did not filter and select a visible card");
-	auto *search = view.findChild<LineEdit *>(); search->setText("beta");
-	require(list->item(1)->isHidden() && !list->item(2)->isHidden() && list->currentRow() == 2,
-		"Search bypassed the favorites filter");
+	require(card(0)->entry() == alpha && card(1)->entry() == beta && list->item(2)->isHidden() && list->currentRow() == 0,
+		"Favorites did not use fixed order and select the first visible card");
+	auto *name = card(0)->findChild<QLabel *>("CardType");
+	require(name->textFormat() == Qt::PlainText && name->accessibleName() == alpha->favoriteDetails.name &&
+		name->toolTip().contains(alpha->favoriteDetails.name.toHtmlEscaped()) &&
+		!card(0)->findChild<QLabel *>("FavoriteName"),
+		"Favorite title interpreted markup, lost its full name or added another content row");
+	HistoryEntry renamed;
+	QObject::connect(&view, &HistoryView::renameFavoriteRequested, &view, [&](HistoryEntry entry) { renamed = entry; });
+	QKeyEvent rename(QEvent::KeyPress, Qt::Key_F2, Qt::NoModifier);
+	QCoreApplication::sendEvent(card(0), &rename);
+	require(renamed == alpha, "Favorite rename shortcut lost the typed entry");
+	auto *search = view.findChild<LineEdit *>(); search->setText("常用");
+	require(!list->item(0)->isHidden() && list->item(1)->isHidden(), "Favorite name was not searchable");
+	search->setText("beta");
+	require(list->currentRow() == 1 && list->item(0)->isHidden(), "Search bypassed the favorites filter");
 	HistoryEntry copied;
 	QObject::connect(&view, &HistoryView::copyRequested, &view, [&](HistoryEntry entry, bool, bool) { copied = entry; });
 	for (QShortcut *shortcut : view.findChildren<QShortcut *>())
 		if (shortcut->key() == QKeySequence("Ctrl+1")) QMetaObject::invokeMethod(shortcut, "activated");
-	require(copied == card(2)->entry(), "Quick paste numbering included hidden cards");
+	require(copied == beta, "Quick paste numbering included hidden cards");
 	search->clear();
-	list->setCurrentRow(1); star->click();
-	require(list->item(1)->isHidden() && list->currentRow() == 2 && !card(1)->entry()->favorite,
-		"Unstarring kept an invisible card selected");
-	const auto selected = list->currentItem();
+	list->setCurrentRow(0); auto *selected = list->currentItem(); auto *selectedCard = card(0);
+	history.moveFavorite(alpha->id, beta->id);
+	require(card(1) == selectedCard && list->currentItem() == selected && card(0)->entry() == beta,
+		"Sorting destroyed a card widget or selected another item");
+	history.record(textEntry("saved alpha"));
+	const auto recopy = history.entries().first();
+	require(card(1)->entry() == recopy && recopy->favorite && !list->item(1)->isHidden(),
+		"Re-copy reset the fixed favorite position");
 	history.record(textEntry("new ordinary"));
-	require(list->item(0)->isHidden() && list->currentItem() == selected,
-		"New ordinary capture bypassed favorites or stole selection");
-	history.record(textEntry("saved beta"));
-	require(!list->item(0)->isHidden() && card(0)->entry()->favorite,
-		"Re-copy lost the favorite filter state");
+	require(card(0)->entry() == beta && list->currentItem() == card(1)->widgetItem(),
+		"Ordinary capture bypassed favorites or stole selection");
 	all->click();
-	for (int row = 0; row < list->count(); ++row) require(!list->item(row)->isHidden(), "Clipboard tab retained a favorite filter");
+	for (int row = 0; row < list->count(); ++row)
+		require(!list->item(row)->isHidden() && card(row)->entry() == history.entries()[row],
+			"History tab lost its chronological order after favorite sorting");
 	favorites->click();
 	card(0)->findChild<QPushButton *>("FavoriteButton")->click();
+	require(list->currentItem() == card(0)->widgetItem() && card(0)->entry() == recopy,
+		"Unstarring retained an invisible selection");
+	card(0)->findChild<QPushButton *>("FavoriteButton")->click();
 	require(list->currentRow() == -1 && view.findChild<QLabel *>("EmptyState")->text().contains("Star"),
-		"Empty favorites retained a hidden selection or had no guidance");
+		"Empty favorites retained a hidden selection");
 }
 
 void longTextCards(void)

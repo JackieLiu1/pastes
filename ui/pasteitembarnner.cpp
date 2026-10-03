@@ -67,8 +67,11 @@ Barnner::Barnner(QWidget *parent) : QWidget(parent),
 
 	QHBoxLayout *hboxlayout = new QHBoxLayout();
 	hboxlayout->addWidget(this->m_icon);
-	hboxlayout->addWidget(this->m_text);
-	hboxlayout->addStretch();
+	m_text->setTextFormat(Qt::PlainText);
+	m_text->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+	m_text->setMinimumWidth(0);
+	m_text->installEventFilter(this);
+	hboxlayout->addWidget(this->m_text, 1);
 	hboxlayout->addWidget(this->m_time);
 	hboxlayout->addWidget(this->m_favorite);
 	m_favorite->setObjectName("FavoriteButton");
@@ -83,6 +86,28 @@ Barnner::Barnner(QWidget *parent) : QWidget(parent),
 	hboxlayout->setSpacing(6);
 	hboxlayout->setContentsMargins(12, 6, 12, 4);
 	this->setLayout(hboxlayout);
+}
+
+void Barnner::setFavoriteName(const QString &name)
+{
+	if (m_favoriteName == name) return;
+	m_favoriteName = name;
+	updateTitle();
+}
+
+void Barnner::updateTitle(void)
+{
+	const QString title = m_favoriteName.isEmpty() ? m_title : m_favoriteName;
+	m_text->setText(m_text->fontMetrics().elidedText(title, Qt::ElideRight, m_text->contentsRect().width()));
+	m_text->setAccessibleName(title);
+	m_text->setToolTip(m_favoriteName.isEmpty() ? m_title :
+		QStringLiteral("<qt>%1<br>%2</qt>").arg(m_favoriteName.toHtmlEscaped(), m_title.toHtmlEscaped()));
+}
+
+bool Barnner::eventFilter(QObject *object, QEvent *event)
+{
+	if (object == m_text && (event->type() == QEvent::Resize || event->type() == QEvent::FontChange)) updateTitle();
+	return QWidget::eventFilter(object, event);
 }
 
 void Barnner::setFavorite(bool favorite)

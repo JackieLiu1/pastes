@@ -45,6 +45,7 @@ private:
 	void execAppDialog(AppDialog &dialog);
 	void copyEntry(HistoryEntry entry, bool plainText, bool paste);
 	void previewEntry(HistoryEntry entry);
+	void renameFavorite(HistoryEntry entry);
 	SyncService *__sync = nullptr;
 	HistoryService &__history;
 	ClipboardController &__clipboard;
