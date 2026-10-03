@@ -33,7 +33,7 @@ Q_SIGNALS:
 	void moveFocusPrevNext(bool prev, bool wrap);
 
 private:
-	QAction			*m_searchAction;
+	QAction			*m_searchAction = nullptr;
 	RoundedSurface		m_surface;
 	bool			m_composing = false;
 };

@@ -8,9 +8,11 @@
 #include <QPainter>
 #include <QDebug>
 
-LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLineEdit(parent),
-	m_searchAction(new QAction(this))
+LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLineEdit(parent)
 {
+	/* Parenting the action dispatches ChildAdded to event(). Initialize all
+	 * member state before creating a child which can reenter this widget. */
+	m_searchAction = new QAction(this);
 	this->setFocusPolicy(Qt::ClickFocus);
 	this->setContextMenuPolicy(Qt::NoContextMenu);
 	this->setFixedHeight(parent_height);
