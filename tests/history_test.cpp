@@ -323,6 +323,63 @@ void imageRequestsAndSnapshots(void)
 	require(!ClipboardData::canCompressImage(hdr), "High precision image must remain uncompressed");
 }
 
+void favoriteNamesAndOrder(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	auto first = textEntry("first payload"), second = textEntry("second payload"), third = textEntry("third payload");
+	history.load(); repository.finishLoad({first, second, third});
+	for (const auto &entry : {first, second, third}) history.setFavorite(entry->id, true);
+	const auto copied = first->time;
+	const auto hash = first->md5;
+	require(history.setFavoriteName(first->id, "  常用 命令  "), "Favorite could not be named");
+	require(first->favoriteDetails.name == "常用 命令" && first->time == copied && first->md5 == hash &&
+		first->mimeData->text() == "first payload", "Naming modified clipboard content or copy identity");
+	const auto named = first->favoriteDetails;
+	require(history.moveFavorite(first->id, second->id), "Favorite could not be reordered");
+	require(history.favoriteEntries() == QList<HistoryEntry>({second, first, third}), "Favorite ordering did not swap positions");
+	require(first->favoriteDetails.nameModified == named.nameModified, "Reordering changed the name clock");
+	auto recopy = textEntry("first payload"); history.record(recopy);
+	require(recopy->favoriteDetails == first->favoriteDetails && history.favoriteEntries()[1] == recopy,
+		"Re-copy reset the name or fixed position");
+	const auto details = recopy->favoriteDetails;
+	history.remove(recopy->id);
+	const auto restored = history.undo().entry;
+	require(restored->favoriteDetails == details && history.favoriteEntries()[1] == restored,
+		"Undo reset favorite details");
+	auto remote = cloneEntry(*restored);
+	remote->time = copied.addSecs(-10);
+	remote->favoriteDetails.name = "remote name";
+	remote->favoriteDetails.nameModified += 100;
+	remote->favoriteDetails.position = 999;
+	remote->favoriteDetails.positionModified = 1;
+	history.mergeSynced(remote, {});
+	require(restored->favoriteDetails.name == "remote name" && restored->favoriteDetails.position == details.position &&
+		restored->time == recopy->time, "Independent remote name edit overwrote order or copy time");
+	require(history.setFavoriteName(restored->id, ""), "Clearing a favorite name failed");
+	history.setFavoriteName(restored->id, QString(200, 'x'));
+	require(restored->favoriteDetails.name.size() == FavoriteDetails::maxNameLength, "Favorite name length was unbounded");
+	history.setFavoriteName(restored->id, QString(79, 'x')+QString::fromUtf8("😀tail"));
+	require(restored->favoriteDetails.name.size() == 79 &&
+		QString::fromUtf8(restored->favoriteDetails.name.toUtf8()) == restored->favoriteDetails.name,
+		"Favorite name truncation split a Unicode character");
+	history.setFavorite(restored->id, false);
+	require(!history.setFavoriteName(restored->id, "ordinary") && !history.moveFavorite(restored->id, second->id),
+		"Favorite commands modified ordinary history");
+
+	MemoryRepository legacyRepository; HistoryService legacy(legacyRepository);
+	auto old = textEntry("legacy"), other = textEntry("legacy other");
+	old->favorite = other->favorite = true;
+	old->favoriteModified = 100; other->favoriteModified = 200;
+	legacy.load(); legacyRepository.finishLoad({other, old});
+	require(legacy.favoriteEntries().first() == old && old->favoriteDetails.positionModified == 100,
+		"Legacy favorite order was not migrated deterministically");
+	other->favoriteDetails.position = old->favoriteDetails.position;
+	const auto tied = legacy.favoriteEntries();
+	legacy.moveFavorite(tied.last()->id, tied.first()->id);
+	require(legacy.favoriteEntries().first() == tied.last(), "Equal device ranks prevented moving favorites");
+}
+
 }
 
 int main(int argc, char **argv)
@@ -337,6 +394,7 @@ int main(int argc, char **argv)
 	failures += runTest("stored image duplicates without startup decoding", storedImageDuplicates);
 	failures += runTest("synced image duplicates preserve newest copy time", syncedImageDuplicates);
 	failures += runTest("favorite retention, recopy, undo and remote metadata", favoritesLifetime);
+	failures += runTest("favorite names, fixed order and independent metadata", favoriteNamesAndOrder);
 	failures += runTest("undo original positions", undoPositions);
 	failures += runTest("undo re-copy and retention", undoRecopyAndLimit);
 	failures += runTest("image requests and independent snapshots", imageRequestsAndSnapshots);

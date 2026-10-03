@@ -8,6 +8,7 @@ StoredEntry StoredEntry::snapshot(const ItemData &entry)
 	result.time = entry.time;
 	result.favorite = entry.favorite;
 	result.favoriteModified = entry.favoriteModified;
+	result.favoriteDetails = entry.favoriteDetails;
 	result.icon = entry.icon;
 	for (const QString &format : entry.mimeData->formats())
 		result.formats.append({format, entry.mimeData->data(format)});
@@ -27,6 +28,7 @@ HistoryEntry StoredEntry::materialize(void) const
 	entry->time = time;
 	entry->favorite = favorite;
 	entry->favoriteModified = favoriteModified;
+	entry->favoriteDetails = favoriteDetails;
 	entry->icon = icon;
 	entry->mimeData = new QMimeData;
 	for (const auto &format : formats)

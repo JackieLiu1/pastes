@@ -17,7 +17,7 @@ public:
 	virtual quint64 insert(const HistoryEntry &entry) = 0;
 	virtual void remove(const QByteArray &md5) = 0;
 	virtual void updateIcon(const QByteArray &md5, const QImage &icon) = 0;
-	virtual void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified) = 0;
+	virtual void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified, const FavoriteDetails &details) = 0;
 
 signals:
 	void loaded(QList<HistoryEntry> entries);

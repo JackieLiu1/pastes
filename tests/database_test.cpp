@@ -5,6 +5,9 @@
 #include <QCoreApplication>
 #include <QTemporaryDir>
 #include <QUrl>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QVariant>
 
 namespace {
 
@@ -65,9 +68,10 @@ void favoritesPersistence(void)
 		Database repository(path);
 		auto entry = textEntry("favorite value snapshot", copied);
 		entry->favorite = true; entry->favoriteModified = modified;
+		entry->favoriteDetails = {"saved name", modified, 2048, modified};
 		savedHash = entry->md5;
 		repository.insert(entry);
-		entry->favorite = false;
+		entry->favorite = false; entry->favoriteDetails.name = "caller mutation";
 		repository.insert(textEntry("ordinary"));
 	}
 	{
@@ -75,21 +79,51 @@ void favoritesPersistence(void)
 		auto entries = read(repository);
 		HistoryEntry saved;
 		for (const auto &entry : entries) if (entry->md5 == savedHash) saved = entry;
-		require(saved && saved->favorite && saved->favoriteModified == modified && saved->time == copied,
+		require(saved && saved->favorite && saved->favoriteModified == modified && saved->time == copied &&
+			saved->favoriteDetails == FavoriteDetails({"saved name", modified, 2048, modified}),
 			"Favorite snapshot, original copy time or restart metadata changed");
-		repository.updateFavorite(savedHash, false, modified+1);
+		FavoriteDetails details{"updated", modified+1, 1024, modified+1};
+		repository.updateFavorite(savedHash, false, modified+1, details);
+		details.name = "changed after queueing";
 	}
 	{
 		Database repository(path);
 		const auto entries = read(repository);
 		for (const auto &entry : entries) if (entry->md5 == savedHash)
-			require(!entry->favorite && entry->favoriteModified == modified+1,
+			require(!entry->favorite && entry->favoriteModified == modified+1 && entry->favoriteDetails.name == "updated" &&
+				entry->favoriteDetails.position == 1024,
 				"Unfavorite state was lost at shutdown");
 		repository.remove(savedHash);
 		repository.insert(textEntry("favorite value snapshot"));
 		for (const auto &entry : read(repository)) if (entry->md5 == savedHash)
-			require(!entry->favorite && !entry->favoriteModified, "Delete left orphaned favorite metadata");
+			require(!entry->favorite && !entry->favoriteModified && entry->favoriteDetails == FavoriteDetails{}, "Delete left orphaned favorite metadata");
 	}
+}
+
+void legacyFavoriteMigration(void)
+{
+	QTemporaryDir directory; const QString path = directory.filePath("legacy.db");
+	auto item = textEntry("legacy favorite");
+	{
+		auto connection = QSqlDatabase::addDatabase("QSQLITE", "favorite-migration-fixture");
+		connection.setDatabaseName(path); require(connection.open(), "Legacy fixture could not open");
+		QSqlQuery query(connection);
+		require(query.exec("create table favorite(md5 blob primary key, selected integer not null, modified integer not null)"), "Legacy schema failed");
+		query.prepare("insert into favorite values (?, 1, 123)"); query.addBindValue(item->md5);
+		require(query.exec(), "Legacy state fixture failed");
+	}
+	QSqlDatabase::removeDatabase("favorite-migration-fixture");
+	{
+		Database repository(path); repository.insert(item);
+		const auto entries = read(repository);
+		require(entries.size() == 1 && entries.first()->favorite && entries.first()->favoriteModified == 123 &&
+			entries.first()->favoriteDetails == FavoriteDetails{}, "Upgrade lost legacy favorite state");
+		repository.updateFavorite(item->md5, true, 123, {"migrated", 456, 1024, 456});
+	}
+	Database repository(path);
+	const auto entries = read(repository);
+	require(entries.size() == 1 && entries.first()->favoriteDetails.name == "migrated" &&
+		entries.first()->favoriteDetails.position == 1024, "Upgraded metadata did not survive restart");
 }
 
 void imagesAndConnections(void)
@@ -205,6 +239,7 @@ int main(int argc, char **argv)
 	int failures = 0;
 	failures += runTest("queued value snapshots and shutdown", persistenceAndShutdown);
 	failures += runTest("favorite snapshots, metadata updates and shutdown", favoritesPersistence);
+	failures += runTest("legacy favorite metadata table upgrades without data loss", legacyFavoriteMigration);
 	failures += runTest("encoded images and independent connections", imagesAndConnections);
 	failures += runTest("source icon pixels survive insert, update and restart", sourceIconResolution);
 	failures += runTest("image duplicates collapse durably after restart", imageDuplicateRestart);

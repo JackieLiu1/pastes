@@ -4,16 +4,19 @@
 #include "core/historypolicy.h"
 #include <QCryptographicHash>
 #include <utility>
+#include <algorithm>
 
 namespace {
 bool inheritFavorite(const HistoryEntry &entry, const HistoryEntry &previous)
 {
-	if (previous->favoriteModified <= entry->favoriteModified &&
-		(entry->favoriteModified || !previous->favorite)) return false;
-	const bool changed = entry->favorite != previous->favorite ||
-		entry->favoriteModified != previous->favoriteModified;
-	entry->favorite = previous->favorite;
-	entry->favoriteModified = previous->favoriteModified;
+	bool changed = mergeFavoriteDetails(entry->favoriteDetails, previous->favoriteDetails);
+	if (previous->favoriteModified > entry->favoriteModified ||
+		(!entry->favoriteModified && previous->favorite)) {
+		changed |= entry->favorite != previous->favorite ||
+			entry->favoriteModified != previous->favoriteModified;
+		entry->favorite = previous->favorite;
+		entry->favoriteModified = previous->favoriteModified;
+	}
 	return changed;
 }
 }
@@ -68,10 +71,10 @@ void HistoryService::acceptLoaded(const QList<HistoryEntry> &entries)
 					rewrite = entry->md5 == previous->md5;
 					erase(indexOf(previous->id), HistoryChange::Replaced);
 					if (!rewrite && (entry->favorite || entry->favoriteModified))
-						m_repository.updateFavorite(entry->md5, entry->favorite, entry->favoriteModified);
+						persistFavorite(entry);
 				} else {
 					if (inheritFavorite(previous, entry)) {
-						m_repository.updateFavorite(previous->md5, previous->favorite, previous->favoriteModified);
+						persistFavorite(previous);
 						emit entryChanged(previous->id);
 					}
 					if (previous->icon.isNull() && !entry->icon.isNull()) {
@@ -87,6 +90,7 @@ void HistoryService::acceptLoaded(const QList<HistoryEntry> &entries)
 			storedImages.insert(key, entry);
 		}
 		entry->id = ++m_nextId;
+		initializeFavoritePosition(entry);
 		m_entries.append(entry);
 		if (rewrite) persist(entry);
 		emit entryAdded(entry, m_entries.size()-1, HistoryChange::Loaded);
@@ -162,6 +166,7 @@ void HistoryService::record(HistoryEntry entry, quint64 sourceRequest)
 	}
 	entry->id = ++m_nextId;
 	if (!entry->time.isValid()) entry->time = now;
+	initializeFavoritePosition(entry);
 	m_entries.prepend(entry);
 	if (sourceRequest) m_sourceRequests.insert(sourceRequest, entry->id);
 	persist(entry);
@@ -203,11 +208,85 @@ bool HistoryService::setFavorite(EntryId id, bool favorite)
 	if (!entry || entry->favorite == favorite) return false;
 	entry->favorite = favorite;
 	entry->favoriteModified = qMax(QDateTime::currentMSecsSinceEpoch(), entry->favoriteModified+1);
-	m_repository.updateFavorite(entry->md5, favorite, entry->favoriteModified);
+	if (favorite && !entry->favoriteDetails.positionModified) {
+		qint64 position = 0;
+		for (const auto &other : favoriteEntries()) position = qMax(position, other->favoriteDetails.position);
+		entry->favoriteDetails.position = qMin(position+1024, FavoriteDetails::maxPosition);
+		entry->favoriteDetails.positionModified = entry->favoriteModified;
+	}
+	persistFavorite(entry);
 	emit favoriteChanged(entry);
 	const int row = indexOf(id);
 	if (row >= 0 && !favorite && HistoryPolicy::expired(entry->time, QDateTime::currentDateTime()))
 		erase(row, HistoryChange::Expired);
+	return true;
+}
+
+void HistoryService::persistFavorite(const HistoryEntry &entry)
+{
+	m_repository.updateFavorite(entry->md5, entry->favorite, entry->favoriteModified, entry->favoriteDetails);
+}
+
+void HistoryService::initializeFavoritePosition(const HistoryEntry &entry)
+{
+	if (!entry->favorite || entry->favoriteDetails.positionModified) return;
+	/* Use the existing operation's clock on every device, so migration is
+	 * deterministic and cannot replace a later manual ordering operation. */
+	const qint64 clock = qMax(qint64(1), entry->favoriteModified ? entry->favoriteModified : entry->time.toMSecsSinceEpoch());
+	entry->favoriteDetails.position = qMin(clock, FavoriteDetails::maxPosition);
+	entry->favoriteDetails.positionModified = clock;
+	persistFavorite(entry);
+}
+
+QList<HistoryEntry> HistoryService::favoriteEntries(void) const
+{
+	QList<HistoryEntry> result;
+	for (const auto &entry : m_entries) if (entry->favorite) result.append(entry);
+	std::sort(result.begin(), result.end(), [](const HistoryEntry &a, const HistoryEntry &b) {
+		return a->favoriteDetails.position != b->favoriteDetails.position ?
+			a->favoriteDetails.position < b->favoriteDetails.position : a->md5 < b->md5;
+	});
+	return result;
+}
+
+bool HistoryService::setFavoriteName(EntryId id, const QString &name)
+{
+	const auto entry = find(id);
+	QString value = name.simplified();
+	if (value.size() > FavoriteDetails::maxNameLength) {
+		value.truncate(FavoriteDetails::maxNameLength);
+		if (value.back().isHighSurrogate()) value.chop(1);
+	}
+	if (!entry || !entry->favorite || value == entry->favoriteDetails.name) return false;
+	entry->favoriteDetails.name = value;
+	entry->favoriteDetails.nameModified = qMax(QDateTime::currentMSecsSinceEpoch(), entry->favoriteDetails.nameModified+1);
+	persistFavorite(entry);
+	emit favoriteChanged(entry);
+	return true;
+}
+
+bool HistoryService::moveFavorite(EntryId id, EntryId neighbor)
+{
+	const auto entry = find(id), other = find(neighbor);
+	if (!entry || !other || entry == other || !entry->favorite || !other->favorite) return false;
+	QList<HistoryEntry> changed;
+	const auto favorites = favoriteEntries();
+	/* Equal ranks can come from concurrent inserts on separate devices. */
+	if (entry->favoriteDetails.position == other->favoriteDetails.position) {
+		for (int i = 0; i < favorites.size(); ++i) {
+			favorites[i]->favoriteDetails.position = qint64(i+1)*1024;
+			changed.append(favorites[i]);
+		}
+	}
+	std::swap(entry->favoriteDetails.position, other->favoriteDetails.position);
+	if (!changed.contains(entry)) changed.append(entry);
+	if (!changed.contains(other)) changed.append(other);
+	for (const auto &item : changed) {
+		item->favoriteDetails.positionModified = qMax(QDateTime::currentMSecsSinceEpoch(), item->favoriteDetails.positionModified+1);
+		persistFavorite(item);
+	}
+	/* Publish after all values change; observers see a complete swap. */
+	for (const auto &item : changed) emit favoriteChanged(item);
 	return true;
 }
 
@@ -259,7 +338,9 @@ HistoryService::UndoResult HistoryService::undo(void)
 	UndoResult result;
 	for (const auto &entry : m_entries) {
 		if (sameContent(entry, removed.entry)) {
+			const bool changed = mergeFavoriteDetails(entry->favoriteDetails, removed.entry->favoriteDetails);
 			if (removed.entry->favorite && !entry->favorite) setFavorite(entry->id, true);
+			else if (changed) { persistFavorite(entry); emit favoriteChanged(entry); }
 			result.entry = entry;
 			break;
 		}
@@ -286,10 +367,9 @@ void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &re
 		/* Metadata changes retain the newest known copy time, including legacy
 		 * images whose stored identity came from a temporary URL. */
 		if (duplicate && previous->time >= entry->time) {
-			if (entry->favoriteModified > previous->favoriteModified) {
-				previous->favorite = entry->favorite;
-				previous->favoriteModified = entry->favoriteModified;
-				m_repository.updateFavorite(previous->md5, previous->favorite, previous->favoriteModified);
+			if (inheritFavorite(previous, entry)) {
+				initializeFavoritePosition(previous);
+				persistFavorite(previous);
 				emit entryChanged(previous->id);
 			}
 			if (!previous->favorite && HistoryPolicy::expired(previous->time, QDateTime::currentDateTime())) {
@@ -303,10 +383,7 @@ void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &re
 			}
 			return;
 		}
-		if (entry && duplicate && previous->favoriteModified > entry->favoriteModified) {
-			entry->favorite = previous->favorite;
-			entry->favoriteModified = previous->favoriteModified;
-		}
+		if (entry && duplicate) inheritFavorite(entry, previous);
 		if (replaced.contains(previous->md5) || duplicate)
 			erase(row, HistoryChange::Synced);
 		else ++row;
@@ -315,6 +392,7 @@ void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &re
 	int row = 0;
 	while (row < m_entries.size() && m_entries.at(row)->time > entry->time) ++row;
 	entry->id = ++m_nextId;
+	initializeFavoritePosition(entry);
 	m_entries.insert(row, entry);
 	persist(entry);
 	emit entryAdded(entry, row, HistoryChange::Synced);

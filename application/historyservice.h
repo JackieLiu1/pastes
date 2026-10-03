@@ -18,6 +18,9 @@ public:
 	void setSourceIcon(quint64 request, const QImage &icon);
 	bool remove(EntryId id);
 	bool setFavorite(EntryId id, bool favorite);
+	bool setFavoriteName(EntryId id, const QString &name);
+	bool moveFavorite(EntryId id, EntryId neighbor);
+	QList<HistoryEntry> favoriteEntries(void) const;
 	void discard(EntryId id);
 	void mergeSynced(HistoryEntry entry, const QList<QByteArray> &replaced);
 	void clearUndo(void);
@@ -52,6 +55,8 @@ private:
 	void acceptLoaded(const QList<HistoryEntry> &entries);
 	void erase(int row, HistoryChange change);
 	void persist(const HistoryEntry &entry);
+	void persistFavorite(const HistoryEntry &entry);
+	void initializeFavoritePosition(const HistoryEntry &entry);
 	int indexOf(EntryId id) const;
 	int restorationRow(const DeletedEntry &removed) const;
 	static bool sameContent(const HistoryEntry &left, const HistoryEntry &right);

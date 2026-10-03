@@ -11,6 +11,7 @@ struct StoredEntry
 	QDateTime time;
 	bool favorite = false;
 	qint64 favoriteModified = 0;
+	FavoriteDetails favoriteDetails;
 	QImage icon;
 	QList<QPair<QString, QByteArray>> formats;
 	QByteArray encodedImage;

@@ -9,6 +9,19 @@
 
 using EntryId = quint64;
 
+struct FavoriteDetails {
+	static constexpr int maxNameLength = 80;
+	static constexpr qint64 maxPosition = qint64(1) << 50;
+	QString name;
+	qint64 nameModified = 0;
+	qint64 position = 0;
+	qint64 positionModified = 0;
+	bool operator==(const FavoriteDetails &other) const;
+	bool operator!=(const FavoriteDetails &other) const { return !(*this == other); }
+};
+Q_DECLARE_METATYPE(FavoriteDetails)
+bool mergeFavoriteDetails(FavoriteDetails &target, const FavoriteDetails &source);
+
 /* GUI-thread payload. Views and previews may retain an entry after removal.
  * Persistence receives value snapshots, never this object or its MIME data. */
 struct ItemData final
@@ -27,6 +40,7 @@ struct ItemData final
 	QDateTime time;
 	bool favorite = false;
 	qint64 favoriteModified = 0;
+	FavoriteDetails favoriteDetails;
 };
 
 using HistoryEntry = QSharedPointer<ItemData>;

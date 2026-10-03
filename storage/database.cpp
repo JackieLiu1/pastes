@@ -8,6 +8,7 @@
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QSqlRecord>
 #include <QThread>
 #include <QUuid>
 #include <utility>
@@ -44,6 +45,17 @@ public slots:
 		if (!query.exec("create table if not exists item(id integer primary key autoincrement, md5 blob, imagedata blob, icondata blob, time integer)")) report(query.lastError());
 		if (!query.exec("create table if not exists data(id integer primary key autoincrement, md5 blob, formats text, format_data blob)")) report(query.lastError());
 		if (!query.exec("create table if not exists favorite(md5 blob primary key, selected integer not null, modified integer not null)")) report(query.lastError());
+		/* Upgrade only the separate metadata table; legacy clipboard tables
+		 * and their payloads retain their original schema. */
+		const QSqlRecord columns = m_db.record(QStringLiteral("favorite"));
+		for (const auto &column : {QStringLiteral("name text not null default ''"),
+			QStringLiteral("name_modified integer not null default 0"),
+			QStringLiteral("position integer not null default 0"),
+			QStringLiteral("position_modified integer not null default 0")}) {
+			if (!columns.contains(column.section(' ', 0, 0)) &&
+				!query.exec(QStringLiteral("alter table favorite add column %1").arg(column)))
+				report(query.lastError());
+		}
 	}
 
 	void close(void)
@@ -57,7 +69,7 @@ public slots:
 	{
 		QList<StoredEntry> entries;
 		QSqlQuery query(m_db);
-		if (!query.exec("select item.*, coalesce(favorite.selected, 0) as selected, coalesce(favorite.modified, 0) as modified from item left join favorite on item.md5 = favorite.md5 order by item.time asc, item.id asc;")) {
+		if (!query.exec("select item.*, coalesce(favorite.selected, 0) as selected, coalesce(favorite.modified, 0) as modified, favorite.name, favorite.name_modified, favorite.position, favorite.position_modified from item left join favorite on item.md5 = favorite.md5 order by item.time asc, item.id asc;")) {
 			report(query.lastError());
 			emit loaded(entries);
 			return;
@@ -67,6 +79,8 @@ public slots:
 			entry.md5 = query.value("md5").toByteArray();
 			entry.favorite = query.value("selected").toBool();
 			entry.favoriteModified = query.value("modified").toLongLong();
+			entry.favoriteDetails = {query.value("name").toString(), query.value("name_modified").toLongLong(),
+				query.value("position").toLongLong(), query.value("position_modified").toLongLong()};
 			entry.time = QDateTime::fromSecsSinceEpoch(query.value("time").toLongLong());
 			entry.icon = SourceIcon::bounded(QImage::fromData(query.value("icondata").toByteArray()));
 			QSqlQuery formats(m_db);
@@ -104,7 +118,7 @@ public slots:
 			if (!query.exec()) { report(query.lastError()); m_db.rollback(); return; }
 		}
 		if (entry.favorite || entry.favoriteModified) {
-			if (!writeFavorite(entry.md5, entry.favorite, entry.favoriteModified)) { m_db.rollback(); return; }
+			if (!writeFavorite(entry.md5, entry.favorite, entry.favoriteModified, entry.favoriteDetails)) { m_db.rollback(); return; }
 		}
 		if (!m_db.commit()) { report(m_db.lastError()); m_db.rollback(); return; }
 		if (compress && !entry.encodedImage.isEmpty())
@@ -132,9 +146,9 @@ public slots:
 		if (!query.exec()) report(query.lastError());
 	}
 
-	void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified)
+	void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified, const FavoriteDetails &details)
 	{
-		writeFavorite(md5, favorite, modified);
+		writeFavorite(md5, favorite, modified, details);
 	}
 
 signals:
@@ -143,13 +157,17 @@ signals:
 	void failed(QString message);
 
 private:
-	bool writeFavorite(const QByteArray &md5, bool favorite, qint64 modified)
+	bool writeFavorite(const QByteArray &md5, bool favorite, qint64 modified, const FavoriteDetails &details)
 	{
 		QSqlQuery query(m_db);
-		query.prepare("insert or replace into favorite(md5, selected, modified) values (:md5, :selected, :modified);");
+		query.prepare("insert or replace into favorite(md5, selected, modified, name, name_modified, position, position_modified) values (:md5, :selected, :modified, :name, :name_modified, :position, :position_modified);");
 		query.bindValue(":md5", md5);
 		query.bindValue(":selected", favorite);
 		query.bindValue(":modified", modified);
+		query.bindValue(":name", details.name.isNull() ? QStringLiteral("") : details.name);
+		query.bindValue(":name_modified", details.nameModified);
+		query.bindValue(":position", details.position);
+		query.bindValue(":position_modified", details.positionModified);
 		if (query.exec()) return true;
 		report(query.lastError());
 		return false;
@@ -164,6 +182,7 @@ Database::Database(const QString &path, QObject *parent)
 	: HistoryRepository(parent), m_worker(new Worker(path)), m_thread(new QThread(this))
 {
 	qRegisterMetaType<StoredEntry>();
+	qRegisterMetaType<FavoriteDetails>();
 	qRegisterMetaType<QList<StoredEntry>>();
 	m_worker->moveToThread(m_thread);
 	connect(m_thread, &QThread::started, m_worker, &Worker::open);
@@ -204,9 +223,9 @@ quint64 Database::insert(const HistoryEntry &entry)
 void Database::remove(const QByteArray &md5) { emit removeRequested(md5); }
 void Database::updateIcon(const QByteArray &md5, const QImage &icon) { emit updateIconRequested(md5, icon); }
 
-void Database::updateFavorite(const QByteArray &md5, bool favorite, qint64 modified)
+void Database::updateFavorite(const QByteArray &md5, bool favorite, qint64 modified, const FavoriteDetails &details)
 {
-	emit updateFavoriteRequested(md5, favorite, modified);
+	emit updateFavoriteRequested(md5, favorite, modified, details);
 }
 
 #include "database.moc"

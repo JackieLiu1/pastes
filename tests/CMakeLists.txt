@@ -3,7 +3,7 @@ target_link_libraries(history_test PRIVATE pastes_application)
 add_test(NAME history_contract COMMAND history_test)
 
 add_executable(database_test database_test.cpp)
-target_link_libraries(database_test PRIVATE pastes_storage)
+target_link_libraries(database_test PRIVATE pastes_storage Qt6::Sql)
 add_test(NAME database_contract COMMAND database_test)
 
 add_executable(clipboard_test clipboard_test.cpp)

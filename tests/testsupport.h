@@ -58,11 +58,12 @@ public:
 	}
 	void remove(const QByteArray &md5) override { removals.append(md5); }
 	void updateIcon(const QByteArray &md5, const QImage &) override { iconUpdates.append(md5); }
-	void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified) override
+	void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified, const FavoriteDetails &details) override
 	{
 		favoriteUpdates.append(md5);
 		for (auto &entry : writes) if (entry->md5 == md5) {
 			entry->favorite = favorite; entry->favoriteModified = modified;
+			entry->favoriteDetails = details;
 		}
 	}
 	void finishLoad(const QList<HistoryEntry> &entries = {}) { emit loaded(entries); }
