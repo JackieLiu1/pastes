@@ -21,7 +21,7 @@ LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLine
 
 	this->updateIcon();
 	this->addAction(m_searchAction, QLineEdit::TrailingPosition);
-	QObject::connect(m_searchAction, &QAction::triggered, [this]() {
+	QObject::connect(m_searchAction, &QAction::triggered, this, [this]() {
 		if (m_composing) qApp->inputMethod()->reset();
 		this->clear();
 		m_composing = false;
@@ -151,16 +151,12 @@ SearchBar::SearchBar(QWidget *parent, int width, int height) : QWidget(parent)
 	m_search_edit->setPlaceholderText(QObject::tr("Type to search"));
 	m_search_edit->setTextMargins(14, 0, 0, 0);
 
-	QObject::connect(m_search_edit, &LineEdit::hideWindow, [this](void) {
-		emit this->hideWindow();
-	});
-	QObject::connect(m_search_edit, &LineEdit::textChanged, [this](const QString &text) {
+	QObject::connect(m_search_edit, &LineEdit::hideWindow, this, &SearchBar::hideWindow);
+	QObject::connect(m_search_edit, &LineEdit::textChanged, this, [this](const QString &text) {
 		this->m_search_edit->updateIcon();
 		emit this->textChanged(text);
 	});
-	QObject::connect(m_search_edit, &LineEdit::selectItem, [this](void) {
-		emit this->selectItem();
-	});
+	QObject::connect(m_search_edit, &LineEdit::selectItem, this, &SearchBar::selectItem);
 	QObject::connect(m_search_edit, &LineEdit::selectPlainTextItem, this,
 			 &SearchBar::selectPlainTextItem);
 	QObject::connect(m_search_edit, &LineEdit::moveFocusPrevNext,
