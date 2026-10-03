@@ -44,6 +44,9 @@ public slots:
 		QSqlQuery query(m_db);
 		if (!query.exec("create table if not exists item(id integer primary key autoincrement, md5 blob, imagedata blob, icondata blob, time integer)")) report(query.lastError());
 		if (!query.exec("create table if not exists data(id integer primary key autoincrement, md5 blob, formats text, format_data blob)")) report(query.lastError());
+		/* Each history item looks up its MIME rows by fingerprint. The index
+		 * includes the rowid, retaining the existing format insertion order. */
+		if (!query.exec("create index if not exists data_md5_idx on data(md5)")) report(query.lastError());
 		if (!query.exec("create table if not exists favorite(md5 blob primary key, selected integer not null, modified integer not null)")) report(query.lastError());
 		/* Upgrade only the separate metadata table; legacy clipboard tables
 		 * and their payloads retain their original schema. */

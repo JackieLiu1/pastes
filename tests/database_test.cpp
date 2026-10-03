@@ -126,6 +126,78 @@ void legacyFavoriteMigration(void)
 		entries.first()->favoriteDetails.position == 1024, "Upgraded metadata did not survive restart");
 }
 
+void legacyContentIndex(void)
+{
+	QTemporaryDir directory;
+	const QString path = directory.filePath("legacy-content.db");
+	QList<HistoryEntry> expected;
+	const auto now = QDateTime::fromSecsSinceEpoch(QDateTime::currentSecsSinceEpoch());
+	{
+		auto connection = QSqlDatabase::addDatabase("QSQLITE", "content-index-fixture");
+		connection.setDatabaseName(path);
+		require(connection.open(), "Legacy content fixture could not open");
+		QSqlQuery schema(connection);
+		require(schema.exec("create table item(id integer primary key autoincrement, md5 blob, imagedata blob, icondata blob, time integer)"), "Legacy item schema failed");
+		require(schema.exec("create table data(id integer primary key autoincrement, md5 blob, formats text, format_data blob)"), "Legacy content schema failed");
+		require(connection.transaction(), "Legacy content transaction failed");
+		QSqlQuery item(connection), data(connection);
+		item.prepare("insert into item(md5, time) values (?, ?)");
+		data.prepare("insert into data(md5, formats, format_data) values (?, ?, ?)");
+		for (int row = 0; row < 128; ++row) {
+			auto entry = textEntry(QString("legacy %1").arg(row), now.addSecs(row/4));
+			entry->mimeData->setHtml(QString("<b>legacy %1</b>").arg(row));
+			entry->mimeData->setData("application/custom", QByteArray("a\0b", 3)+QByteArray::number(row));
+			item.bindValue(0, entry->md5); item.bindValue(1, entry->time.toSecsSinceEpoch());
+			require(item.exec(), "Legacy item insert failed");
+			for (const QString &format : entry->mimeData->formats()) {
+				data.bindValue(0, entry->md5); data.bindValue(1, format);
+				data.bindValue(2, entry->mimeData->data(format));
+				require(data.exec(), "Legacy content insert failed");
+			}
+			expected.prepend(entry);
+		}
+		require(connection.commit(), "Legacy content commit failed");
+	}
+	QSqlDatabase::removeDatabase("content-index-fixture");
+	/* Index creation on an existing database and repeated opens must retain
+	 * equal-time history order, MIME insertion order and binary bytes. */
+	for (int pass = 0; pass < 2; ++pass) {
+		Database repository(path);
+		QStringList errors;
+		QObject::connect(&repository, &HistoryRepository::failed, &repository,
+			[&](const QString &message) { errors.append(message); });
+		const auto entries = read(repository);
+		require(errors.isEmpty() && entries.size() == expected.size(), "Content index upgrade failed");
+		for (int row = 0; row < entries.size(); ++row) {
+			const auto &entry = entries[row], &original = expected[row];
+			require(entry->md5 == original->md5 && entry->time == original->time &&
+				entry->mimeData->formats() == original->mimeData->formats(), "Indexed load changed history or MIME order");
+			for (const QString &format : original->mimeData->formats())
+				require(entry->mimeData->data(format) == original->mimeData->data(format), "Indexed load changed payload bytes");
+		}
+	}
+	{
+		auto connection = QSqlDatabase::addDatabase("QSQLITE", "content-index-inspection");
+		connection.setDatabaseName(path);
+		require(connection.open(), "Content index inspection failed");
+		QSqlQuery query(connection);
+		require(query.exec("pragma table_info(data)"), "Content schema inspection failed");
+		QStringList columns;
+		while (query.next()) columns.append(query.value(1).toString());
+		require(columns == QStringList({"id", "md5", "formats", "format_data"}), "Content index changed the legacy table");
+		query.prepare("explain query plan select formats, format_data from data where md5 = :md5 order by id asc;");
+		query.bindValue(":md5", expected.first()->md5);
+		require(query.exec(), "Content query plan inspection failed");
+		bool indexed = false;
+		while (query.next()) {
+			const QString detail = query.value(3).toString();
+			indexed |= detail.startsWith("SEARCH data ") && detail.contains("INDEX");
+		}
+		require(indexed, "Content lookup still scans the complete table");
+	}
+	QSqlDatabase::removeDatabase("content-index-inspection");
+}
+
 void imagesAndConnections(void)
 {
 	QTemporaryDir directory;
@@ -240,6 +312,7 @@ int main(int argc, char **argv)
 	failures += runTest("queued value snapshots and shutdown", persistenceAndShutdown);
 	failures += runTest("favorite snapshots, metadata updates and shutdown", favoritesPersistence);
 	failures += runTest("legacy favorite metadata table upgrades without data loss", legacyFavoriteMigration);
+	failures += runTest("legacy content lookup keeps ordering and bytes with an index", legacyContentIndex);
 	failures += runTest("encoded images and independent connections", imagesAndConnections);
 	failures += runTest("source icon pixels survive insert, update and restart", sourceIconResolution);
 	failures += runTest("image duplicates collapse durably after restart", imageDuplicateRestart);
