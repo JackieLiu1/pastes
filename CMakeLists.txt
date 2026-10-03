@@ -103,6 +103,21 @@ add_subdirectory(platform)
 add_library(pastes_ui STATIC ${PASTES_UI_SOURCES})
 target_link_libraries(pastes_ui PUBLIC pastes_application pastes_platform Qt6::Widgets)
 target_compile_definitions(pastes_ui PRIVATE PASTES_VERSION="${PROJECT_VERSION}")
+
+# Refresh the revision at build time so commits do not require reconfiguration.
+find_package(Git QUIET)
+set(PASTES_BUILD_VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/pastes_build_version.h")
+add_custom_target(pastes_build_version
+    COMMAND ${CMAKE_COMMAND}
+        "-DPASTES_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+        "-DPASTES_OUTPUT_FILE=${PASTES_BUILD_VERSION_HEADER}"
+        "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate-build-version.cmake"
+    BYPRODUCTS "${PASTES_BUILD_VERSION_HEADER}"
+    VERBATIM
+)
+add_dependencies(pastes_ui pastes_build_version)
+target_include_directories(pastes_ui PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 target_link_libraries(pastes PRIVATE pastes_ui pastes_storage pastes_sync SingleApplication::SingleApplication)
 
 

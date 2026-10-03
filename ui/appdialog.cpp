@@ -4,6 +4,7 @@
 #include "platform/pastetarget.h"
 #include "ui/roundedwidgets.h"
 #include "platform/windowintegration.h"
+#include "pastes_build_version.h"
 
 #include <QApplication>
 #include <QDesktopServices>
@@ -230,7 +231,13 @@ AboutDialog::AboutDialog(QWidget *parent) : AppDialog(QObject::tr("About Pastes"
 		text->setObjectName("AppDialogValue");
 		row->addWidget(caption); row->addStretch(); row->addWidget(text);
 		rows->addLayout(row);
+		return text;
 	};
+	QString codeVersion = QStringLiteral(PASTES_GIT_REVISION);
+	if (codeVersion.isEmpty()) codeVersion = QObject::tr("Unknown");
+	auto *revision = addRow(QObject::tr("Code version"), codeVersion);
+	revision->setTextInteractionFlags(Qt::TextSelectableByMouse);
+	revision->setAccessibleName(QObject::tr("Code version"));
 	addRow(QObject::tr("Created by"), QStringLiteral("Jackie Liu"));
 	addRow(QObject::tr("License"), QStringLiteral("LGPL v3"));
 	addRow(QObject::tr("History"), QObject::tr("Stored locally · Last %1 days").arg(HistoryPolicy::retentionDays));

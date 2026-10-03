@@ -1,0 +1,3 @@
+#pragma once
+
+#define PASTES_GIT_REVISION "@PASTES_GIT_REVISION@"

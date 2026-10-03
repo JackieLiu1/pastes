@@ -4,27 +4,27 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="ui/appdialog.cpp" line="162"/>
+        <location filename="ui/appdialog.cpp" line="163"/>
         <source>Allow direct paste</source>
         <translation>允许直接粘贴</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="164"/>
+        <location filename="ui/appdialog.cpp" line="165"/>
         <source>To paste into the previous app, allow Pastes to control other apps in System Settings → Privacy &amp; Security.</source>
         <translation>要直接粘贴到原来的应用，请在“系统设置 → 隐私与安全”中允许 Pastes 控制其他应用。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="177"/>
+        <location filename="ui/appdialog.cpp" line="178"/>
         <source>The selected item is on the clipboard. You can press ⌘V to paste it.</source>
         <translation>选中的条目已放入剪贴板，你也可以按 ⌘V 手动粘贴。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="184"/>
+        <location filename="ui/appdialog.cpp" line="185"/>
         <source>Not now</source>
         <translation>暂不</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="190"/>
+        <location filename="ui/appdialog.cpp" line="191"/>
         <source>Open System Settings</source>
         <translation>打开系统设置</translation>
     </message>
@@ -101,7 +101,7 @@
         <translation>多个文件</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="199"/>
+        <location filename="ui/appdialog.cpp" line="200"/>
         <location filename="ui/mainwindow.cpp" line="250"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
@@ -379,67 +379,78 @@
         <translation>松开即可删除</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="131"/>
+        <location filename="ui/appdialog.cpp" line="132"/>
         <source>Name Favorite</source>
         <translation>命名收藏</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="133"/>
+        <location filename="ui/appdialog.cpp" line="134"/>
         <source>Give this favorite a name. Its copied content stays the same.</source>
         <translation>为收藏起个名字，复制的内容保持不变。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="137"/>
+        <location filename="ui/appdialog.cpp" line="138"/>
         <source>Leave empty to show only the content</source>
         <translation>留空则只显示内容</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="144"/>
+        <location filename="ui/appdialog.cpp" line="145"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="150"/>
+        <location filename="ui/appdialog.cpp" line="151"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="210"/>
+        <location filename="ui/appdialog.cpp" line="211"/>
         <source>Version %1</source>
         <translation>版本 %1</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="213"/>
+        <location filename="ui/appdialog.cpp" line="214"/>
         <source>Keep useful copies close at hand.</source>
         <translation>把常用的复制内容留在手边。</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="234"/>
+        <location filename="ui/appdialog.cpp" line="237"/>
+        <source>Unknown</source>
+        <translation>未知</translation>
+    </message>
+    <message>
+        <location filename="ui/appdialog.cpp" line="238"/>
+        <location filename="ui/appdialog.cpp" line="240"/>
+        <source>Code version</source>
+        <translation>代码版本</translation>
+    </message>
+    <message>
+        <location filename="ui/appdialog.cpp" line="241"/>
         <source>Created by</source>
         <translation>开发者</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="235"/>
+        <location filename="ui/appdialog.cpp" line="242"/>
         <source>License</source>
         <translation>许可证</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="236"/>
+        <location filename="ui/appdialog.cpp" line="243"/>
         <source>History</source>
         <translation>历史记录</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="236"/>
+        <location filename="ui/appdialog.cpp" line="243"/>
         <source>Stored locally · Last %1 days</source>
         <translation>本地保存 · 最近 %1 天</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="240"/>
+        <location filename="ui/appdialog.cpp" line="247"/>
         <source>Project page</source>
         <translation>项目主页</translation>
     </message>
     <message>
-        <location filename="ui/appdialog.cpp" line="248"/>
+        <location filename="ui/appdialog.cpp" line="255"/>
         <location filename="ui/settingsdialog.cpp" line="217"/>
         <source>Done</source>
         <translation>完成</translation>
