@@ -167,3 +167,8 @@ include(CTest)
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
+
+option(PASTES_BUILD_BENCHMARKS "Build isolated history performance benchmarks" OFF)
+if(PASTES_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
