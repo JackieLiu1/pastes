@@ -8,7 +8,7 @@ Apple Silicon Qt installation.
 ```sh
 cmake -S . -B build/macos-package -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0
-cmake --build build/macos-package --target package_macos --parallel
+cmake --build build/macos-package --target package --parallel
 ```
 
 The target creates a `.pkg` installer, a drag-to-Applications `.dmg`, and SHA-256
@@ -60,7 +60,7 @@ fingerprint from `security find-identity -v -p codesigning`:
 cmake -S . -B build \
     -DPASTES_MACOS_SIGNING_IDENTITY="YOUR_CERTIFICATE_FINGERPRINT" \
     -DPASTES_MACOS_LOCAL_SIGNING=ON
-cmake --build build --target package_macos --parallel
+cmake --build build --target package --parallel
 ```
 
 Use these options for every build directory that produces your local app.

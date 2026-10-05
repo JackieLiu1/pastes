@@ -4,6 +4,8 @@
 
 macOS 安装包的制作与安装方法见[打包说明](packaging/macos/README.md)。
 Windows 安装包的制作与安装方法见[打包说明](packaging/windows/README.md)。
+Linux 安装包的制作与安装方法见[打包说明](packaging/linux/README.md)。
+各平台统一使用 `cmake --build build --target package`，安装包输出到构建目录下的 `dist/`。
 
 ![Release-CI](https://github.com/JackieLiu1/pastes/workflows/Release-CI/badge.svg) ![C/C++ CI](https://github.com/JackieLiu1/pastes/workflows/C/C++%20CI/badge.svg)
 

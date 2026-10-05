@@ -10,7 +10,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release `
     -DPASTES_ISCC_EXECUTABLE="C:/path/to/Inno Setup 6/ISCC.exe"
 cmake --build build --parallel 4
 ctest --test-dir build --output-on-failure
-cmake --build build --target package_windows
+cmake --build build --target package
 ```
 
 The target writes `build/dist/Pastes-<version>-windows-x64-setup.exe` and a

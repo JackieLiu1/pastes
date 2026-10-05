@@ -4,6 +4,9 @@ English | [简体中文](./README_cn.md)
 
 For macOS installers, see [the packaging guide](packaging/macos/README.md).
 For Windows installers, see [the packaging guide](packaging/windows/README.md).
+For Linux installers, see [the packaging guide](packaging/linux/README.md).
+All platforms use `cmake --build build --target package`; packages are written
+to the build directory's `dist/` folder.
 
 ![Release-CI](https://github.com/JackieLiu1/pastes/workflows/Release-CI/badge.svg) ![C/C++ CI](https://github.com/JackieLiu1/pastes/workflows/C/C++%20CI/badge.svg)
 

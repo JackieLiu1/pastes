@@ -12,7 +12,7 @@ if(PASTES_MACOS_LOCAL_SIGNING)
 endif()
 
 if(Python3_Interpreter_FOUND AND TARGET Qt6::macdeployqt AND TARGET Qt6::qmake)
-    add_custom_target(package_macos
+    add_custom_target(package
         COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/package.py"
             --app $<TARGET_BUNDLE_DIR:pastes>
             --output "${CMAKE_BINARY_DIR}/dist"
@@ -27,5 +27,11 @@ if(Python3_Interpreter_FOUND AND TARGET Qt6::macdeployqt AND TARGET Qt6::qmake)
         VERBATIM
     )
 else()
-    message(STATUS "package_macos requires Python 3.9+, macdeployqt and qmake")
+    add_custom_target(package
+        COMMAND ${CMAKE_COMMAND} -E echo
+            "macOS packaging requires Python 3.9+, macdeployqt and qmake"
+        COMMAND ${CMAKE_COMMAND} -E false
+        VERBATIM
+    )
+    message(STATUS "package requires Python 3.9+, macdeployqt and qmake")
 endif()

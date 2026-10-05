@@ -1,4 +1,4 @@
-; Build with the package_windows CMake target.
+; Build with the package CMake target.
 #ifndef DeployDir
   #error DeployDir must point to the clean deployment directory
 #endif
