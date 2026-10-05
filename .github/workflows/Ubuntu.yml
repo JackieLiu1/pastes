@@ -17,10 +17,15 @@ jobs:
       - name: Update apt repository
         run: sudo apt-get update -y
       - name: Install build dependencies
-        run: sudo apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libglib2.0-dev libxtst-dev libx11-dev pkg-config
+        run: sudo apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libglib2.0-dev libxtst-dev libx11-dev pkg-config dpkg-dev
       - name: CMake configure & build
         run: |
           cmake -B build -S . -DCMAKE_BUILD_TYPE=Release;
           cmake --build build -j$(nproc);
       - name: Verify contracts and architecture
         run: ctest --test-dir build --output-on-failure
+      - name: Build installation package
+        run: |
+          cmake --build build --target package
+          dpkg-deb --info build/dist/*.deb
+          dpkg-deb --contents build/dist/*.deb
