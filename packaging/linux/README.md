@@ -57,6 +57,12 @@ linked-library requirements through `rpmbuild`; DEB uses `dpkg-shlibdeps`.
 Plugins and the Secret Service credential
 helper are declared separately because they are loaded at runtime.
 
+The interface follows the session's message locale. Installing the Chinese
+translation does not force Chinese when Qt detects an English or `C` locale.
+Startup diagnostics report the selected locale and loaded translation path.
+To check Chinese without changing the system locale, fully quit the existing
+tray instance, then run `LC_ALL=zh_CN.UTF-8 pastes --show` from a terminal.
+
 DEB architecture names differ from processor names: `aarch64` becomes `arm64`,
 `x86_64` becomes `amd64`, and 32-bit x86 becomes `i386`. These targets do not
 require `dpkg` for architecture detection. Other native DEB targets use

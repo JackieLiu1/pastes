@@ -21,11 +21,18 @@ void LoadTranlateFile(SingleApplication *app)
 {
 	QTranslator *translator = new QTranslator(app);
 
-	QLocale locale = QLocale::system();
+	const QLocale locale = QLocale::system();
+	qInfo() << "Pastes: UI locale" << locale.name() << "preferred languages" << locale.uiLanguages();
 	if (locale.language() == QLocale::Chinese) {
 		const QString directory = Platform::translationDirectory();
-		if (translator->load(directory+"/Pastes_zh_CN.qm") || translator->load("Pastes_zh_CN.qm"))
+		if (translator->load(directory+"/Pastes_zh_CN.qm") ||
+			translator->load(QCoreApplication::applicationDirPath()+"/Pastes_zh_CN.qm") ||
+			translator->load("Pastes_zh_CN.qm")) {
 			app->installTranslator(translator);
+			qInfo() << "Pastes: loaded translation" << translator->filePath();
+		} else {
+			qWarning() << "Pastes: unable to load Chinese translation from" << directory;
+		}
 	}
 }
 

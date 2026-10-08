@@ -133,11 +133,11 @@ add_custom_target(update_translations
 )
 qt_add_translation(QM_FILES Pastes_zh_CN.ts)
 add_custom_target(translations ALL DEPENDS ${QM_FILES})
+add_dependencies(pastes translations)
 if(WIN32)
     add_subdirectory(packaging/windows)
 endif()
 if(APPLE)
-    add_dependencies(pastes translations)
     set_source_files_properties(${QM_FILES} PROPERTIES
         MACOSX_PACKAGE_LOCATION Resources)
     target_sources(pastes PRIVATE ${QM_FILES})
