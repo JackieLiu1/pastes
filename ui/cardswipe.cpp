@@ -1,5 +1,6 @@
 #include "ui/cardswipe.h"
 #include "ui/pasteitem.h"
+#include "platform/windowintegration.h"
 
 #include <QApplication>
 #include <QPainter>
@@ -18,6 +19,7 @@ CardSwipeOverlay::CardSwipeOverlay(QWidget *parent) : QWidget(parent, Qt::Tool |
 	m_animation(new QPropertyAnimation(this, "offset", this)),
 	m_dismiss_animation(new QPropertyAnimation(this, "dismissal", this))
 {
+	Platform::initializeDragOverlay(this);
 	setObjectName("CardSwipeOverlay");
 	setAttribute(Qt::WA_TransparentForMouseEvents);
 	setAttribute(Qt::WA_NoSystemBackground);

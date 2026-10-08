@@ -57,6 +57,8 @@ void updateDialogBackdrop(QWidget *widget, QWidget *surface);
 void initializePreview(QWidget *widget);
 void preparePreview(QWidget *widget);
 void activatePreview(QWidget *widget);
+/* Input-transparent drag snapshots share the panel's stacking layer. */
+void initializeDragOverlay(QWidget *widget);
 
 }
 #endif

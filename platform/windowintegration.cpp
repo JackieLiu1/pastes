@@ -9,3 +9,13 @@ bool Platform::isOwnedWindow(QWidget *owner, QWidget *window)
 			return true;
 	return false;
 }
+
+void Platform::initializeDragOverlay(QWidget *widget)
+{
+	if (QWidget *owner = widget->parentWidget()) {
+		/* A managed tool window can appear in the taskbar and sit below an
+		 * unmanaged X11 panel. Inherit its stacking policy before mapping. */
+		widget->setWindowFlags(widget->windowFlags() | (owner->window()->windowFlags() &
+			(Qt::WindowStaysOnTopHint | Qt::BypassWindowManagerHint)));
+	}
+}

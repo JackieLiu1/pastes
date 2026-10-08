@@ -372,12 +372,12 @@
         <translation>撤销删除（Ctrl+Z）</translation>
     </message>
     <message>
-        <location filename="ui/cardswipe.cpp" line="174"/>
+        <location filename="ui/cardswipe.cpp" line="176"/>
         <source>Drag up to remove</source>
         <translation>继续上滑以删除</translation>
     </message>
     <message>
-        <location filename="ui/cardswipe.cpp" line="173"/>
+        <location filename="ui/cardswipe.cpp" line="175"/>
         <source>Release to remove</source>
         <translation>松开即可删除</translation>
     </message>
