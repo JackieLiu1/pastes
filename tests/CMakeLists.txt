@@ -40,6 +40,10 @@ if(APPLE)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_test(NAME linux_packaging_contract
+        COMMAND ${CMAKE_COMMAND} -DPASTES_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+            -DPASTES_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/linux_packaging_test.cmake)
     find_package(X11 REQUIRED)
     add_executable(shortcut_linux_test shortcut_linux_test.cpp)
     target_link_libraries(shortcut_linux_test PRIVATE pastes_platform X11::X11 ${X11_Xtst_LIB})

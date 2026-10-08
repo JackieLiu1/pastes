@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Pastes
+Comment=Clipboard history manager
+Comment[zh_CN]=剪贴板历史管理器
+Exec=pastes
+Terminal=false
+Type=Application
+Icon=pastes
+Categories=Utility;

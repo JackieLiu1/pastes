@@ -88,6 +88,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         QM_FILES_INSTALL_PATH="${CMAKE_INSTALL_FULL_DATADIR}/pastes/translations/"
     )
     install(FILES "${PROJECT_SOURCE_DIR}/pastes.desktop" DESTINATION /etc/xdg/autostart)
+    install(FILES "${PROJECT_SOURCE_DIR}/packaging/linux/pastes.desktop"
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
     install(FILES "${PROJECT_SOURCE_DIR}/resources/pastes.svg"
             DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 endif()
