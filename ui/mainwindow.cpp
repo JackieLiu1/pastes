@@ -88,16 +88,6 @@ MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, 
 	updateShortcutHint();
 }
 
-bool MainWindow::event(QEvent *event)
-{
-	if (event->type() == QEvent::ActivationChange) {
-		QTimer::singleShot(0, this, [this](void) {
-			if (!Platform::isOwnedWindow(this, QApplication::activeWindow())) hide_window();
-		});
-	}
-	return QMainWindow::event(event);
-}
-
 void MainWindow::showEvent(QShowEvent *event)
 {
 	__main_frame->focusCurrent();
@@ -172,7 +162,7 @@ void MainWindow::previewEntry(HistoryEntry entry)
 	});
 	if (dialog.exec() == QDialog::Accepted && (!dialog.plainText() || snapshot->mimeData->hasText())) {
 		copyEntry(snapshot, dialog.plainText(), true);
-	} else if (isVisible()) {
+	} else if (!__hide_state && isVisible()) {
 		Platform::activatePanel(this);
 		__main_frame->focusEntry(snapshot->md5);
 	}
@@ -188,7 +178,7 @@ void MainWindow::renameFavorite(HistoryEntry entry)
 		QScopedValueRollback<bool> dialogOpen(__app_dialog_open, true);
 		if (dialog.exec() == QDialog::Accepted) __history.setFavoriteName(entry->id, dialog.name());
 	}
-	if (isVisible()) {
+	if (!__hide_state && isVisible()) {
 		Platform::activatePanel(this);
 		__main_frame->focusEntry(entry->md5);
 	}

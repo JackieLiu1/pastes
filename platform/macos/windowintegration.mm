@@ -122,6 +122,8 @@ void Platform::watchPanelDismissal(QWidget *widget, const std::function<void(boo
 {
 	if (QGuiApplication::platformName() == QStringLiteral("cocoa"))
 		new MacPanelObserver(widget, dismiss);
+	else
+		Platform::watchQtPanelDismissal(widget, dismiss);
 }
 
 static NSImage *windowMask(bool topOnly)

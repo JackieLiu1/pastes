@@ -49,6 +49,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(shortcut_linux_test PRIVATE pastes_platform X11::X11 ${X11_Xtst_LIB})
     add_test(NAME shortcut_linux_contract COMMAND shortcut_linux_test)
     set_tests_properties(shortcut_linux_contract PROPERTIES TIMEOUT 30)
+    add_executable(panel_linux_test panel_linux_test.cpp ../sources.qrc)
+    target_link_libraries(panel_linux_test PRIVATE pastes_ui X11::X11 ${X11_Xtst_LIB})
+    add_test(NAME panel_linux_contract COMMAND panel_linux_test)
+    set_tests_properties(panel_linux_contract PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_FORCE_STDERR_LOGGING=1" TIMEOUT 30)
 endif()
 
 add_executable(historyview_test historyview_test.cpp ../sources.qrc)

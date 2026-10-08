@@ -19,7 +19,8 @@ if(WIN32)
         windows/shortcut.cpp windows/shortcutstate.h windows/windowblur.cpp
         windows/compositionabi.h
         windows/fileicon.cpp windows/paths.cpp windows/startupintegration.cpp
-        desktop/windowintegration.cpp desktop/menuintegration.cpp
+        desktop/windowintegration.cpp desktop/windowactivation.cpp
+        desktop/menuintegration.cpp
         desktop/applicationintegration.cpp desktop/trayicon.cpp
     )
 elseif(APPLE)
@@ -37,7 +38,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         linux/secretstore.cpp
         linux/clipboardsource.cpp linux/pastetarget.cpp linux/shortcut.cpp
         linux/shortcutstate.h
-        linux/windowblur.cpp linux/fileicon.cpp linux/paths.cpp
+        linux/windowblur.cpp linux/panelobserver.cpp linux/fileicon.cpp linux/paths.cpp
         linux/startupintegration.cpp desktop/windowintegration.cpp
         desktop/menuintegration.cpp desktop/applicationintegration.cpp
         desktop/trayicon.cpp
@@ -73,11 +74,12 @@ elseif(APPLE)
         "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in"
         "$<TARGET_BUNDLE_DIR:pastes>/Contents/Info.plist")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_package(X11 REQUIRED)
+    find_package(X11 REQUIRED COMPONENTS Xi)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0 glib-2.0 gio-unix-2.0)
     target_link_libraries(pastes_platform PRIVATE
         X11::X11
+        X11::Xi
         ${X11_Xtst_LIB}
         PkgConfig::GIO
     )

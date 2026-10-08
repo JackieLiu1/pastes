@@ -48,6 +48,8 @@ void activatePanel(QWidget *widget);
 /* Dismiss with animation on focus loss, immediately after a Space change.
  * The observer belongs to the widget and expires with it. */
 void watchPanelDismissal(QWidget *widget, const std::function<void(bool)> &dismiss);
+/* Fallback for backends without a native focus observer. */
+void watchQtPanelDismissal(QWidget *widget, const std::function<void(bool)> &dismiss);
 void initializeDialog(QWidget *widget);
 void prepareDialog(QWidget *widget);
 /* Clip native glass to the dialog's rounded surface, excluding shadow gutters.

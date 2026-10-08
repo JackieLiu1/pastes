@@ -10,14 +10,14 @@ On Debian or Ubuntu, install the build and packaging dependencies:
 
 ```sh
 sudo apt-get install build-essential cmake qt6-base-dev qt6-tools-dev \
-    qt6-tools-dev-tools libglib2.0-dev libxtst-dev libx11-dev pkg-config dpkg-dev
+    qt6-tools-dev-tools libglib2.0-dev libxtst-dev libx11-dev libxi-dev pkg-config dpkg-dev
 ```
 
 On Kylin V11 Server, install the build and packaging dependencies:
 
 ```sh
 sudo dnf install gcc-c++ cmake qt6-qtbase-devel qt6-qttools-devel \
-    glib2-devel libXtst-devel libX11-devel pkgconf rpm-build chrpath
+    glib2-devel libXtst-devel libX11-devel libXi-devel pkgconf rpm-build chrpath
 ```
 
 Qt package names can differ between RPM distributions. The application also

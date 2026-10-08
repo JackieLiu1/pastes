@@ -10,7 +10,7 @@ macOS 用 `Shift+Cmd+V` 或点击菜单栏图标唤出。双击条目或按 `Ent
 
 - 语言/框架：C++17 + Qt ≥ 6.3（Core / Gui / Widgets / Sql）
 - 构建系统：CMake（≥ 3.16），不使用 qmake
-- 平台：Windows（Win32 API）、Linux（X11/XTest、gio）、macOS（AppKit / Carbon / Accessibility）
+- 平台：Windows（Win32 API）、Linux（X11/XGrabKey/XTest/XInput2、gio）、macOS（AppKit / Carbon / Accessibility）
 - 单实例：捆绑的 3rd/SingleApplication（静态库，源码直接编入，`QAPPLICATION_CLASS=QApplication`）
 - 持久化：SQLite（QSQLITE），两张历史表 `item`（md5/imagedata/icondata/time）与
   `data`（md5/formats/format_data，每格式一行），收藏状态单独存放在 `favorite` 表
@@ -25,7 +25,7 @@ ctest --test-dir build --output-on-failure
 
 - Windows/MSYS2 工具链：`C:\msys64\ucrt64\bin`（ucrt64 环境，`qmake` 即 Qt6）。
   依赖 qt6-base、qt6-tools（lrelease）、psapi、gdi32。
-- Linux 依赖：qt6-base-dev、qt6-tools-dev、libglib2.0-dev、libxtst-dev、libx11-dev、pkg-config（gio）。
+- Linux 依赖：qt6-base-dev、qt6-tools-dev、libglib2.0-dev、libxtst-dev、libx11-dev、libxi-dev、pkg-config（gio）。
 - CTest 注册业务、数据库、剪贴板、历史视图及依赖边界五组测试，不需要 Qt Test 模块。
   GUI 组件测试使用 offscreen，只验证数据与命令，不能代替原生平台交互。
   验证手段：编译零错误、零新增警告 + CTest + 冒烟测试

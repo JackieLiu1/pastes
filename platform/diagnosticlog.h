@@ -14,6 +14,7 @@ public:
 	explicit DiagnosticLog(const QString &path);
 	void append(const QJsonObject &metadata);
 	static QString clipboardPath(void);
+	static QString inputPath(void);
 
 private:
 	QString m_path;

@@ -30,7 +30,6 @@ public slots:
 	void hide_window(void);
 
 protected:
-	bool event(QEvent *event) override;
 	void showEvent(QShowEvent *event) override;
 	void hideEvent(QHideEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;

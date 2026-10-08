@@ -24,6 +24,12 @@ QString Platform::DiagnosticLog::clipboardPath(void)
 		+"/logs/clipboard.jsonl";
 }
 
+QString Platform::DiagnosticLog::inputPath(void)
+{
+	return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
+		+"/logs/input.jsonl";
+}
+
 void Platform::DiagnosticLog::append(const QJsonObject &metadata)
 {
 	QJsonObject snapshot = metadata;

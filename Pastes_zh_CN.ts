@@ -39,12 +39,12 @@
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="226"/>
+        <location filename="ui/mainwindow.cpp" line="216"/>
         <source>Show History (%1)</source>
         <translation>显示历史（%1）</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="227"/>
+        <location filename="ui/mainwindow.cpp" line="217"/>
         <source>Hide History (%1)</source>
         <translation>隐藏历史（%1）</translation>
     </message>
@@ -105,7 +105,7 @@
     </message>
     <message>
         <location filename="ui/appdialog.cpp" line="200"/>
-        <location filename="ui/mainwindow.cpp" line="250"/>
+        <location filename="ui/mainwindow.cpp" line="240"/>
         <source>About Pastes</source>
         <translation>关于 Pastes</translation>
     </message>
@@ -162,7 +162,7 @@
         <translation>退出</translation>
     </message>
     <message>
-        <location filename="ui/mainwindow.cpp" line="211"/>
+        <location filename="ui/mainwindow.cpp" line="201"/>
         <source>records</source>
         <translation>条记录</translation>
     </message>
@@ -603,7 +603,7 @@
     </message>
     <message>
         <location filename="ui/historyview.cpp" line="410"/>
-        <location filename="ui/mainwindow.cpp" line="212"/>
+        <location filename="ui/mainwindow.cpp" line="202"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
     </message>
