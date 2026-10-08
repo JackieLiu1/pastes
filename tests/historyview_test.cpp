@@ -362,6 +362,65 @@ void searchNavigationGeometry(void)
 	require(list->viewport()->pos() == origin, "Touchpad cancellation did not restore the viewport");
 }
 
+void previewKeyboardRouting(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	window.resize(1200, 450);
+	HistoryView view(history, &window);
+	QVBoxLayout layout(&window);
+	layout.addWidget(&view);
+	history.load();
+	auto first = textEntry("first preview"), second = textEntry("second preview");
+	repository.finishLoad({first, second});
+	auto *list = view.findChild<QListWidget *>();
+	auto *search = view.findChild<LineEdit *>();
+	window.show(); window.activateWindow(); view.focusCurrent();
+	waitUntil([&] { return QApplication::activeWindow() == &window; });
+	list->setCurrentRow(1);
+	HistoryEntry previewed;
+	int requests = 0;
+	QObject::connect(&view, &HistoryView::previewRequested, &view,
+		[&](HistoryEntry entry) { previewed = entry; ++requests; });
+	auto press = [](QWidget *receiver, bool repeat = false) {
+		QKeyEvent space(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier, " ", repeat);
+		QCoreApplication::sendEvent(receiver, &space);
+	};
+	QWidget *card = list->itemWidget(list->item(1));
+	for (QWidget *receiver : {static_cast<QWidget *>(&view), list->viewport(), &window, card}) {
+		const int before = requests;
+		receiver->setFocus();
+		press(receiver);
+		require(requests == before+1 && previewed == second,
+			"Space did not preview the selected entry outside card focus");
+		press(receiver, true);
+		require(requests == before+1, "Holding Space repeated the preview command");
+	}
+	search->setFocus();
+	search->setText("second");
+	const int before = requests;
+	press(search);
+	require(requests == before && search->text() == "second ", "Preview consumed a search space");
+	QInputMethodEvent preedit("shi", {});
+	QCoreApplication::sendEvent(search, &preedit);
+	press(search);
+	require(requests == before && search->hasFocus(), "Preview interrupted candidate selection");
+	QInputMethodEvent cancel;
+	QCoreApplication::sendEvent(search, &cancel);
+	search->setText("no matching entry");
+	view.setFocus();
+	press(&view);
+	require(requests == before, "Space previewed a hidden result");
+	search->clear();
+	PreviewDialog dialog(*first, &window);
+	dialog.show(); dialog.activateWindow();
+	waitUntil([&] { return QApplication::activeWindow() == &dialog; });
+	press(&view);
+	require(requests == before, "Space opened history behind a modal preview");
+	dialog.hide(); window.hide();
+}
+
 void composingSearchCommands(void)
 {
 	QWidget window;
@@ -917,6 +976,7 @@ int main(int argc, char **argv)
 	failures += runTest("search Tab advances the selected result and cycles", searchNavigation);
 	failures += runTest("search Tab keeps the card row in place", searchNavigationGeometry);
 	failures += runTest("type-to-search focuses before input method composition", searchInputMethod);
+	failures += runTest("Space previews selection across panel focus and preserves search input", previewKeyboardRouting);
 	failures += runTest("search composition keeps candidate keys", composingSearchCommands);
 	failures += runTest("search filtering preserves uninterrupted input focus", searchKeepsInputFocus);
 	failures += runTest("image files preview on demand and retain missing paths", imageFilePreviews);

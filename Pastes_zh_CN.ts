@@ -34,7 +34,7 @@
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="558"/>
+        <location filename="ui/historyview.cpp" line="567"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
@@ -256,7 +256,7 @@
         <translation>菜单</translation>
     </message>
     <message>
-        <location filename="ui/searchbar.cpp" line="149"/>
+        <location filename="ui/searchbar.cpp" line="151"/>
         <source>Type to search</source>
         <translation>输入即可搜索</translation>
     </message>
@@ -818,18 +818,15 @@ Then quit and reopen Pastes.</source>
     </message>
     <message>
         <location filename="ui/syncsettingspage.cpp" line="47"/>
-        <location filename="ui/syncsettingspage.cpp" line="47"/>
         <source>Save connection</source>
         <translation>保存连接</translation>
     </message>
     <message>
         <location filename="ui/syncsettingspage.cpp" line="48"/>
-        <location filename="ui/syncsettingspage.cpp" line="48"/>
         <source>Test connection</source>
         <translation>测试连接</translation>
     </message>
     <message>
-        <location filename="ui/syncsettingspage.cpp" line="49"/>
         <location filename="ui/syncsettingspage.cpp" line="49"/>
         <source>Sync now</source>
         <translation>立即同步</translation>

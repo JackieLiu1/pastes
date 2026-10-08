@@ -24,9 +24,12 @@ signals:
 	void copyRequested(void);
 
 private:
+	void finishDrag(void);
 	RoundedWidget *m_surface;
 	QWidget *m_header;
 	QLabel *m_detail;
+	QPoint m_dragOffset;
+	bool m_dragging = false;
 	bool m_plain_text = false;
 };
 

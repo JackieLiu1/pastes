@@ -484,7 +484,16 @@ bool HistoryView::eventFilter(QObject *object, QEvent *event)
 		auto *receiver = qobject_cast<QWidget *>(object);
 		if (receiver && receiver->window() == m_window && object != search) {
 			QKeyEvent *key = static_cast<QKeyEvent *>(event);
-			if (key->key() == Qt::Key_Space) return MainFrame::eventFilter(object, event);
+			if (key->key() == Qt::Key_Space) {
+				/* Preview follows the selected entry even when the panel or
+				 * list has focus. Search and buttons retain their own Space. */
+				if (receiver != m_window && receiver != this && receiver != m_list &&
+				    receiver != m_list->viewport() && !qobject_cast<PasteItem *>(receiver))
+					return MainFrame::eventFilter(object, event);
+				event->accept();
+				if (event->type() == QEvent::KeyPress && !key->isAutoRepeat()) previewCurrent();
+				return true;
+			}
 			const bool typing = !(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)) &&
 				!key->text().isEmpty() && key->text().at(0).isPrint();
 			if (typing || (key->key() == Qt::Key_Backspace && !search->text().isEmpty())) {

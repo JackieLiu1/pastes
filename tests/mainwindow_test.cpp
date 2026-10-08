@@ -16,7 +16,10 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
+#include <QMouseEvent>
 #include <QPainter>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSettings>
 #include <QTemporaryDir>
@@ -249,9 +252,17 @@ void previewKeepsHistoryVisible(void)
 	auto &window = fixture.window;
 	auto *view = window.findChild<HistoryView *>();
 	require(view, "History view missing");
-	for (bool escape : {false, true}) {
+	auto *list = view->findChild<QListWidget *>();
+	require(list && list->currentItem(), "Preview selection missing");
+	for (int mode : {0, 1, 2}) {
 		window.show_window();
-		bool inspected = false, panelVisible = false;
+		/* Deliver the card command directly: offscreen has no native panel
+		 * activation. Panel/list key routing is covered by historyview_test. */
+		QWidget *receiver = list->itemWidget(list->currentItem());
+		require(receiver, "Preview key receiver missing");
+		receiver->setFocus();
+		bool inspected = false, panelVisible = false, focused = false;
+		bool stackingMatches = true, heldSpaceKeptOpen = false, closedWithKey = mode == 0;
 		QTimer inspection;
 		inspection.setSingleShot(true);
 		QObject::connect(&inspection, &QTimer::timeout, &window, [&] {
@@ -259,9 +270,22 @@ void previewKeepsHistoryVisible(void)
 			if (!dialog || !dialog->isVisible()) return;
 			inspected = true;
 			panelVisible = window.isVisible();
-			if (escape) {
+			focused = dialog->isActiveWindow();
+#if defined(Q_OS_LINUX) || defined(Q_OS_WIN)
+			const auto stacking = window.windowFlags() & (Qt::WindowStaysOnTopHint | Qt::BypassWindowManagerHint);
+			stackingMatches = (dialog->windowFlags() & stacking) == stacking;
+#endif
+			QKeyEvent repeat(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier, " ", true);
+			QApplication::sendEvent(dialog, &repeat);
+			heldSpaceKeptOpen = dialog->isVisible();
+			if (mode == 1) {
 				QKeyEvent key(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
 				QApplication::sendEvent(dialog, &key);
+				closedWithKey = !dialog->isVisible();
+			} else if (mode == 2) {
+				QKeyEvent key(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier, " ");
+				QApplication::sendEvent(dialog, &key);
+				closedWithKey = !dialog->isVisible();
 			} else if (auto *close = dialog->findChild<QPushButton *>("PreviewClose")) close->click();
 			else dialog->reject();
 		});
@@ -273,12 +297,59 @@ void previewKeepsHistoryVisible(void)
 				dialog->reject();
 		});
 		watchdog.start(2000);
-		emit view->previewRequested(entry);
+		QKeyEvent space(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier, " ");
+		QApplication::sendEvent(receiver, &space);
 		require(inspected && panelVisible, "Preview hid its history panel");
+		require(focused, "Preview did not take keyboard focus");
+		require(stackingMatches, "Preview did not share its panel's topmost stacking policy");
+		require(heldSpaceKeptOpen, "Holding Space closed the newly opened preview");
+		require(closedWithKey, "Escape or Space did not close the preview");
 		require(window.isVisible(), "Closing preview hid its history panel");
 	}
 	window.hide_window();
 	waitUntil([&] { return !window.isVisible(); });
+}
+
+void previewHeaderDrag(void)
+{
+	QWidget panel;
+	Platform::initializePanel(&panel);
+	auto entry = textEntry("Selectable preview text");
+	PreviewDialog dialog(*entry, &panel);
+	dialog.show();
+	dialog.move(120, 140);
+	auto *title = dialog.findChild<QLabel *>("PreviewTitle");
+	auto *text = dialog.findChild<QPlainTextEdit *>("PreviewText");
+	require(title && text, "Preview drag controls missing");
+	QWidget *header = title->parentWidget();
+	auto mouse = [](QWidget *receiver, QEvent::Type type, const QPoint &global,
+		Qt::MouseButton button, Qt::MouseButtons buttons) {
+		QMouseEvent event(type, receiver->mapFromGlobal(global), global,
+			button, buttons, Qt::NoModifier);
+		QApplication::sendEvent(receiver, &event);
+	};
+	const QPoint original = dialog.pos();
+	const QPoint press = header->mapToGlobal(header->rect().center());
+	const QPoint delta(80, -35);
+	mouse(header, QEvent::MouseButtonPress, press, Qt::LeftButton, Qt::LeftButton);
+	mouse(&dialog, QEvent::MouseMove, press+delta, Qt::NoButton, Qt::LeftButton);
+	require(dialog.pos() == original+delta, "Unmanaged preview did not follow its header drag");
+	mouse(&dialog, QEvent::MouseButtonRelease, press+delta, Qt::LeftButton, Qt::NoButton);
+	mouse(&dialog, QEvent::MouseMove, press+delta*2, Qt::NoButton, Qt::LeftButton);
+	require(dialog.pos() == original+delta, "Preview kept dragging after mouse release");
+	const QPoint content = text->viewport()->mapToGlobal(text->viewport()->rect().center());
+	mouse(text->viewport(), QEvent::MouseButtonPress, content, Qt::LeftButton, Qt::LeftButton);
+	mouse(text->viewport(), QEvent::MouseMove, content+delta, Qt::NoButton, Qt::LeftButton);
+	mouse(text->viewport(), QEvent::MouseButtonRelease, content+delta, Qt::LeftButton, Qt::NoButton);
+	require(dialog.pos() == original+delta, "Text selection moved the preview window");
+	const QPoint secondPress = header->mapToGlobal(header->rect().center());
+	mouse(header, QEvent::MouseButtonPress, secondPress, Qt::LeftButton, Qt::LeftButton);
+	dialog.hide();
+	dialog.show();
+	const QPoint reopened = dialog.pos();
+	mouse(&dialog, QEvent::MouseMove, secondPress+delta, Qt::NoButton, Qt::LeftButton);
+	require(dialog.pos() == reopened, "Reopened preview retained an interrupted drag");
+	dialog.hide();
 }
 
 void dialogGlassContrast(bool dark)
@@ -342,11 +413,17 @@ int main(int argc, char **argv)
 	QCoreApplication::setApplicationName("Dialogs");
 	QSettings::setDefaultFormat(QSettings::IniFormat);
 	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences.path());
+	if (app.arguments().contains("--preview-only")) {
+		int failures = runTest("preview header drag preserves text selection and cancels on close", previewHeaderDrag);
+		failures += runTest("Space preview takes focus and closes with Escape or Space", previewKeepsHistoryVisible);
+		return failures ? 1 : 0;
+	}
 	int failures = runTest("tray history action follows visibility and pending animations", trayPanelActionFollowsVisibility);
 	failures += runTest("backdrop activation and fallback preserve readable surfaces", backdropUsesOpaqueFallback);
 	failures += runTest("light theme text remains readable over black and white backgrounds", lightThemeTextContrast);
 	failures += runTest("application dialogs hide history and block reopening", appDialogsHideHistory);
-	failures += runTest("preview keeps history visible through close and Escape", previewKeepsHistoryVisible);
+	failures += runTest("Space preview takes focus, stays above history and closes with Escape or Space", previewKeepsHistoryVisible);
+	failures += runTest("preview header drag preserves text selection and cancels on close", previewHeaderDrag);
 	failures += runTest("favorite name dialog saves, clears, cancels and blocks panel toggles", favoriteNameDialogCommands);
 	failures += runTest("dialog glass keeps readable text and opaque fallback", [] {
 		dialogGlassContrast(false); dialogGlassContrast(true);

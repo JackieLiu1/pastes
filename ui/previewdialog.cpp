@@ -214,6 +214,7 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 		});
 	}
 	auto *space = new QShortcut(QKeySequence(Qt::Key_Space), this);
+	space->setAutoRepeat(false);
 	QObject::connect(space, &QShortcut::activated, this, &QDialog::reject);
 	if (close) setTabOrder(close, copy);
 	setTabOrder(copy, paste);
@@ -221,6 +222,20 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 
 bool PreviewDialog::eventFilter(QObject *object, QEvent *event)
 {
+	if (object == this && (event->type() == QEvent::Hide || event->type() == QEvent::UngrabMouse))
+		finishDrag();
+	if (m_dragging && event->type() == QEvent::MouseMove) {
+		auto *mouse = static_cast<QMouseEvent *>(event);
+		if (mouse->buttons() & Qt::LeftButton)
+			move(mouse->globalPosition().toPoint()-m_dragOffset);
+		else finishDrag();
+		return true;
+	}
+	if (m_dragging && event->type() == QEvent::MouseButtonRelease &&
+		static_cast<QMouseEvent *>(event)->button() == Qt::LeftButton) {
+		finishDrag();
+		return true;
+	}
 	/* A workspace switch must also end the preview's modal event loop. */
 	if (object == parentWidget() && event->type() == QEvent::Hide)
 		reject();
@@ -230,13 +245,24 @@ bool PreviewDialog::eventFilter(QObject *object, QEvent *event)
 		const QPoint point = mapFromGlobal(mouse->globalPosition().toPoint());
 		const int bottom = m_header->mapTo(this, QPoint(0, m_header->height())).y()
 			+ m_surface->layout()->spacing()/2;
-		if (mouse->button() == Qt::LeftButton && rect().contains(point) &&
-			point.y() < bottom && windowHandle()) {
-			windowHandle()->startSystemMove();
+		if (mouse->button() == Qt::LeftButton && rect().contains(point) && point.y() < bottom) {
+			/* Unmanaged X11 windows cannot use a WM move request, even when
+			 * Qt reports that the request was sent successfully. */
+			if (windowHandle() && !windowFlags().testFlag(Qt::BypassWindowManagerHint) &&
+				windowHandle()->startSystemMove()) return true;
+			m_dragOffset = mouse->globalPosition().toPoint()-pos();
+			m_dragging = true;
+			grabMouse();
 			return true;
 		}
 	}
 	return QDialog::eventFilter(object, event);
+}
+
+void PreviewDialog::finishDrag(void)
+{
+	m_dragging = false;
+	if (QWidget::mouseGrabber() == this) releaseMouse();
 }
 
 void PreviewDialog::showEvent(QShowEvent *event)

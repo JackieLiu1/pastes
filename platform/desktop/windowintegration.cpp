@@ -37,7 +37,15 @@ void initializePanel(QWidget *widget)
 void watchPanelDismissal(QWidget *, const std::function<void(bool)> &) {}
 void initializeDialog(QWidget *) {}
 void prepareDialog(QWidget *) {}
-void initializePreview(QWidget *) {}
+void initializePreview(QWidget *widget)
+{
+	if (QWidget *owner = widget->parentWidget()) {
+		/* A modal preview must share its panel's stacking layer. On X11,
+		 * bypassing the WM also lets activatePreview assign focus directly. */
+		widget->setWindowFlags(widget->windowFlags() | (owner->window()->windowFlags() &
+			(Qt::WindowStaysOnTopHint | Qt::BypassWindowManagerHint)));
+	}
+}
 void preparePreview(QWidget *) {}
 
 void activatePanel(QWidget *widget)
