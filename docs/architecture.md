@@ -126,7 +126,7 @@ Windows 测试的 Qt 运行目录由 CMake 从 Qt 导入目标取得。
 | `clipboard_contract` | 剪贴板所有权交接与同步通知中的再次替换、纯文本副本、暂停/恢复、内部复制、原生同步导致快照失效、采集排除与后续复制恢复 |
 | `diagnostics_contract` | 公共日志元数据、快照去重、两代大小轮换、记录上限和写入失败 |
 | `clipboard_macos_contract` | 独立原生剪贴板的临时/自动/保密标记、多条目标记、延迟载荷不被读取；仅 macOS |
-| `shortcut_linux_contract` | 无显示服务时回退、立即退出、多个独立录制实例、重复退出后连接释放；录制检查需要支持 RECORD 的 X11 服务 |
+| `shortcut_linux_contract` | Win+V 与锁定键、长按只触发一次、无显示服务时回退、立即退出、注册冲突及连接释放；输入不泄漏检查需要支持 XTest 的 X11 服务 |
 | `historyview_contract` | 卡片绑定、复制/删除/撤销、搜索恢复、空条目清理、拖动方向锁定、回弹及即时撤销 |
 | `architecture_dependencies` | 各层禁止的源码依赖 |
 

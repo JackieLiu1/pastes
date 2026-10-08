@@ -46,8 +46,11 @@ macOS 应用包通过 `Info.plist` 的 `LSUIElement=true` 在系统启动阶段�
 
 `GlobalShortcut` 用独占指针持有后台实现，随门面析构自动释放。
 
-Linux 实现析构时先停止并等待后台结束。X11 连接和 RECORD 上下文在后台线程创建和释放，以异步录制配合
-`QSocketNotifier` 接收输入；停止操作唤醒事件循环，不从 GUI 线程关闭仍在使用的连接。
+Linux 的 X11 后端通过 `XGrabKey` 注册 Win+V，由 `QSocketNotifier` 接收捕获的按键，
+避免 V 同时输入到原焦点应用。按住 V 只触发一次，释放后才允许再次触发；
+Caps Lock 和 Num Lock 不影响快捷键。注册冲突时回退到托盘，并更新界面提示。
+X11 连接在后台线程创建和释放，关闭连接时释放按键注册；析构先停止并等待后台结束，
+停止操作唤醒事件循环，不从 GUI 线程关闭仍在使用的连接。
 
 ## 保持现有行为
 
@@ -101,7 +104,7 @@ Linux 实现析构时先停止并等待后台结束。X11 连接和 RECORD 上�
   不覆盖 Qt 阴影边距，四角使用 18 逻辑像素圆角。弹窗内部的文本、图片及设置卡片
   保留实色背景。Windows 背板跟随弹窗移动、缩放和关闭，保持原窗口层级与输入；
   macOS 使用 AppKit 背板及四角遮罩。原生能力不可用时弹窗也回退实色。
-- Linux 保留 Ctrl+Shift+V、X11 来源查询、Selection 写入、Shift+Insert 注入以及用户 autostart 文件。
+- Linux 使用 Win+V，保留 X11 来源查询、Selection 写入、Shift+Insert 注入以及用户 autostart 文件。
 - 数据库位置、schema 和 Qt 信号的队列化 SQL 执行方式没有迁移。
   历史统一保留最近 30 天，由 `core/historypolicy.h` 定义期限与到期边界；
   启动及记录新复制时清理已满 30 天的条目，删除后继续检查移入当前位置的条目。

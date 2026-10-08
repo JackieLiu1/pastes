@@ -12,7 +12,7 @@ to the build directory's `dist/` folder.
 
 Thanks for choose pastes.
 
-Pastes is a cross-platform clipboard manager. Open the history panel with `Win+V` on Windows, `Ctrl+Shift+V` on Linux, or the tray icon. While Pastes is running, it handles `Win+V`; exiting restores the native Windows behavior. If the Windows shortcut hook is unavailable, Pastes attempts `Ctrl+Shift+V` and displays the active shortcut in the panel and tray menu.
+Pastes is a cross-platform clipboard manager. Open the history panel with `Win+V` on Windows and Linux, or the tray icon. While Pastes is running on Windows, it handles `Win+V`; exiting restores the native Windows behavior. If the Windows shortcut hook is unavailable, Pastes attempts `Ctrl+Shift+V` and displays the active shortcut in the panel and tray menu.
 
 Pastes keeps the last 30 days of clipboard history. You can add it to your system global clipboard by double-clicking or pressing `Enter`. What’s more surprising is that if the focused window can receive clipboard data, Then he will copy the data directly to the focus window.
 

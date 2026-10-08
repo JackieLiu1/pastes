@@ -49,6 +49,9 @@
         <translation>隐藏历史（%1）</translation>
     </message>
     <message>
+        <location filename="platform/linux/shortcut.cpp" line="112"/>
+        <location filename="platform/linux/shortcut.cpp" line="118"/>
+        <location filename="platform/linux/shortcut.cpp" line="130"/>
         <location filename="platform/macos/shortcut.cpp" line="36"/>
         <location filename="platform/windows/shortcut.cpp" line="69"/>
         <source>Tray icon</source>

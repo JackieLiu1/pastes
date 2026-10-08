@@ -36,6 +36,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_sources(pastes_platform PRIVATE
         linux/secretstore.cpp
         linux/clipboardsource.cpp linux/pastetarget.cpp linux/shortcut.cpp
+        linux/shortcutstate.h
         linux/windowblur.cpp linux/fileicon.cpp linux/paths.cpp
         linux/startupintegration.cpp desktop/windowintegration.cpp
         desktop/menuintegration.cpp desktop/applicationintegration.cpp

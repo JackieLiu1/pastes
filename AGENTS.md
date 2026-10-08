@@ -4,13 +4,13 @@
 
 ## 项目概览
 
-Pastes 是一个跨平台剪贴板管理器：Windows 用 `Win+V`、Linux 用 `Ctrl+Shift+V` 或点击托盘唤出，保留最近 30 天的剪贴板历史，
+Pastes 是一个跨平台剪贴板管理器：Windows 和 Linux 用 `Win+V` 或点击托盘唤出，保留最近 30 天的剪贴板历史，
 macOS 用 `Shift+Cmd+V` 或点击菜单栏图标唤出。双击条目或按 `Enter`
 复制回剪贴板，并由各平台的 PasteTarget 请求粘贴到原焦点应用。
 
 - 语言/框架：C++17 + Qt ≥ 6.3（Core / Gui / Widgets / Sql）
 - 构建系统：CMake（≥ 3.16），不使用 qmake
-- 平台：Windows（Win32 API）、Linux（X11/XRecord/XTest、gio）、macOS（AppKit / Carbon / Accessibility）
+- 平台：Windows（Win32 API）、Linux（X11/XTest、gio）、macOS（AppKit / Carbon / Accessibility）
 - 单实例：捆绑的 3rd/SingleApplication（静态库，源码直接编入，`QAPPLICATION_CLASS=QApplication`）
 - 持久化：SQLite（QSQLITE），两张历史表 `item`（md5/imagedata/icondata/time）与
   `data`（md5/formats/format_data，每格式一行），收藏状态单独存放在 `favorite` 表

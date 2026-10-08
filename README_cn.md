@@ -11,7 +11,7 @@ Linux 安装包的制作与安装方法见[打包说明](packaging/linux/README.
 
 感谢您选择 Pastes 程序。
 
-Pastes 是一款跨平台的剪贴板管理器。Windows 上可以按 `Win+V` 唤出底部剪贴板历史面板，也可以点击托盘图标。程序运行时接管 `Win+V`，退出后恢复 Windows 原生剪贴板历史；不修改系统设置。若快捷键接管失败，会尝试 `Ctrl+Shift+V`，实际可用的快捷键会显示在面板底部和托盘菜单中。Linux 使用 `Ctrl+Shift+V`。
+Pastes 是一款跨平台的剪贴板管理器。Windows 和 Linux 上可以按 `Win+V` 唤出底部剪贴板历史面板，也可以点击托盘图标。Windows 上程序运行时接管 `Win+V`，退出后恢复 Windows 原生剪贴板历史；不修改系统设置。若 Windows 快捷键接管失败，会尝试 `Ctrl+Shift+V`，实际可用的快捷键会显示在面板底部和托盘菜单中。
 
 macOS 的初步支持版本编译后位于 `build/pastes.app`，双击即可启动并显示面板。
 程序运行后，用 `Shift+Cmd+V`（`⇧⌘V`）唤出或隐藏面板，也可以点击菜单栏图标。
