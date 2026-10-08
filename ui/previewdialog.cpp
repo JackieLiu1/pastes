@@ -95,7 +95,7 @@ PreviewDialog::PreviewDialog(const ItemData &data, QWidget *parent) :
 	QLabel *icon = new QLabel(m_header);
 	icon->setFixedSize(30, 30);
 	icon->setAlignment(Qt::AlignCenter);
-	if (!data.icon.isNull()) {
+	if (!data.icon.isNull() && !SourceIconView::isLegacyPlaceholder(data.icon)) {
 		icon->setPixmap(SourceIconView::pixmap(data.icon, 24, devicePixelRatioF()));
 	} else
 		icon->setPixmap(QIcon(":/resources/pastes.svg").pixmap(QSize(26, 26), devicePixelRatioF()));

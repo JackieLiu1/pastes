@@ -20,6 +20,17 @@ QRect visibleBounds(const QImage &image, int minimumAlpha)
 }
 }
 
+bool SourceIconView::isLegacyPlaceholder(const QImage &image)
+{
+	if (image.isNull() || qMax(image.width(), image.height()) != 32) return false;
+	/* Match the old QPixmap scaling path and compare pixels after PNG loads,
+	 * which can change the image's storage format without changing its icon. */
+	static const QImage legacy = QPixmap(":/resources/ubuntu.png")
+		.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation)
+		.toImage().convertToFormat(QImage::Format_ARGB32_Premultiplied);
+	return !legacy.isNull() && image.convertToFormat(QImage::Format_ARGB32_Premultiplied) == legacy;
+}
+
 QPixmap SourceIconView::pixmap(const QImage &image, int logicalSize, qreal devicePixelRatio)
 {
 	if (image.isNull() || logicalSize <= 0 || devicePixelRatio <= 0)

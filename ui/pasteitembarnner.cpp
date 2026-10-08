@@ -127,7 +127,7 @@ void Barnner::setFavoriteVisible(bool visible)
 
 void Barnner::setIcon(QPixmap &pixmap)
 {
-	m_pixmap = pixmap;
+	m_pixmap = SourceIconView::isLegacyPlaceholder(pixmap.toImage()) ? QPixmap() : pixmap;
 	m_icon->setToolTip(m_pixmap.isNull() ? QObject::tr("Source unavailable") : QString());
 	if (m_pixmap.isNull()) {
 		QImage image(40, 40, QImage::Format_ARGB32_Premultiplied);

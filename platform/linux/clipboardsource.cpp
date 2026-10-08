@@ -102,6 +102,7 @@ QImage ClipboardSource::snapshotIcon(void)
 
 	int i = 0;
 	Display *display = XOpenDisplay(NULL);
+	if (!display) return {};
 	Atom clipboard_atom = XInternAtom(display, "CLIPBOARD", False);
 	Window clipboard_owner_win = XGetSelectionOwner(display, clipboard_atom);
 	char buf[1024] = {0};
@@ -141,10 +142,8 @@ again:
 		clipboard_owner_win++;
 		if (i++ > 200) {
 			XCloseDisplay(display);
-			qDebug() << "Not found icon, Use default Linux logo";
-			pixmap.convertFromImage(QImage(":/resources/ubuntu.png"));
-			return pixmap.scaled(32, 32, Qt::KeepAspectRatio,
-		Qt::SmoothTransformation).toImage();
+			qDebug() << "Pastes: clipboard source icon unavailable";
+			return {};
 		}
 
 		goto again;

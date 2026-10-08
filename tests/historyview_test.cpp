@@ -956,12 +956,53 @@ void sourceIconDownsampling(void)
 	}
 }
 
+void legacySourcePlaceholder(void)
+{
+	const QPixmap legacy = QPixmap(":/resources/ubuntu.png")
+		.scaled(32, 32, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+	require(!legacy.isNull(), "Legacy Linux placeholder fixture missing");
+	const QImage stored = QImage::fromData(png(legacy.toImage()));
+	Barnner banner;
+	QPixmap unknown;
+	banner.setIcon(unknown);
+	const QImage neutral = banner.icon().toImage();
+	QPixmap restored = QPixmap::fromImage(stored);
+	banner.setIcon(restored);
+	require(banner.icon().toImage() == neutral, "Persisted Linux placeholder did not use the shared unknown icon");
+	bool unavailable = false;
+	for (const QLabel *label : banner.findChildren<QLabel *>())
+		unavailable |= label->toolTip() == QObject::tr("Source unavailable");
+	require(unavailable, "Legacy placeholder was still identified as a real source");
+	QImage native = stored.convertToFormat(QImage::Format_ARGB32);
+	native.setPixelColor(native.width()/2, native.height()/2, Qt::green);
+	QPixmap real = QPixmap::fromImage(native);
+	banner.setIcon(real);
+	require(banner.icon().toImage() == real.toImage(), "A different real application icon was replaced");
+	auto entry = textEntry("Unknown source preview");
+	auto previewIcon = [](PreviewDialog &dialog) {
+		QWidget *header = dialog.findChild<QLabel *>("PreviewTitle")->parentWidget();
+		for (const QLabel *label : header->findChildren<QLabel *>(QString(), Qt::FindDirectChildrenOnly))
+			if (label->objectName().isEmpty()) return label->pixmap().toImage();
+		return QImage();
+	};
+	PreviewDialog empty(*entry);
+	const QImage expected = previewIcon(empty);
+	require(!expected.isNull(), "Unknown source preview icon missing");
+	entry->icon = stored;
+	PreviewDialog old(*entry);
+	require(previewIcon(old) == expected, "Preview still displayed the legacy Linux logo");
+	entry->icon = native;
+	PreviewDialog known(*entry);
+	require(previewIcon(known) != expected, "Preview replaced a real source icon");
+}
+
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
 	if (app.arguments().contains("--icons-only")) {
 		int failures = runTest("source icons retain size and bounds", sourceIconPresentation);
 		failures += runTest("source icon minification filters fine detail", sourceIconDownsampling);
+		failures += runTest("legacy Linux placeholders use the shared unknown source icon", legacySourcePlaceholder);
 		return failures ? 1 : 0;
 	}
 	if (app.arguments().contains("--svg-only")) {
@@ -986,5 +1027,6 @@ int main(int argc, char **argv)
 	failures += runTest("bounded card excerpts retain complete search, copy and preview", longTextCards);
 	failures += runTest("source icons keep uniform visible bounds on HiDPI screens", sourceIconPresentation);
 	failures += runTest("source icon minification filters fine detail", sourceIconDownsampling);
+	failures += runTest("legacy Linux placeholders use the shared unknown source icon", legacySourcePlaceholder);
 	return failures ? 1 : 0;
 }
