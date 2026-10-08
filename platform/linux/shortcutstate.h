@@ -17,10 +17,16 @@ public:
 		unsigned lockModifiers = LockMask | Mod2Mask)
 	{
 		if (!pasteKey || key != pasteKey) return false;
-		if (type == KeyRelease) { m_pressed = false; return false; }
+		if (type == KeyRelease) {
+			const bool activate = m_pressed;
+			m_pressed = false;
+			return activate;
+		}
 		if (!matches(type, key, pasteKey, modifiers, lockModifiers) || m_pressed) return false;
 		m_pressed = true;
-		return true;
+		/* XGrabKey owns the entire keyboard until V is released. Open the
+		 * panel after that release so its first control keys reach Qt. */
+		return false;
 	}
 
 private:

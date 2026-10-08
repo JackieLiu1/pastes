@@ -49,13 +49,15 @@ void winPasteChord(void)
 	require(LinuxShortcutState::matches(KeyPress, pasteKey, pasteKey, Mod4Mask | Mod3Mask,
 		LockMask | Mod3Mask), "A remapped Num Lock blocked Win+V");
 	LinuxShortcutState state;
-	require(state.update(KeyPress, pasteKey, pasteKey, Mod4Mask), "First Win+V press was lost");
+	require(!state.update(KeyPress, pasteKey, pasteKey, Mod4Mask), "History opened while the keyboard was grabbed");
 	for (int i = 0; i < 20; ++i)
 		require(!state.update(KeyPress, pasteKey, pasteKey, Mod4Mask), "Holding V repeated activation");
 	state.update(KeyRelease, pasteKey+1, pasteKey, Mod4Mask);
 	require(!state.update(KeyPress, pasteKey, pasteKey, Mod4Mask), "Another key release reset held V");
-	state.update(KeyRelease, pasteKey, pasteKey, 0);
-	require(state.update(KeyPress, pasteKey, pasteKey, Mod4Mask), "A second Win+V press was lost");
+	require(state.update(KeyRelease, pasteKey, pasteKey, 0), "First Win+V release was lost");
+	require(!state.update(KeyRelease, pasteKey, pasteKey, 0), "A duplicate release activated history");
+	require(!state.update(KeyPress, pasteKey, pasteKey, Mod4Mask), "Second press opened during the grab");
+	require(state.update(KeyRelease, pasteKey, pasteKey, Mod4Mask), "A second Win+V release was lost");
 }
 
 void missingDisplayAndEarlyStop(void)
