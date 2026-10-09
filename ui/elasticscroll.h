@@ -52,6 +52,8 @@ private:
 	qreal m_target = 0;
 	qreal m_velocity = 0;
 	qreal m_drag_origin = 0;
+	qreal m_drag_travel = 0;
+	qreal m_drag_peak = 0;
 	qreal m_wheel_raw = 0;
 	bool m_momentum_return = false;
 	bool m_applying = false;

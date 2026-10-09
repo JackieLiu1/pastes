@@ -18,6 +18,7 @@
 #include <QPdfWriter>
 #include <QPlainTextEdit>
 #include <QShortcut>
+#include <QScrollBar>
 #include <QTemporaryDir>
 #include <QVBoxLayout>
 
@@ -360,6 +361,111 @@ void searchNavigationGeometry(void)
 	require(list->viewport()->x() > origin.x(), "Fixture did not stretch with a touchpad");
 	scroll->cancel();
 	require(list->viewport()->pos() == origin, "Touchpad cancellation did not restore the viewport");
+}
+
+void dragDistanceInertia(void)
+{
+	QListWidget list;
+	list.resize(800, 300);
+	list.setFlow(QListView::LeftToRight);
+	list.setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+	list.setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	list.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	list.setFocusPolicy(Qt::NoFocus);
+	for (int i = 0; i < 80; ++i) {
+		auto *item = new QListWidgetItem(QString::number(i), &list);
+		item->setSizeHint(QSize(240, 240));
+	}
+	ElasticScrollController scroll(&list);
+	list.show();
+	list.doItemsLayout();
+	auto *bar = list.horizontalScrollBar();
+	require(bar->maximum() > 10000, "Inertia fixture has no scrolling range");
+	const QPoint origin = list.viewport()->pos();
+	auto pause = [](int milliseconds) {
+		QEventLoop loop;
+		QTimer::singleShot(milliseconds, &loop, &QEventLoop::quit);
+		loop.exec();
+	};
+	auto settle = [&] { waitUntil([&] { return !scroll.active(); }); };
+	auto fling = [&](qreal distance) {
+		bar->setValue(4000);
+		scroll.beginDrag();
+		const qreal direction = distance < 0 ? -1 : 1;
+		const qreal prefix = qAbs(distance)-32;
+		scroll.dragTo(direction*prefix);
+		/* Identical final movement: only the earlier travel differs. */
+		for (int i = 1; i <= 16; ++i) {
+			pause(8);
+			scroll.dragTo(direction*(prefix+2*i));
+		}
+		const qreal released = scroll.position();
+		require(qAbs(released-(4000-distance)) < 1, "Dragging stopped tracking the pointer");
+		scroll.releaseDrag();
+		settle();
+		return scroll.position()-released;
+	};
+	const qreal shortTravel = fling(-64);
+	const qreal longTravel = fling(-320);
+	qInfo() << "distance inertia: short" << shortTravel << "long" << longTravel;
+	require(shortTravel > 0 && shortTravel < 240, "Short drag flung past an entire card");
+	require(longTravel > shortTravel*3, "Longer drag with the same release movement did not gain inertia");
+	const qreal capped = fling(-800);
+	const qreal veryLong = fling(-1500);
+	require(capped >= longTravel && veryLong < list.viewport()->width()*1.6 &&
+		qAbs(veryLong-capped) < 40, "Long drag inertia was unbounded");
+	require(fling(320) < -shortTravel*3, "Rightward drag lost its inertia direction");
+
+	bar->setValue(4000);
+	scroll.beginDrag(); scroll.dragTo(-320); scroll.dragTo(-308);
+	const qreal reversed = scroll.position();
+	scroll.releaseDrag(); settle();
+	require(scroll.position() < reversed && reversed-scroll.position() < shortTravel,
+		"Short reversal retained the previous long fling or went in the old direction");
+	bar->setValue(4000);
+	scroll.beginDrag(); scroll.dragTo(-320); scroll.dragTo(-318);
+	const qreal jittered = scroll.position();
+	scroll.releaseDrag(); settle();
+	require(scroll.position()-jittered > longTravel/2, "Minor pointer jitter discarded the gesture distance");
+
+	bar->setValue(4000);
+	scroll.beginDrag(); scroll.dragTo(-320); pause(120);
+	const qreal held = scroll.position();
+	scroll.releaseDrag();
+	require(!scroll.active() && scroll.position() == held, "Paused drag still started inertia");
+	scroll.beginDrag(); scroll.dragTo(-320); pause(120); scroll.dragTo(-322);
+	scroll.releaseDrag();
+	require(!scroll.active(), "A tiny correction after a pause restored the old long fling");
+	bar->setValue(4000);
+	scroll.beginDrag(); scroll.dragTo(-320); pause(120); scroll.dragTo(-380);
+	const qreal resumed = scroll.position();
+	scroll.releaseDrag(); settle();
+	require(scroll.position()-resumed > longTravel, "An input timing gap discarded the accumulated drag distance");
+	scroll.beginDrag(); scroll.dragTo(-320); scroll.releaseDrag(false);
+	require(!scroll.active(), "Cancelled drag still started inertia");
+	const qreal beforeTouchpad = scroll.position();
+	scroll.wheel(80, true, Qt::ScrollBegin);
+	require(qAbs(scroll.position()-beforeTouchpad-80) < 1, "Native touchpad movement was amplified");
+	const qreal touchpad = scroll.position();
+	scroll.wheel(20, true, Qt::ScrollMomentum);
+	require(qAbs(scroll.position()-touchpad-20) < 1, "Native touchpad inertia was amplified");
+	scroll.wheel(0, true, Qt::ScrollEnd);
+
+	bar->setValue(0);
+	scroll.beginDrag(); scroll.dragTo(120); scroll.releaseDrag(); settle();
+	require(bar->value() == 0 && list.viewport()->pos() == origin, "Left edge failed to return");
+	bar->setValue(bar->maximum()-40);
+	scroll.beginDrag(); scroll.dragTo(-400); scroll.releaseDrag(); settle();
+	require(bar->value() == bar->maximum() && list.viewport()->pos() == origin, "Right edge failed to return");
+	bar->setValue(4000);
+	scroll.beginDrag(); scroll.dragTo(-320); scroll.releaseDrag();
+	scroll.beginDrag();
+	const qreal stopped = scroll.position();
+	pause(40);
+	require(scroll.position() == stopped, "Press failed to stop inertia");
+	scroll.releaseDrag(false);
+	scroll.beginDrag(); scroll.dragTo(-320); scroll.releaseDrag(); list.hide();
+	require(!scroll.active() && list.viewport()->pos() == origin, "Hide failed to cancel inertia");
 }
 
 void previewKeyboardRouting(void)
@@ -999,6 +1105,8 @@ void legacySourcePlaceholder(void)
 int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
+	if (app.arguments().contains("--scroll-only"))
+		return runTest("drag distance controls bounded inertia and respects gesture endings", dragDistanceInertia);
 	if (app.arguments().contains("--icons-only")) {
 		int failures = runTest("source icons retain size and bounds", sourceIconPresentation);
 		failures += runTest("source icon minification filters fine detail", sourceIconDownsampling);
@@ -1016,6 +1124,7 @@ int main(int argc, char **argv)
 	failures += runTest("synced items preserve selection and search", syncedSelection);
 	failures += runTest("search Tab advances the selected result and cycles", searchNavigation);
 	failures += runTest("search Tab keeps the card row in place", searchNavigationGeometry);
+	failures += runTest("drag distance controls bounded inertia and respects gesture endings", dragDistanceInertia);
 	failures += runTest("type-to-search focuses before input method composition", searchInputMethod);
 	failures += runTest("Space previews selection across panel focus and preserves search input", previewKeyboardRouting);
 	failures += runTest("search composition keeps candidate keys", composingSearchCommands);
