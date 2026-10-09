@@ -1,5 +1,6 @@
 #include "platform/applicationintegration.h"
 
+#include <QApplication>
 #include <QIcon>
 
 const Platform::ApplicationBehavior &Platform::applicationBehavior(void)
@@ -8,7 +9,11 @@ const Platform::ApplicationBehavior &Platform::applicationBehavior(void)
 	return behavior;
 }
 
-void Platform::configureApplication(void) {}
+void Platform::configureApplication(void)
+{
+	qApp->setWindowIcon(trayIcon());
+	QGuiApplication::setDesktopFileName(QStringLiteral("pastes"));
+}
 
 QIcon Platform::trayIcon(void)
 {
