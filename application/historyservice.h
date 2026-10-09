@@ -38,6 +38,8 @@ signals:
 	void entryAdded(HistoryEntry entry, int row, HistoryChange change);
 	void entryRemoved(EntryId id, HistoryChange change);
 	void entryErasing(HistoryEntry entry, HistoryChange change);
+	/* A synced duplicate or normalized key is replaced by entryAdded. */
+	void entryReplacing(EntryId previous, EntryId replacement);
 	void entryChanged(EntryId id);
 	void favoriteChanged(HistoryEntry entry);
 	void loaded(void);

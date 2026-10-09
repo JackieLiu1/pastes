@@ -8,14 +8,37 @@
 #include "platform/windowintegration.h"
 #include <QApplication>
 #include <QButtonGroup>
+#include <QFocusEvent>
 #include <QKeyEvent>
+#include <QJsonDocument>
 #include <QLabel>
 #include <QListWidget>
+#include <QLoggingCategory>
+#include <QScrollBar>
+#include <QScopedValueRollback>
 #include <QSettings>
 #include <QShortcut>
 #include <QVBoxLayout>
 
+Q_LOGGING_CATEGORY(historyFocusLog, "pastes.focus", QtInfoMsg)
+
 namespace {
+QString focusDescription(QWidget *widget, QListWidget *list)
+{
+	if (!widget) return QStringLiteral("none");
+	int row = -1;
+	for (QWidget *parent = widget; parent; parent = parent->parentWidget()) {
+		if (auto *card = qobject_cast<PasteItem *>(parent)) {
+			/* A removed card can lose focus after its list item is destroyed. */
+			for (int i = 0; i < list->count(); ++i)
+				if (list->itemWidget(list->item(i)) == card) { row = i; break; }
+			break;
+		}
+	}
+	return QStringLiteral("%1/%2/row=%3").arg(widget->metaObject()->className(),
+		widget->objectName()).arg(row);
+}
+
 class HistoryListItem final : public QListWidgetItem
 {
 public:
@@ -36,6 +59,15 @@ public:
 	using QListWidget::QListWidget;
 
 protected:
+	bool eventFilter(QObject *object, QEvent *event) override
+	{
+		/* Selection belongs to view commands. Restoring an old persistent
+		 * card's focus must not select it again and rewind pointer browsing. */
+		if (event->type() == QEvent::FocusIn && qobject_cast<PasteItem *>(object))
+			return false;
+		return QListWidget::eventFilter(object, event);
+	}
+
 	bool edit(const QModelIndex &, EditTrigger, QEvent *) override
 	{
 		/* Cards handle their own interaction. Qt's default editor path
@@ -67,11 +99,25 @@ HistoryView::HistoryView(HistoryService &history, QWidget *window)
 	connect(m_menuButton, &QPushButton::clicked, this, &HistoryView::menuRequested);
 	connect(&m_history, &HistoryService::entryAdded, this, &HistoryView::addEntry);
 	connect(&m_history, &HistoryService::entryRemoved, this, &HistoryView::removeEntry);
+	connect(&m_history, &HistoryService::entryReplacing, this, [this](EntryId previous, EntryId replacement) {
+		QScopedValueRollback<const char *> cause(m_selectionCause, "sync.replace");
+		PasteItem *card = m_cards.value(previous);
+		if (!card) return;
+		if (m_list->currentItem() == card->widgetItem()) {
+			m_syncScrollPosition = m_list->horizontalScrollBar()->value();
+			m_syncSelection = replacement;
+			QWidget *focused = QApplication::focusWidget();
+			m_syncCardFocus = focused == card || (focused && card->isAncestorOf(focused));
+			traceFocus("sync.replaceSelected");
+		}
+		if (m_searchSelection == card->widgetItem()) m_syncSearchSelection = replacement;
+	});
 	connect(&m_history, &HistoryService::entryChanged, this, &HistoryView::updateEntry);
 	connect(&m_history, &HistoryService::favoriteChanged, this, [this](HistoryEntry entry) {
 		updateEntry(entry->id);
 	});
 	connect(&m_history, &HistoryService::loaded, this, [this](void) {
+		traceFocus("history.loaded");
 		applyFilter(true);
 		emit countChanged();
 	});
@@ -80,7 +126,46 @@ HistoryView::HistoryView(HistoryService &history, QWidget *window)
 		if (!available) m_dismissals.clear();
 	});
 	setupShortcuts();
+	QObject::connect(qApp, &QApplication::focusChanged, this, [this](QWidget *old, QWidget *now) {
+		if (!((old && old->window() == m_window) || (now && now->window() == m_window))) return;
+		qCDebug(historyFocusLog) << "focusChanged" << focusDescription(old, m_list)
+			<< "->" << focusDescription(now, m_list);
+		traceFocus("focusChanged.state");
+	});
 	qApp->installEventFilter(this);
+}
+
+HistoryView::~HistoryView(void)
+{
+	/* Child widgets lose focus in QWidget's destructor, after our metadata
+	 * logger and other members have been destroyed. Stop callbacks first. */
+	qApp->removeEventFilter(this);
+	QObject::disconnect(qApp, nullptr, this, nullptr);
+	QObject::disconnect(m_list, nullptr, this, nullptr);
+}
+
+void HistoryView::traceFocus(const char *event) const
+{
+	const QByteArray reason(event);
+	/* Keep normal logs limited to selection, focus and replacement events.
+	 * Detailed filter/add traces remain available through QT_LOGGING_RULES. */
+	if (!historyFocusLog().isDebugEnabled() && reason != "currentItemChanged" &&
+		reason != "history.loaded" && reason != "focusChanged.state" &&
+		!reason.startsWith("sync.")) return;
+	const PasteItem *card = currentCard();
+	const QJsonObject metadata{
+		{"event", QString::fromLatin1(event)},
+		{"cause", QString::fromLatin1(m_selectionCause ? m_selectionCause : "none")},
+		{"currentRow", m_list->currentRow()},
+		{"currentId", QString::number(card && card->entry() ? card->entry()->id : EntryId(0))},
+		{"replacementId", QString::number(m_syncSelection)},
+		{"currentContent", card && card->entry() ? QString::fromLatin1(card->entry()->md5.toHex()) : QString()},
+		{"scrollX", m_list->horizontalScrollBar()->value()},
+		{"focus", focusDescription(QApplication::focusWidget(), m_list)},
+		{"visible", m_window->isVisible()}, {"active", QApplication::activeWindow() == m_window}
+	};
+	m_focusLog.append(metadata);
+	qCInfo(historyFocusLog).noquote() << QJsonDocument(metadata).toJson(QJsonDocument::Compact);
 }
 
 void HistoryView::setupShortcuts(void)
@@ -271,8 +356,11 @@ void HistoryView::moveFavorite(PasteItem *card, bool left)
 	}
 }
 
-void HistoryView::applyFilter(bool resetSelection)
+void HistoryView::applyFilter(bool resetSelection, bool revealSelection)
 {
+	QScopedValueRollback<const char *> cause(m_selectionCause,
+		m_selectionCause ? m_selectionCause : (resetSelection ? "filter.reset" : "filter"));
+	traceFocus(resetSelection ? "applyFilter.reset.begin" : "applyFilter.begin");
 	sortCards();
 	QWidget *focused = QApplication::focusWidget();
 	const bool cardFocused = focused && m_list->isAncestorOf(focused);
@@ -285,10 +373,14 @@ void HistoryView::applyFilter(bool resetSelection)
 	}
 	if (resetSelection || !m_list->currentItem() || m_list->currentItem()->isHidden())
 		m_list->setCurrentItem(first);
-	if (m_list->currentItem()) m_list->scrollToItem(m_list->currentItem());
+	if (revealSelection && m_list->currentItem()) m_list->scrollToItem(m_list->currentItem());
 	resetItemTabOrder();
 	updateSummary();
-	if (cardFocused) focusCurrent();
+	if (cardFocused) {
+		if (revealSelection) focusCurrent();
+		else if (PasteItem *card = currentCard()) card->setFocus();
+	}
+	traceFocus("applyFilter.end");
 }
 
 void HistoryView::setupUi(void)
@@ -349,6 +441,7 @@ void HistoryView::setupUi(void)
 	this->m_list->viewport()->installEventFilter(this);
 	QObject::connect(this->m_list, &QListWidget::currentItemChanged, this,
 		[this](QListWidgetItem *current, QListWidgetItem *previous) {
+		traceFocus("currentItemChanged");
 		if (previous) {
 			auto *widget = qobject_cast<PasteItem *>(this->m_list->itemWidget(previous));
 			if (widget)
@@ -475,7 +568,22 @@ void HistoryView::cancelInteractions(bool swipe, bool reflow, bool scroll)
 
 bool HistoryView::eventFilter(QObject *object, QEvent *event)
 {
-	if (m_interaction && m_window->isVisible() && m_interaction->handleEvent(object, event)) return true;
+	if (historyFocusLog().isDebugEnabled()) {
+		auto *widget = qobject_cast<QWidget *>(object);
+		if (widget && widget->window() == m_window &&
+			(event->type() == QEvent::FocusIn || event->type() == QEvent::FocusOut)) {
+			qCDebug(historyFocusLog) << event->type() << "reason"
+				<< static_cast<QFocusEvent *>(event)->reason() << focusDescription(widget, m_list);
+			traceFocus("focusEvent.state");
+		}
+	}
+	if (m_interaction && m_window->isVisible() && m_interaction->handleEvent(object, event)) {
+		/* Browsing owns the panel focus until a click selects a card on
+		 * release. Do not retain an offscreen card as the activation target. */
+		if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::Wheel)
+			setFocus(Qt::MouseFocusReason);
+		return true;
+	}
 	if (object == m_list->viewport() && event->type() == QEvent::Resize && m_empty)
 		m_empty->setGeometry(QRect(QPoint(), static_cast<QResizeEvent *>(event)->size()));
 	if ((event->type() == QEvent::ShortcutOverride || event->type() == QEvent::KeyPress) &&
@@ -525,10 +633,12 @@ QWidget *HistoryView::menuAnchor(void) const { return m_menuButton; }
 
 void HistoryView::focusCurrent(void)
 {
+	traceFocus("focusCurrent.begin");
 	if (PasteItem *card = currentCard()) {
 		card->setFocus();
 		m_list->scrollToItem(card->widgetItem());
 	} else setFocus();
+	traceFocus("focusCurrent.end");
 }
 
 void HistoryView::focusEntry(const QByteArray &md5)
@@ -569,6 +679,15 @@ void HistoryView::updateShortcutHint(void)
 
 void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 {
+	QScopedValueRollback<const char *> cause(m_selectionCause,
+		change == HistoryChange::Synced ? "sync.add" : "history.add");
+	const bool restoreSelection = entry->id == m_syncSelection;
+	const bool restoreFocus = restoreSelection && m_syncCardFocus;
+	if (restoreSelection) { m_syncSelection = 0; m_syncCardFocus = false; }
+	if (change != HistoryChange::Loaded && historyFocusLog().isDebugEnabled()) {
+		qCDebug(historyFocusLog) << "addEntry" << "change" << int(change) << "row" << row;
+		traceFocus("addEntry.begin");
+	}
 	if (change == HistoryChange::Captured || change == HistoryChange::Synced) cancelInteractions();
 	if (change == HistoryChange::Restored) m_reflow->prepare(m_list, nullptr);
 	auto *item = new HistoryListItem;
@@ -602,18 +721,35 @@ void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 		return;
 	}
 	item->setHidden(!matchesFilter(card));
-	if (change == HistoryChange::Captured && !item->isHidden()) m_list->setCurrentItem(item);
+	if ((change == HistoryChange::Captured || restoreSelection) && !item->isHidden())
+		m_list->setCurrentItem(item);
+	if (entry->id == m_syncSearchSelection) {
+		m_syncSearchSelection = 0;
+		m_searchSelection = item;
+	}
 	card->setSelected(item->isSelected());
 	/* The loaded signal finalizes the batch once. Rebuilding navigation and
 	 * numbering for every persisted entry makes startup quadratic. */
 	if (change != HistoryChange::Loaded) {
-		applyFilter();
+		applyFilter(false, change != HistoryChange::Synced);
+		if (restoreFocus && !item->isHidden()) card->setFocus();
+		if (restoreSelection) {
+			/* setCurrentItem also reveals its row through Qt's currentChanged
+			 * path. Finish layout, then retain the user's browsing position. */
+			m_list->doItemsLayout();
+			m_list->horizontalScrollBar()->setValue(m_syncScrollPosition);
+			traceFocus("sync.selectionRestored");
+		}
 		emit countChanged();
 	}
 }
 
 void HistoryView::removeEntry(EntryId id, HistoryChange change)
 {
+	QScopedValueRollback<const char *> cause(m_selectionCause,
+		change == HistoryChange::Synced ? "sync.remove" : "history.remove");
+	if (change == HistoryChange::Synced && currentCard() && currentCard()->entry()->id == id)
+		traceFocus("sync.removeSelected");
 	PasteItem *card = m_cards.take(id);
 	if (!card) return;
 	QListWidgetItem *item = card->widgetItem();

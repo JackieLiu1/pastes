@@ -21,6 +21,9 @@
 #include <QScreen>
 #include <QSettings>
 #include <QTimer>
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(windowFocusLog, "pastes.focus", QtInfoMsg)
 
 MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, QWidget *parent, SyncService *sync)
 	: QMainWindow(parent), __sync(sync), __history(history), __clipboard(clipboard)
@@ -50,11 +53,6 @@ MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, 
 	connect(&clipboard, &ClipboardController::recordingChanged, this, [this](bool enabled) {
 		__main_frame->setRecordingEnabled(enabled);
 		updateTrayTooltip();
-	});
-	connect(&history, &HistoryService::loaded, this, [this](void) {
-		/* Warm the native window once, retaining the existing startup behavior. */
-		setVisible(true);
-		setVisible(false);
 	});
 	__hide_animation = new QPropertyAnimation(this, "pos", this);
 	__hide_animation->setDuration(200);
@@ -90,6 +88,7 @@ MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, 
 
 void MainWindow::showEvent(QShowEvent *event)
 {
+	qCInfo(windowFocusLog) << "MainWindow.showEvent";
 	__main_frame->focusCurrent();
 	QMainWindow::showEvent(event);
 	updateTrayPanelAction();
@@ -97,6 +96,7 @@ void MainWindow::showEvent(QShowEvent *event)
 
 void MainWindow::hideEvent(QHideEvent *event)
 {
+	qCInfo(windowFocusLog) << "MainWindow.hideEvent";
 	__main_frame->cancelInteractions();
 	QMainWindow::hideEvent(event);
 	updateTrayPanelAction();

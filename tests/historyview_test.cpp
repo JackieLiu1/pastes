@@ -11,6 +11,7 @@
 #include <QApplication>
 #include <QFile>
 #include <QFileInfo>
+#include <QFocusEvent>
 #include <QInputMethodEvent>
 #include <QKeyEvent>
 #include <QListWidget>
@@ -21,6 +22,7 @@
 #include <QScrollBar>
 #include <QTemporaryDir>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 
 void viewCommands(void)
 {
@@ -220,6 +222,55 @@ void syncedSelection()
 	require(list->item(0)->isHidden(), "Remote arrival bypassed the active filter");
 }
 
+void syncedReplacementSelection(void)
+{
+	for (bool cardFocus : {false, true}) {
+		for (bool differentIdentity : {false, true}) {
+			MemoryRepository repository;
+			HistoryService history(repository);
+			QWidget window;
+			window.resize(1200, 450);
+			HistoryView view(history, &window);
+			QVBoxLayout layout(&window);
+			layout.addWidget(&view);
+			const QDateTime now = QDateTime::currentDateTime();
+			auto local = textEntry("selected item", now.addSecs(-10));
+			/* Sync normalizes MIME content and can map a different local key. */
+			if (differentIdentity) local->md5 = QByteArray(16, 'l');
+			history.load();
+			repository.finishLoad({local,
+				textEntry("second item", now.addSecs(-20)), textEntry("third item", now.addSecs(-30))});
+			auto *list = view.findChild<QListWidget *>();
+			auto *search = view.findChild<LineEdit *>();
+			window.show();
+			window.activateWindow();
+			waitUntil([&] { return QApplication::activeWindow() == &window; });
+			if (cardFocus) view.focusCurrent();
+			else search->setFocus();
+			waitUntil([&] { return cardFocus ? list->itemWidget(list->currentItem())->hasFocus() : search->hasFocus(); });
+			auto replacement = textEntry("selected item", now);
+			bool synchronized = false;
+			QTimer::singleShot(40, &view, [&] {
+				history.mergeSynced(replacement, differentIdentity ? QList<QByteArray>{local->md5} : QList<QByteArray>{});
+				synchronized = true;
+			});
+			waitUntil([&] { return synchronized; });
+			auto *selected = qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()));
+			require(selected && selected->entry() == replacement && list->currentRow() == 0,
+				"Sync replacement selected the neighboring card instead of the same content");
+			require(cardFocus ? selected->hasFocus() : search->hasFocus(),
+				"Sync replacement lost card focus or interrupted search input");
+			/* A later replacement of an unselected card must not steal selection. */
+			list->setCurrentRow(2);
+			auto *third = list->currentItem();
+			history.mergeSynced(textEntry("selected item", now.addSecs(1)), {});
+			require(list->currentItem() == third, "Unselected sync replacement stole selection");
+			history.mergeSynced(nullptr, {replacement->md5});
+			require(list->currentItem() == third, "Remote deletion stole an unrelated selection");
+		}
+	}
+}
+
 void searchNavigation(void)
 {
 	MemoryRepository repository;
@@ -361,6 +412,86 @@ void searchNavigationGeometry(void)
 	require(list->viewport()->x() > origin.x(), "Fixture did not stretch with a touchpad");
 	scroll->cancel();
 	require(list->viewport()->pos() == origin, "Touchpad cancellation did not restore the viewport");
+}
+
+void pointerBrowsingKeepsPosition(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	QWidget window;
+	window.resize(1200, 450);
+	HistoryView view(history, &window);
+	QVBoxLayout layout(&window);
+	layout.addWidget(&view);
+	history.load();
+	QList<HistoryEntry> entries;
+	for (int i = 0; i < 12; ++i) entries.append(textEntry(QString("browse %1").arg(i)));
+	repository.finishLoad(entries);
+	auto *list = view.findChild<QListWidget *>();
+	auto *scroll = view.findChild<ElasticScrollController *>();
+	window.show(); window.activateWindow(); view.focusCurrent();
+	waitUntil([&] { return QApplication::activeWindow() == &window; });
+	list->doItemsLayout();
+	QWidget *first = list->itemWidget(list->item(0));
+	QWidget *viewport = list->viewport();
+	const QPoint local = viewport->rect().center();
+	const QPoint global = viewport->mapToGlobal(local);
+	/* Selection can advance before native activation restores the old focus. */
+	list->setCurrentRow(3);
+	list->horizontalScrollBar()->setValue(0);
+	QWheelEvent wheel(local, global, QPoint(-900, 0), {}, Qt::NoButton,
+		Qt::NoModifier, Qt::ScrollBegin, false);
+	QCoreApplication::sendEvent(viewport, &wheel);
+	require(list->horizontalScrollBar()->value() == 900 && list->currentRow() == 3,
+		"Pointer browsing changed selection or failed to scroll");
+	/* The first native activation can restore focus to the previously
+	 * selected persistent card after browsing has already started. */
+	QFocusEvent restore(QEvent::FocusIn, Qt::ActiveWindowFocusReason);
+	QCoreApplication::sendEvent(first, &restore);
+	require(list->horizontalScrollBar()->value() == 900 && list->currentRow() == 3 && scroll->active(),
+		"Restoring old card focus rewound pointer browsing");
+	require(view.hasFocus(), "Pointer browsing kept focus on an offscreen card");
+	QWheelEvent end(local, global, {}, {}, Qt::NoButton,
+		Qt::NoModifier, Qt::ScrollEnd, false);
+	QCoreApplication::sendEvent(viewport, &end);
+	auto mouse = [&](QEvent::Type type, const QPoint &delta) {
+		QMouseEvent event(type, local+delta, global+delta,
+			type == QEvent::MouseMove ? Qt::NoButton : Qt::LeftButton,
+			type == QEvent::MouseButtonRelease ? Qt::NoButton : Qt::LeftButton,
+			Qt::NoModifier);
+		QCoreApplication::sendEvent(viewport, &event);
+	};
+	first->setFocus(Qt::OtherFocusReason);
+	mouse(QEvent::MouseButtonPress, {});
+	mouse(QEvent::MouseMove, {-80, 0});
+	require(view.hasFocus() && list->horizontalScrollBar()->value() == 980,
+		"Dragging retained stale card focus or reset its origin");
+	mouse(QEvent::MouseButtonRelease, {-80, 0});
+	scroll->cancel();
+	QKeyEvent next(QEvent::KeyPress, Qt::Key_Right, Qt::NoModifier);
+	QCoreApplication::sendEvent(&view, &next);
+	require(list->currentRow() == 4 && list->itemWidget(list->item(4))->hasFocus() &&
+		list->visualItemRect(list->item(4)).intersects(viewport->rect()),
+		"Keyboard navigation no longer focuses and reveals its selected card");
+	const int selected = list->currentRow();
+	const int position = list->horizontalScrollBar()->value();
+	QCoreApplication::sendEvent(first, &restore);
+	require(list->currentRow() == selected && list->horizontalScrollBar()->value() == position,
+		"Stale card focus changed an explicit selection");
+	/* Background sync must not reveal an offscreen selection while browsing. */
+	view.setFocus();
+	list->horizontalScrollBar()->setValue(list->horizontalScrollBar()->maximum()/2);
+	const int browsingPosition = list->horizontalScrollBar()->value();
+	auto chosen = qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry();
+	history.mergeSynced(textEntry("remote browsing item", QDateTime::currentDateTime().addDays(-1)), {});
+	require(list->horizontalScrollBar()->value() == browsingPosition,
+		"A remote arrival scrolled back to the selected card");
+	auto replacement = cloneEntry(*chosen);
+	replacement->time = QDateTime::currentDateTime().addSecs(10);
+	history.mergeSynced(replacement, {});
+	require(qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == replacement &&
+		list->horizontalScrollBar()->value() == browsingPosition && view.hasFocus(),
+		"Sync replacement rewound browsing or stole neutral panel focus");
 }
 
 void dragDistanceInertia(void)
@@ -1107,6 +1238,10 @@ int main(int argc, char **argv)
 	QApplication app(argc, argv);
 	if (app.arguments().contains("--scroll-only"))
 		return runTest("drag distance controls bounded inertia and respects gesture endings", dragDistanceInertia);
+	if (app.arguments().contains("--sync-selection-only"))
+		return runTest("sync replacement preserves selected content and input focus", syncedReplacementSelection);
+	if (app.arguments().contains("--browsing-only"))
+		return runTest("pointer browsing survives restored card focus", pointerBrowsingKeepsPosition);
 	if (app.arguments().contains("--icons-only")) {
 		int failures = runTest("source icons retain size and bounds", sourceIconPresentation);
 		failures += runTest("source icon minification filters fine detail", sourceIconDownsampling);
@@ -1122,8 +1257,10 @@ int main(int argc, char **argv)
 	failures += runTest("pointer direction, cancellation and immediate undo", pointerCommands);
 	failures += runTest("favorite stars, filters, selection and quick paste", favoritesFilter);
 	failures += runTest("synced items preserve selection and search", syncedSelection);
+	failures += runTest("sync replacement preserves selected content and input focus", syncedReplacementSelection);
 	failures += runTest("search Tab advances the selected result and cycles", searchNavigation);
 	failures += runTest("search Tab keeps the card row in place", searchNavigationGeometry);
+	failures += runTest("pointer browsing survives restored card focus", pointerBrowsingKeepsPosition);
 	failures += runTest("drag distance controls bounded inertia and respects gesture endings", dragDistanceInertia);
 	failures += runTest("type-to-search focuses before input method composition", searchInputMethod);
 	failures += runTest("Space previews selection across panel focus and preserves search input", previewKeyboardRouting);

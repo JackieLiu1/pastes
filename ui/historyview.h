@@ -3,6 +3,7 @@
 
 #include "ui/mainframe.h"
 #include "application/historyservice.h"
+#include "platform/diagnosticlog.h"
 #include <QHash>
 #include <QPointer>
 
@@ -25,6 +26,7 @@ class HistoryView final : public MainFrame
 	Q_OBJECT
 public:
 	HistoryView(HistoryService &history, QWidget *window);
+	~HistoryView(void) override;
 	void cancelInteractions(bool swipe = true, bool reflow = true, bool scroll = true);
 	void focusCurrent(void);
 	void focusEntry(const QByteArray &md5);
@@ -47,7 +49,8 @@ protected:
 
 private:
 	void setupUi(void);
-	void applyFilter(bool resetSelection = false);
+	void traceFocus(const char *event) const;
+	void applyFilter(bool resetSelection = false, bool revealSelection = true);
 	void sortCards(void);
 	void moveFavorite(PasteItem *card, bool left);
 	void updateEntry(EntryId id);
@@ -72,6 +75,12 @@ private:
 	SearchBar *m_search = nullptr;
 	QListWidget *m_list = nullptr;
 	QListWidgetItem *m_searchSelection = nullptr;
+	EntryId m_syncSelection = 0;
+	EntryId m_syncSearchSelection = 0;
+	int m_syncScrollPosition = 0;
+	bool m_syncCardFocus = false;
+	const char *m_selectionCause = nullptr;
+	mutable Platform::DiagnosticLog m_focusLog{Platform::DiagnosticLog::focusPath()};
 	QHash<EntryId, QPointer<PasteItem>> m_cards;
 	QHash<EntryId, quint64> m_dismissals;
 	QLabel *m_count = nullptr;

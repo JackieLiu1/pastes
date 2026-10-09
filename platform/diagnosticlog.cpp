@@ -30,6 +30,12 @@ QString Platform::DiagnosticLog::inputPath(void)
 		+"/logs/input.jsonl";
 }
 
+QString Platform::DiagnosticLog::focusPath(void)
+{
+	return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
+		+"/logs/focus.jsonl";
+}
+
 void Platform::DiagnosticLog::append(const QJsonObject &metadata)
 {
 	QJsonObject snapshot = metadata;

@@ -45,6 +45,43 @@ struct WindowFixture
 	MainWindow window{history, clipboard};
 };
 
+void historyLoadKeepsWindowState(void)
+{
+	class VisibilityEvents final : public QObject
+	{
+	public:
+		int shows = 0;
+		int hides = 0;
+	protected:
+		bool eventFilter(QObject *, QEvent *event) override
+		{
+			if (event->type() == QEvent::Show) ++shows;
+			if (event->type() == QEvent::Hide) ++hides;
+			return false;
+		}
+	};
+	for (bool visible : {false, true}) {
+		WindowFixture fixture;
+		auto &window = fixture.window;
+		auto *list = window.findChild<QListWidget *>();
+		auto *search = window.findChild<QLineEdit *>();
+		if (visible) {
+			window.show_window(); window.activateWindow(); search->setFocus();
+			waitUntil([&] { return search->hasFocus(); });
+		}
+		VisibilityEvents events;
+		window.installEventFilter(&events);
+		fixture.history.load();
+		QTimer::singleShot(40, &window, [&] {
+			fixture.repository.finishLoad({textEntry("startup first"), textEntry("startup second")});
+		});
+		waitUntil([&] { return list->count() == 2; });
+		require(events.shows == 0 && events.hides == 0 && window.isVisible() == visible,
+			"History load automatically showed or hid the panel");
+		if (visible) require(search->hasFocus(), "History load stole the existing search focus");
+	}
+}
+
 void trayPanelActionFollowsVisibility(void)
 {
 	WindowFixture fixture;
@@ -413,12 +450,15 @@ int main(int argc, char **argv)
 	QCoreApplication::setApplicationName("Dialogs");
 	QSettings::setDefaultFormat(QSettings::IniFormat);
 	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences.path());
+	if (app.arguments().contains("--startup-only"))
+		return runTest("delayed history load preserves window state and focus", historyLoadKeepsWindowState);
 	if (app.arguments().contains("--preview-only")) {
 		int failures = runTest("preview header drag preserves text selection and cancels on close", previewHeaderDrag);
 		failures += runTest("Space preview takes focus and closes with Escape or Space", previewKeepsHistoryVisible);
 		return failures ? 1 : 0;
 	}
 	int failures = runTest("tray history action follows visibility and pending animations", trayPanelActionFollowsVisibility);
+	failures += runTest("delayed history load preserves window state and focus", historyLoadKeepsWindowState);
 	failures += runTest("backdrop activation and fallback preserve readable surfaces", backdropUsesOpaqueFallback);
 	failures += runTest("light theme text remains readable over black and white backgrounds", lightThemeTextContrast);
 	failures += runTest("application dialogs hide history and block reopening", appDialogsHideHistory);

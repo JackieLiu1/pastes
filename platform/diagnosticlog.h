@@ -15,6 +15,7 @@ public:
 	void append(const QJsonObject &metadata);
 	static QString clipboardPath(void);
 	static QString inputPath(void);
+	static QString focusPath(void);
 
 private:
 	QString m_path;

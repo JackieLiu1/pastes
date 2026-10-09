@@ -359,6 +359,8 @@ HistoryService::UndoResult HistoryService::undo(void)
 void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &replaced)
 {
 	if (!m_ready) return;
+	const QDateTime now = QDateTime::currentDateTime();
+	EntryId replacementId = 0;
 	for (int row = 0; row < m_entries.size(); ) {
 		const auto &previous = m_entries.at(row);
 		const bool duplicate = entry && sameContent(previous, entry);
@@ -370,7 +372,7 @@ void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &re
 				persistFavorite(previous);
 				emit entryChanged(previous->id);
 			}
-			if (!previous->favorite && HistoryPolicy::expired(previous->time, QDateTime::currentDateTime())) {
+			if (!previous->favorite && HistoryPolicy::expired(previous->time, now)) {
 				erase(row, HistoryChange::Synced);
 				return;
 			}
@@ -382,14 +384,19 @@ void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &re
 			return;
 		}
 		if (entry && duplicate) inheritFavorite(entry, previous);
-		if (replaced.contains(previous->md5) || duplicate)
+		const bool replacing = replaced.contains(previous->md5) || duplicate;
+		if (entry && replacing && (entry->favorite || !HistoryPolicy::expired(entry->time, now))) {
+			if (!replacementId) replacementId = ++m_nextId;
+			emit entryReplacing(previous->id, replacementId);
+		}
+		if (replacing)
 			erase(row, HistoryChange::Synced);
 		else ++row;
 	}
-	if (!entry || (!entry->favorite && HistoryPolicy::expired(entry->time, QDateTime::currentDateTime()))) return;
+	if (!entry || (!entry->favorite && HistoryPolicy::expired(entry->time, now))) return;
 	int row = 0;
 	while (row < m_entries.size() && m_entries.at(row)->time > entry->time) ++row;
-	entry->id = ++m_nextId;
+	entry->id = replacementId ? replacementId : ++m_nextId;
 	initializeFavoritePosition(entry);
 	m_entries.insert(row, entry);
 	persist(entry);
