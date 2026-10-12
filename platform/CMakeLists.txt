@@ -74,13 +74,13 @@ elseif(APPLE)
         "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in"
         "$<TARGET_BUNDLE_DIR:pastes>/Contents/Info.plist")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    find_package(X11 REQUIRED COMPONENTS Xi)
+    find_package(X11 REQUIRED COMPONENTS Xi Xtst)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0 glib-2.0 gio-unix-2.0)
     target_link_libraries(pastes_platform PRIVATE
         X11::X11
         X11::Xi
-        ${X11_Xtst_LIB}
+        X11::Xtst
         PkgConfig::GIO
     )
 endif()

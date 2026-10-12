@@ -34,6 +34,10 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
+If CMake cannot find the X11 `Xtst` component, install `libxtst-dev` and
+rerun configuration. The `libxtst6` runtime package alone is insufficient
+for building Pastes.
+
 On Kylin V11 Server, install the build and packaging dependencies:
 
 ```sh
