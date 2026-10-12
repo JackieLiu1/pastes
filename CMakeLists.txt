@@ -12,6 +12,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DE
 endif()
 include(GNUInstallDirs)
 
+set(CMAKE_PREFIX_QT_PATH "" CACHE PATH "Qt installation prefix")
+if(CMAKE_PREFIX_QT_PATH)
+    list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_PREFIX_QT_PATH}")
+endif()
+
 # Network is used privately by the bundled SingleApplication; declaring it
 # here satisfies Qt6's dependency walk at target finalization
 find_package(Qt6 6.3 REQUIRED COMPONENTS Core Gui Widgets Sql Network LinguistTools)

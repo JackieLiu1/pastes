@@ -13,6 +13,27 @@ sudo apt-get install build-essential cmake qt6-base-dev qt6-tools-dev \
     qt6-tools-dev-tools libglib2.0-dev libxtst-dev libx11-dev libxi-dev pkg-config dpkg-dev
 ```
 
+For a self-built Qt 6.3 or newer, including on Ubuntu 20.04, install the
+system dependencies without the distribution's Qt packages:
+
+```sh
+sudo apt-get install build-essential cmake libglib2.0-dev libxtst-dev \
+    libx11-dev libxi-dev pkg-config dpkg-dev
+```
+
+Point `CMAKE_PREFIX_QT_PATH` at the Qt installation prefix, rather than its
+source directory. Pastes adds this prefix to `CMAKE_PREFIX_PATH` before
+finding Qt; the standard `CMAKE_PREFIX_PATH` option also remains supported.
+The Qt installation must provide Core, Gui, Widgets, Sql, Network and
+LinguistTools (from qttools).
+
+```sh
+cmake -S . -B build -DCMAKE_PREFIX_QT_PATH=/home/jackieliu/qt \
+    -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
 On Kylin V11 Server, install the build and packaging dependencies:
 
 ```sh
