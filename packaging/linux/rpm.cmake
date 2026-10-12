@@ -50,9 +50,6 @@ elseif(NOT DEFINED CPACK_RPM_PACKAGE_REQUIRES)
 endif()
 # These directories belong to the desktop's filesystem and icon packages.
 list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
-    /etc/xdg /etc/xdg/autostart
-    "${CMAKE_INSTALL_FULL_DATADIR}/applications"
-    "${CMAKE_INSTALL_FULL_DATADIR}/icons"
-    "${CMAKE_INSTALL_FULL_DATADIR}/icons/hicolor"
-    "${CMAKE_INSTALL_FULL_DATADIR}/icons/hicolor/scalable"
-    "${CMAKE_INSTALL_FULL_DATADIR}/icons/hicolor/scalable/apps")
+    /opt /etc/xdg /etc/xdg/autostart
+    /usr/share/applications /usr/share/icons /usr/share/icons/hicolor
+    /usr/share/icons/hicolor/scalable /usr/share/icons/hicolor/scalable/apps)

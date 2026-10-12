@@ -1,2 +1,2 @@
 #!/bin/sh
-exec "@CMAKE_INSTALL_FULL_LIBDIR@/pastes/pastes" "$@"
+exec "/@PASTES_LINUX_INSTALL_DIR@/pastes" "$@"

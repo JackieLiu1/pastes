@@ -7,8 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Install path prefix" FORCE)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Match OrcaTerminal: application files live in /opt, integration in /usr.
+    set(CMAKE_INSTALL_PREFIX "/" CACHE INTERNAL "Linux package root" FORCE)
 endif()
 include(GNUInstallDirs)
 
@@ -170,8 +171,8 @@ endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
     install(TARGETS pastes DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATADIR}/pastes/translations)
 endif()
-install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATADIR}/pastes/translations)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_subdirectory(packaging/linux)

@@ -8,15 +8,29 @@ import subprocess
 
 
 def check_package(root):
+    runtime = (root / "opt/pastes").resolve()
     runtimes = [path for path in root.rglob("pastes")
                 if path.is_dir() and (path / "pastes").is_file()]
-    if len(runtimes) != 1:
-        raise RuntimeError("Expected one private Pastes runtime directory")
-    runtime = runtimes[0].resolve()
+    if [path.resolve() for path in runtimes] != [runtime]:
+        raise RuntimeError("Expected the sole Pastes runtime in /opt/pastes")
     executable = runtime / "pastes"
     launcher = root / "usr/bin/pastes"
     if not launcher.is_file() or not os.access(launcher, os.X_OK):
         raise RuntimeError("The /usr/bin/pastes launcher is missing")
+    if '"/opt/pastes/pastes"' not in launcher.read_text():
+        raise RuntimeError("The launcher does not target /opt/pastes")
+    for desktop in ("usr/share/applications/pastes.desktop",
+                    "etc/xdg/autostart/pastes.desktop"):
+        if "Exec=/opt/pastes/pastes\n" not in (root / desktop).read_text():
+            raise RuntimeError("The desktop entry does not target /opt/pastes")
+    if not (runtime / "translations/Pastes_zh_CN.qm").is_file():
+        raise RuntimeError("The /opt/pastes translation is missing")
+    if not (runtime / "LICENSE.txt").is_file():
+        raise RuntimeError("The /opt/pastes license is missing")
+    for pattern in ("libQt6*.so*", "libicu*.so*"):
+        for path in root.rglob(pattern):
+            if runtime not in path.resolve().parents:
+                raise RuntimeError("Bundled library outside /opt/pastes: " + str(path))
     if not (runtime / "qt.conf").is_file():
         raise RuntimeError("The private Qt plugin configuration is missing")
     for module in ("Core", "Gui", "Widgets", "Sql", "Network"):
@@ -45,7 +59,7 @@ def check_package(root):
             if runtime not in Path(location).resolve().parents:
                 raise RuntimeError(name + " resolves outside the package: "
                                    + location)
-    print("PASS bundled Qt/ICU SONAMEs, plugin dependencies and private paths")
+    print("PASS /opt/pastes layout, entry points and private Qt/ICU dependencies")
 
 
 if __name__ == "__main__":

@@ -68,7 +68,7 @@ foreach(plugin platforms/libqoffscreen.so
 endforeach()
 list(REMOVE_DUPLICATES PASTES_QT_PLUGINS)
 
-set(PASTES_QT_RUNTIME_DIR "${CMAKE_INSTALL_LIBDIR}/pastes")
+set(PASTES_QT_RUNTIME_DIR "${PASTES_LINUX_INSTALL_DIR}")
 set_target_properties(pastes PROPERTIES
     INSTALL_RPATH "$ORIGIN/lib"
     INSTALL_RPATH_USE_LINK_PATH FALSE)
@@ -76,12 +76,8 @@ set_target_properties(pastes PROPERTIES
 # Keep qt.conf beside the private executable, away from other /usr/bin apps.
 configure_file("${CMAKE_CURRENT_LIST_DIR}/qt.conf.in"
     "${CMAKE_CURRENT_BINARY_DIR}/qt.conf" @ONLY)
-configure_file("${CMAKE_CURRENT_LIST_DIR}/pastes-launcher.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/pastes-launcher" @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/qt.conf"
     DESTINATION "${PASTES_QT_RUNTIME_DIR}")
-install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/pastes-launcher"
-    DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME pastes)
 configure_file("${CMAKE_CURRENT_LIST_DIR}/install-qt-runtime.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/install-qt-runtime.cmake" @ONLY)
 install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/install-qt-runtime.cmake")

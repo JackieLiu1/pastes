@@ -1,12 +1,24 @@
 # CPack supplies the same package target as the native Windows/macOS packagers.
+set(PASTES_LINUX_INSTALL_DIR "opt/pastes")
 include("${CMAKE_CURRENT_LIST_DIR}/bundle-qt.cmake")
-if(PASTES_LINUX_BUNDLE_QT)
-    install(TARGETS pastes DESTINATION "${PASTES_QT_RUNTIME_DIR}")
-else()
-    install(TARGETS pastes DESTINATION ${CMAKE_INSTALL_BINDIR})
-endif()
-install(FILES "${PROJECT_SOURCE_DIR}/LICENSE" DESTINATION ${CMAKE_INSTALL_DOCDIR}
+install(TARGETS pastes DESTINATION "${PASTES_LINUX_INSTALL_DIR}")
+install(FILES ${QM_FILES} DESTINATION "${PASTES_LINUX_INSTALL_DIR}/translations")
+install(FILES "${PROJECT_SOURCE_DIR}/LICENSE"
+    DESTINATION "${PASTES_LINUX_INSTALL_DIR}" RENAME LICENSE.txt)
+install(FILES "${PROJECT_SOURCE_DIR}/LICENSE" DESTINATION usr/share/doc/pastes
     RENAME copyright)
+target_compile_definitions(pastes_platform PRIVATE
+    QM_FILES_INSTALL_PATH="/${PASTES_LINUX_INSTALL_DIR}/translations/")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/pastes-launcher.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/pastes-launcher" @ONLY)
+install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/pastes-launcher"
+    DESTINATION usr/bin RENAME pastes)
+# Desktop integration stays in system paths, as it does for OrcaTerminal.
+install(FILES "${PROJECT_SOURCE_DIR}/pastes.desktop" DESTINATION etc/xdg/autostart)
+install(FILES "${CMAKE_CURRENT_LIST_DIR}/pastes.desktop"
+    DESTINATION usr/share/applications)
+install(FILES "${PROJECT_SOURCE_DIR}/resources/pastes.svg"
+    DESTINATION usr/share/icons/hicolor/scalable/apps)
 # An explicit generator also supports packaging for another target system.
 if(NOT CPACK_GENERATOR)
     include("${CMAKE_CURRENT_LIST_DIR}/select-generator.cmake")
@@ -26,7 +38,7 @@ set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/JackieLiu1/pastes")
 set(CPACK_PACKAGE_DIRECTORY "${CMAKE_BINARY_DIR}/dist")
 set(CPACK_PACKAGE_CHECKSUM "SHA256")
 set(CPACK_PACKAGE_RELOCATABLE OFF)
-# Stage absolute install destinations such as /etc/xdg/autostart as well.
+set(CPACK_PACKAGING_INSTALL_PREFIX "/")
 set(CPACK_SET_DESTDIR ON)
 
 if("DEB" IN_LIST CPACK_GENERATOR)

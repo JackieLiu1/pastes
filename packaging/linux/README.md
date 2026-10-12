@@ -57,7 +57,7 @@ the destination machine.
 Build and package with the same target used on Windows and macOS:
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 cmake --build build --target package
@@ -81,12 +81,13 @@ license, application menu launcher and existing UKUI autostart entry.
 The menu launcher is installed to `/usr/share/applications/pastes.desktop`
 with the default installation prefix. It is visible across desktop environments;
 the separate `/etc/xdg/autostart/pastes.desktop` retains the UKUI startup policy.
-Following OrcaTerminal's Linux packaging, the private executable, Qt/ICU
-libraries and Qt plugins are installed under `/usr/lib/pastes` (or the
-configured library directory). `/usr/bin/pastes` launches that executable,
-and the desktop entries keep their existing command. `qt.conf` selects the
-private plugin directory; relative RPATHs let the copied libraries and
-plugins resolve one another without the build machine's Qt installation.
+Following OrcaTerminal's Linux packaging, application files are installed
+under `/opt/pastes`: the executable is `/opt/pastes/pastes`, Qt/ICU libraries
+are in `lib/`, plugins in `plugins/`, and translations in `translations/`.
+The license and `qt.conf` also live in `/opt/pastes`. Desktop and autostart
+entries launch `/opt/pastes/pastes`; `/usr/bin/pastes` remains a CLI launcher.
+`qt.conf` selects the private plugin directory; relative RPATHs let the copied
+libraries and plugins resolve one another without the build machine's Qt installation.
 SQLite, image formats, platform, input method and TLS plugins are included.
 System libraries such as glibc, X11 and OpenGL are not bundled.
 
@@ -97,9 +98,9 @@ Qt/ICU provides and requires. The Secret Service helper is a system runtime
 dependency in both formats.
 
 Set `-DPASTES_LINUX_BUNDLE_QT=OFF` to build a smaller package using system
-Qt. That mode keeps the executable in `/usr/bin`, uses `dpkg-shlibdeps` for
-DEB and declares the system SQLite and SVG plugin packages. For a bundled
-staging installation, use `DESTDIR=/path/to/stage cmake --install build`.
+Qt. That mode also installs the executable in `/opt/pastes`, uses
+`dpkg-shlibdeps` for DEB and declares the system SQLite and SVG plugin packages.
+For a bundled staging installation, use `DESTDIR=/path/to/stage cmake --install build`.
 
 The interface follows the session's message locale. Installing the Chinese
 translation does not force Chinese when Qt detects an English or `C` locale.
@@ -135,7 +136,7 @@ Build on the oldest distribution you intend to support; building on a newer
 system does not establish compatibility with older Qt or system libraries.
 Packages are built for the target architecture.
 
-New Linux build directories default to the `/usr` installation prefix. When
-reusing a build directory configured with another prefix, set
-`-DCMAKE_INSTALL_PREFIX=/usr` explicitly for a distribution package. Existing
-history, sync settings and credentials are not included in the package.
+Linux packaging fixes the installation root at `/`, with application files
+under `/opt/pastes` and desktop integration under `/usr/share` and `/etc/xdg`.
+Reconfiguration also updates build directories previously using `/usr`.
+Existing history, sync settings and credentials are not included in the package.
