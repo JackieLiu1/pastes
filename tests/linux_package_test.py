@@ -4,10 +4,28 @@ import argparse
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 
 
+def check_permissions(root):
+    executables = {root / "opt/pastes/pastes", root / "usr/bin/pastes"}
+    for prefix in ("etc", "opt", "usr"):
+        directory = root / prefix
+        for path in [directory, *directory.rglob("*")]:
+            if path.is_symlink():
+                continue
+            expected = 0o755 if path.is_dir() or path in executables else 0o644
+            actual = stat.S_IMODE(path.stat().st_mode)
+            if actual != expected:
+                raise RuntimeError("Incorrect package permissions: "
+                                   + str(path.relative_to(root))
+                                   + ": " + oct(actual)
+                                   + ", expected " + oct(expected))
+
+
 def check_package(root):
+    check_permissions(root)
     runtime = (root / "opt/pastes").resolve()
     runtimes = [path for path in root.rglob("pastes")
                 if path.is_dir() and (path / "pastes").is_file()]
@@ -59,7 +77,8 @@ def check_package(root):
             if runtime not in Path(location).resolve().parents:
                 raise RuntimeError(name + " resolves outside the package: "
                                    + location)
-    print("PASS /opt/pastes layout, entry points and private Qt/ICU dependencies")
+    print("PASS public permissions, /opt/pastes layout, entry points "
+          "and private Qt/ICU dependencies")
 
 
 if __name__ == "__main__":

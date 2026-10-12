@@ -1,4 +1,9 @@
 # CPack supplies the same package target as the native Windows/macOS packagers.
+# Public application directories use 755 for every package generator.
+set(CMAKE_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE
+    GROUP_READ GROUP_EXECUTE
+    WORLD_READ WORLD_EXECUTE)
 set(PASTES_LINUX_INSTALL_DIR "opt/pastes")
 include("${CMAKE_CURRENT_LIST_DIR}/bundle-qt.cmake")
 install(TARGETS pastes DESTINATION "${PASTES_LINUX_INSTALL_DIR}")
@@ -19,6 +24,34 @@ install(FILES "${CMAKE_CURRENT_LIST_DIR}/pastes.desktop"
     DESTINATION usr/share/applications)
 install(FILES "${PROJECT_SOURCE_DIR}/resources/pastes.svg"
     DESTINATION usr/share/icons/hicolor/scalable/apps)
+
+# Implicit mkdir permissions are still filtered by umask. Explicit directory
+# installs apply chmod, including to parents shared with other packages.
+set(pastes_install_directories
+    "${PASTES_LINUX_INSTALL_DIR}/translations"
+    etc/xdg/autostart usr/bin usr/share/doc/pastes usr/share/applications
+    usr/share/icons/hicolor/scalable/apps)
+if(PASTES_LINUX_BUNDLE_QT)
+    list(APPEND pastes_install_directories "${PASTES_LINUX_INSTALL_DIR}/lib")
+    foreach(plugin IN LISTS PASTES_QT_PLUGINS)
+        get_filename_component(directory "${plugin}" DIRECTORY)
+        list(APPEND pastes_install_directories
+            "${PASTES_LINUX_INSTALL_DIR}/plugins/${directory}")
+    endforeach()
+endif()
+set(pastes_parent_directories)
+foreach(directory IN LISTS pastes_install_directories)
+    while(directory)
+        list(APPEND pastes_parent_directories "${directory}")
+        get_filename_component(directory "${directory}" DIRECTORY)
+    endwhile()
+endforeach()
+list(REMOVE_DUPLICATES pastes_parent_directories)
+foreach(directory IN LISTS pastes_parent_directories)
+    install(DIRECTORY DESTINATION "${directory}"
+        DIRECTORY_PERMISSIONS ${CMAKE_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS})
+endforeach()
+
 # An explicit generator also supports packaging for another target system.
 if(NOT CPACK_GENERATOR)
     include("${CMAKE_CURRENT_LIST_DIR}/select-generator.cmake")
