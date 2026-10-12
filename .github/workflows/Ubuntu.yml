@@ -26,7 +26,10 @@ jobs:
         run: ctest --test-dir build --output-on-failure
       - name: Build installation package
         run: |
-          cmake --build build --target package
+          (
+            umask 077
+            cmake --build build --target package
+          )
           dpkg-deb --info build/dist/*.deb
           dpkg-deb --contents build/dist/*.deb
           dpkg-deb --extract build/dist/*.deb build/package-test-root
