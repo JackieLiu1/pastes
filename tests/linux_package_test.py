@@ -9,13 +9,13 @@ import subprocess
 
 
 def check_permissions(root):
-    executables = {root / "opt/pastes/pastes", root / "usr/bin/pastes"}
+    executable = root / "opt/pastes/pastes"
     for prefix in ("etc", "opt", "usr"):
         directory = root / prefix
         for path in [directory, *directory.rglob("*")]:
             if path.is_symlink():
                 continue
-            expected = 0o755 if path.is_dir() or path in executables else 0o644
+            expected = 0o755 if path.is_dir() or path == executable else 0o644
             actual = stat.S_IMODE(path.stat().st_mode)
             if actual != expected:
                 raise RuntimeError("Incorrect package permissions: "
@@ -25,6 +25,8 @@ def check_permissions(root):
 
 
 def check_package(root):
+    if os.path.lexists(root / "usr/bin/pastes"):
+        raise RuntimeError("Unexpected /usr/bin/pastes launcher in the package")
     check_permissions(root)
     runtime = (root / "opt/pastes").resolve()
     runtimes = [path for path in root.rglob("pastes")
@@ -32,11 +34,6 @@ def check_package(root):
     if [path.resolve() for path in runtimes] != [runtime]:
         raise RuntimeError("Expected the sole Pastes runtime in /opt/pastes")
     executable = runtime / "pastes"
-    launcher = root / "usr/bin/pastes"
-    if not launcher.is_file() or not os.access(launcher, os.X_OK):
-        raise RuntimeError("The /usr/bin/pastes launcher is missing")
-    if '"/opt/pastes/pastes"' not in launcher.read_text():
-        raise RuntimeError("The launcher does not target /opt/pastes")
     for desktop in ("usr/share/applications/pastes.desktop",
                     "etc/xdg/autostart/pastes.desktop"):
         if "Exec=/opt/pastes/pastes\n" not in (root / desktop).read_text():

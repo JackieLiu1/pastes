@@ -85,7 +85,8 @@ Following OrcaTerminal's Linux packaging, application files are installed
 under `/opt/pastes`: the executable is `/opt/pastes/pastes`, Qt/ICU libraries
 are in `lib/`, plugins in `plugins/`, and translations in `translations/`.
 The license and `qt.conf` also live in `/opt/pastes`. Desktop and autostart
-entries launch `/opt/pastes/pastes`; `/usr/bin/pastes` remains a CLI launcher.
+entries launch `/opt/pastes/pastes` directly. Use the same absolute path
+to launch Pastes from a terminal.
 `qt.conf` selects the private plugin directory; relative RPATHs let the copied
 libraries and plugins resolve one another without the build machine's Qt installation.
 SQLite, image formats, platform, input method and TLS plugins are included.

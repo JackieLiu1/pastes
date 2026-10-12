@@ -14,10 +14,6 @@ install(FILES "${PROJECT_SOURCE_DIR}/LICENSE" DESTINATION usr/share/doc/pastes
     RENAME copyright)
 target_compile_definitions(pastes_platform PRIVATE
     QM_FILES_INSTALL_PATH="/${PASTES_LINUX_INSTALL_DIR}/translations/")
-configure_file("${CMAKE_CURRENT_LIST_DIR}/pastes-launcher.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/pastes-launcher" @ONLY)
-install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/pastes-launcher"
-    DESTINATION usr/bin RENAME pastes)
 # Desktop integration stays in system paths, as it does for OrcaTerminal.
 install(FILES "${PROJECT_SOURCE_DIR}/pastes.desktop" DESTINATION etc/xdg/autostart)
 install(FILES "${CMAKE_CURRENT_LIST_DIR}/pastes.desktop"
@@ -29,7 +25,7 @@ install(FILES "${PROJECT_SOURCE_DIR}/resources/pastes.svg"
 # installs apply chmod, including to parents shared with other packages.
 set(pastes_install_directories
     "${PASTES_LINUX_INSTALL_DIR}/translations"
-    etc/xdg/autostart usr/bin usr/share/doc/pastes usr/share/applications
+    etc/xdg/autostart usr/share/doc/pastes usr/share/applications
     usr/share/icons/hicolor/scalable/apps)
 if(PASTES_LINUX_BUNDLE_QT)
     list(APPEND pastes_install_directories "${PASTES_LINUX_INSTALL_DIR}/lib")

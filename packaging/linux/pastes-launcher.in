@@ -1,2 +1,0 @@
-#!/bin/sh
-exec "/@PASTES_LINUX_INSTALL_DIR@/pastes" "$@"
