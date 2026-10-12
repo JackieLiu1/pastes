@@ -1,4 +1,10 @@
 # CPack supplies the same package target as the native Windows/macOS packagers.
+include("${CMAKE_CURRENT_LIST_DIR}/bundle-qt.cmake")
+if(PASTES_LINUX_BUNDLE_QT)
+    install(TARGETS pastes DESTINATION "${PASTES_QT_RUNTIME_DIR}")
+else()
+    install(TARGETS pastes DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
 install(FILES "${PROJECT_SOURCE_DIR}/LICENSE" DESTINATION ${CMAKE_INSTALL_DOCDIR}
     RENAME copyright)
 # An explicit generator also supports packaging for another target system.

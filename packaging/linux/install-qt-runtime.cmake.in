@@ -1,0 +1,77 @@
+set(pastes_qt_library_dir [=[@PASTES_QT_LIBRARY_DIR@]=])
+set(pastes_qt_plugin_dir [=[@PASTES_QT_PLUGIN_DIR@]=])
+set(pastes_qt_seeds [=[@PASTES_QT_RUNTIME_SEEDS@]=])
+set(pastes_qt_plugins [=[@PASTES_QT_PLUGINS@]=])
+set(pastes_runtime_dir [=[@PASTES_QT_RUNTIME_DIR@]=])
+set(pastes_patchelf [=[@PASTES_PATCHELF_EXECUTABLE@]=])
+set(pastes_qt_modules)
+foreach(plugin IN LISTS pastes_qt_plugins)
+    list(APPEND pastes_qt_modules "${pastes_qt_plugin_dir}/${plugin}")
+endforeach()
+
+# Scan the original Qt libraries before changing any staged RPATHs.
+file(GET_RUNTIME_DEPENDENCIES
+    RESOLVED_DEPENDENCIES_VAR resolved
+    UNRESOLVED_DEPENDENCIES_VAR unresolved
+    LIBRARIES ${pastes_qt_seeds}
+    MODULES ${pastes_qt_modules}
+    DIRECTORIES "${pastes_qt_library_dir}")
+if(unresolved)
+    message(FATAL_ERROR "Cannot resolve bundled Qt dependencies: ${unresolved}")
+endif()
+
+set(libraries ${pastes_qt_seeds})
+foreach(dependency IN LISTS resolved)
+    get_filename_component(real_dependency "${dependency}" REALPATH)
+    get_filename_component(name "${real_dependency}" NAME)
+    if(name MATCHES "^lib(Qt6|icu).*\\.so(\\..*)?$")
+        list(APPEND libraries "${dependency}")
+    endif()
+endforeach()
+list(REMOVE_DUPLICATES libraries)
+
+set(staging_root "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}")
+get_filename_component(staging_root "${staging_root}" ABSOLUTE)
+if("$ENV{DESTDIR}" STREQUAL "" AND staging_root STREQUAL "@CMAKE_INSTALL_PREFIX@")
+    message(FATAL_ERROR
+        "Bundled Qt installation requires a staging root. Use the package "
+        "target or install with DESTDIR to avoid patching the host runtime.")
+endif()
+set(runtime_root "${staging_root}/${pastes_runtime_dir}")
+foreach(library IN LISTS libraries)
+    # Imported locations can name the fully versioned file. Copy its SONAME
+    # links too, even when no plugin depends on this directly linked module.
+    get_filename_component(directory "${library}" DIRECTORY)
+    get_filename_component(name "${library}" NAME)
+    if(name MATCHES "^(.*\\.so)(\\..*)?$")
+        file(GLOB chain LIST_DIRECTORIES false "${directory}/${CMAKE_MATCH_1}*")
+    else()
+        set(chain "${library}")
+    endif()
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/${pastes_runtime_dir}/lib"
+        TYPE FILE FOLLOW_SYMLINK_CHAIN FILES ${chain})
+endforeach()
+foreach(plugin IN LISTS pastes_qt_plugins)
+    get_filename_component(directory "${plugin}" DIRECTORY)
+    file(INSTALL
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/${pastes_runtime_dir}/plugins/${directory}"
+        TYPE FILE FILES "${pastes_qt_plugin_dir}/${plugin}")
+endforeach()
+
+function(pastes_patch_runtime path rpath)
+    execute_process(COMMAND "${pastes_patchelf}" --force-rpath --set-rpath
+        "${rpath}" "${path}" RESULT_VARIABLE result ERROR_VARIABLE error)
+    if(NOT result EQUAL 0)
+        message(FATAL_ERROR "Cannot set bundled runtime RPATH for ${path}: ${error}")
+    endif()
+endfunction()
+
+file(GLOB installed_libraries LIST_DIRECTORIES false "${runtime_root}/lib/*.so*")
+foreach(library IN LISTS installed_libraries)
+    if(NOT IS_SYMLINK "${library}")
+        pastes_patch_runtime("${library}" "$ORIGIN")
+    endif()
+endforeach()
+foreach(plugin IN LISTS pastes_qt_plugins)
+    pastes_patch_runtime("${runtime_root}/plugins/${plugin}" "$ORIGIN/../../lib")
+endforeach()

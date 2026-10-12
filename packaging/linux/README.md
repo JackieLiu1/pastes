@@ -10,7 +10,8 @@ On Debian or Ubuntu, install the build and packaging dependencies:
 
 ```sh
 sudo apt-get install build-essential cmake qt6-base-dev qt6-tools-dev \
-    qt6-tools-dev-tools libglib2.0-dev libxtst-dev libx11-dev libxi-dev pkg-config dpkg-dev
+    qt6-tools-dev-tools libqt6svg6 libqt6sql6-sqlite qt6-image-formats-plugins \
+    libglib2.0-dev libxtst-dev libx11-dev libxi-dev pkg-config dpkg-dev patchelf
 ```
 
 For a self-built Qt 6.3 or newer, including on Ubuntu 20.04, install the
@@ -18,20 +19,22 @@ system dependencies without the distribution's Qt packages:
 
 ```sh
 sudo apt-get install build-essential cmake libglib2.0-dev libxtst-dev \
-    libx11-dev libxi-dev pkg-config dpkg-dev
+    libx11-dev libxi-dev pkg-config dpkg-dev patchelf
 ```
 
 Point `CMAKE_PREFIX_QT_PATH` at the Qt installation prefix, rather than its
 source directory. Pastes adds this prefix to `CMAKE_PREFIX_PATH` before
 finding Qt; the standard `CMAKE_PREFIX_PATH` option also remains supported.
 The Qt installation must provide Core, Gui, Widgets, Sql, Network and
-LinguistTools (from qttools).
+LinguistTools (from qttools). Packaging also requires the X11 platform,
+SQLite and SVG plugins from qtbase and qtsvg.
 
 ```sh
 cmake -S . -B build -DCMAKE_PREFIX_QT_PATH=/home/jackieliu/qt \
     -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
+cmake --build build --target package
 ```
 
 If CMake cannot find the X11 `Xtst` component, install `libxtst-dev` and
@@ -42,13 +45,14 @@ On Kylin V11 Server, install the build and packaging dependencies:
 
 ```sh
 sudo dnf install gcc-c++ cmake qt6-qtbase-devel qt6-qttools-devel \
-    glib2-devel libXtst-devel libX11-devel libXi-devel pkgconf rpm-build chrpath
+    qt6-qtsvg glib2-devel libXtst-devel libX11-devel libXi-devel \
+    pkgconf rpm-build chrpath patchelf
 ```
 
-Qt package names can differ between RPM distributions. The application also
-needs the SQLite and SVG Qt plugins and `secret-tool` at runtime; the RPM
-declares file requirements for these instead of assuming distribution-specific
-package names.
+Qt package names can differ between RPM distributions. Packages bundle Qt
+by default, using the installation resolved by CMake. This also works with
+self-built Qt on Ubuntu 20.04 and does not require system Qt 6 packages on
+the destination machine.
 
 Build and package with the same target used on Windows and macOS:
 
@@ -77,10 +81,25 @@ license, application menu launcher and existing UKUI autostart entry.
 The menu launcher is installed to `/usr/share/applications/pastes.desktop`
 with the default installation prefix. It is visible across desktop environments;
 the separate `/etc/xdg/autostart/pastes.desktop` retains the UKUI startup policy.
-Qt libraries are supplied by the distribution. RPM automatically collects
-linked-library requirements through `rpmbuild`; DEB uses `dpkg-shlibdeps`.
-Plugins and the Secret Service credential
-helper are declared separately because they are loaded at runtime.
+Following OrcaTerminal's Linux packaging, the private executable, Qt/ICU
+libraries and Qt plugins are installed under `/usr/lib/pastes` (or the
+configured library directory). `/usr/bin/pastes` launches that executable,
+and the desktop entries keep their existing command. `qt.conf` selects the
+private plugin directory; relative RPATHs let the copied libraries and
+plugins resolve one another without the build machine's Qt installation.
+SQLite, image formats, platform, input method and TLS plugins are included.
+System libraries such as glibc, X11 and OpenGL are not bundled.
+
+In bundled mode, DEB declares system runtime dependencies explicitly and
+disables `dpkg-shlibdeps`, as self-built Qt has no dpkg library metadata.
+RPM retains automatic system dependency discovery and excludes private
+Qt/ICU provides and requires. The Secret Service helper is a system runtime
+dependency in both formats.
+
+Set `-DPASTES_LINUX_BUNDLE_QT=OFF` to build a smaller package using system
+Qt. That mode keeps the executable in `/usr/bin`, uses `dpkg-shlibdeps` for
+DEB and declares the system SQLite and SVG plugin packages. For a bundled
+staging installation, use `DESTDIR=/path/to/stage cmake --install build`.
 
 The interface follows the session's message locale. Installing the Chinese
 translation does not force Chinese when Qt detects an English or `C` locale.

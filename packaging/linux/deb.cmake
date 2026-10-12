@@ -34,6 +34,25 @@ if(NOT CPACK_DEBIAN_PACKAGE_ARCHITECTURE)
     endif()
 endif()
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
-set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-# These plugins and the credential helper are loaded at runtime, not linked.
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, libqt6svg6, libsecret-tools")
+if(PASTES_LINUX_BUNDLE_QT)
+    # Match OrcaTerminal: custom Qt has no dpkg shlibs metadata, and old CPack
+    # cannot pass private library directories to dpkg-shlibdeps.
+    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS OFF)
+    string(JOIN ", " CPACK_DEBIAN_PACKAGE_DEPENDS
+        libsecret-tools libc6 libgcc-s1 libstdc++6 zlib1g libglib2.0-0
+        libx11-6 libx11-xcb1 libxi6 libxtst6 libice6 libsm6 libxcb1
+        "libxcb-cursor0 | libxcb-cursor-dev" libxcb-glx0 libxcb-icccm4
+        libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render0
+        libxcb-render-util0 libxcb-shape0 libxcb-shm0 libxcb-sync1
+        libxcb-util1 libxcb-xfixes0 libxcb-xkb1 libxkbcommon0
+        libxkbcommon-x11-0 libfontconfig1 libfreetype6 libharfbuzz0b
+        libegl1 libglx0 libopengl0 libdbus-1-3 "libssl3 | libssl1.1"
+        libdouble-conversion3 libpcre2-16-0 libb2-1 libmd4c0 libzstd1
+        libpng16-16 "libjpeg-turbo8 | libjpeg62-turbo"
+        "libwebp7 | libwebp6" libwebpdemux2 libwebpmux3 libgtk-3-0
+        libsqlite3-0 libproxy1v5 libgssapi-krb5-2 libbrotli1)
+else()
+    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+    # These plugins and the credential helper are loaded at runtime, not linked.
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, libqt6svg6, libsecret-tools")
+endif()

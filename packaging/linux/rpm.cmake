@@ -20,7 +20,17 @@ if(NOT CPACK_RPM_PACKAGE_ARCHITECTURE)
 endif()
 # File requirements work across distributions with different Qt package names.
 # RPM's automatic ELF dependency scan does not see these runtime-loaded plugins.
-if(NOT DEFINED CPACK_RPM_PACKAGE_REQUIRES)
+if(PASTES_LINUX_BUNDLE_QT)
+    if(NOT DEFINED CPACK_RPM_PACKAGE_REQUIRES)
+        set(CPACK_RPM_PACKAGE_REQUIRES "/usr/bin/secret-tool")
+    endif()
+    # Private Qt/ICU files must not satisfy other applications' runtime needs.
+    string(APPEND CPACK_RPM_SPEC_MORE_DEFINE [=[
+%global _build_id_links none
+%global __requires_exclude ^(libQt6|libicu).*
+%global __provides_exclude ^(libQt6|libicu|libq|lib.*platforminputcontextplugin).*
+]=])
+elseif(NOT DEFINED CPACK_RPM_PACKAGE_REQUIRES)
     get_target_property(pastes_qmake_executable Qt6::qmake IMPORTED_LOCATION)
     if(NOT pastes_qmake_executable)
         get_target_property(pastes_qmake_executable Qt6::qmake LOCATION)
