@@ -17,7 +17,7 @@ jobs:
       - name: Update apt repository
         run: sudo apt-get update -y
       - name: Install build dependencies
-        run: sudo apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libglib2.0-dev libxtst-dev libx11-dev pkg-config dpkg-dev
+        run: sudo apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libqt6svg6 libqt6sql6-sqlite qt6-image-formats-plugins libglib2.0-dev libxtst-dev libx11-dev libxi-dev pkg-config dpkg-dev patchelf
       - name: CMake configure & build
         run: |
           cmake -B build -S . -DCMAKE_BUILD_TYPE=Release;
@@ -29,3 +29,5 @@ jobs:
           cmake --build build --target package
           dpkg-deb --info build/dist/*.deb
           dpkg-deb --contents build/dist/*.deb
+          dpkg-deb --extract build/dist/*.deb build/package-test-root
+          python3 tests/linux_package_test.py build/package-test-root
