@@ -1,27 +1,36 @@
 #include "platform/clipboardsource.h"
+#include "platform/linux/clipboardicon.h"
 #include "platform/diagnosticlog.h"
+#include "core/sourceicon.h"
 
 #include <QApplication>
+#include <QCache>
 #include <QClipboard>
-#include <QPixmap>
-#include <QDebug>
+#include <QDir>
+#include <QIcon>
 #include <QJsonArray>
 #include <QMimeData>
-#include <vector>
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
-#include <X11/Xutil.h>
+#include <QThread>
 
 class ClipboardSource::Private
 {
 public:
 	quint64 changes = 0;
+	quint64 request = 0;
+	QImage icon;
+	QObject *worker = new QObject;
+	QThread thread;
+	QCache<QString, QString> desktopIcons{64};
+	QCache<QString, QImage> images{64};
 	Platform::DiagnosticLog diagnostics{Platform::DiagnosticLog::clipboardPath()};
 };
 
 ClipboardSource::ClipboardSource(QObject *parent) : ClipboardFeed(parent),
 	m_private(std::make_unique<Private>())
 {
+	m_private->worker->moveToThread(&m_private->thread);
+	QObject::connect(&m_private->thread, &QThread::finished, m_private->worker, &QObject::deleteLater);
+	m_private->thread.start();
 	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged,
 		this, [this] {
 			++m_private->changes;
@@ -30,7 +39,12 @@ ClipboardSource::ClipboardSource(QObject *parent) : ClipboardFeed(parent),
 	m_private->diagnostics.append({{"backend", "linux"}, {"event", "session-start"}});
 }
 
-ClipboardSource::~ClipboardSource() = default;
+ClipboardSource::~ClipboardSource()
+{
+	m_private->thread.requestInterruption();
+	m_private->thread.quit();
+	m_private->thread.wait();
+}
 
 int ClipboardSource::settleInterval(void) const
 {
@@ -57,153 +71,44 @@ bool ClipboardSource::allowsCapture(void) const
 
 void ClipboardSource::capture(quint64 request)
 {
-	Q_UNUSED(request);
-	/* Retain the X11 lookup at snapshot time, as before. */
-}
-
-static bool get_window_name2(Display* dpy, Window window, char* buf)
-{
-	XTextProperty tp;
-
-	XGetTextProperty(dpy, window, &tp, XInternAtom(dpy, "WM_NAME", False));
-	if (tp.nitems > 0) {
-		int count = 0, i, ret;
-		char **list = NULL;
-
-		ret = XmbTextPropertyToTextList(dpy, &tp, &list, &count);
-		if((ret == Success || ret > 0) && list != NULL){
-			for(i=0; i<count; i++)
-				snprintf(buf, 1024, "%s", list[i]);
-			XFreeStringList(list);
-		} else {
-			snprintf(buf, 1024, "%s", tp.value);
+	const auto source = LinuxClipboardIcon::captureSource();
+	m_private->request = request;
+	m_private->icon = source.icon;
+	m_private->diagnostics.append({{"backend", "linux"}, {"event", "source-capture"},
+		{"request", qint64(request)}, {"owner", qint64(source.owner)},
+		{"sourceProcessId", qint64(source.processId)}, {"windowIcon", !source.icon.isNull()}});
+	if (!source.icon.isNull() || (source.classes.isEmpty() && source.desktopIds.isEmpty() && source.executable.isEmpty())) {
+		emit iconReady(request, source.icon);
+		return;
+	}
+	QMetaObject::invokeMethod(m_private->worker, [this, source, request](void) {
+		if (m_private->thread.isInterruptionRequested()) return;
+		const QString key = source.desktopIds.join('\n')+'\n'+source.classes.join('\n')+'\n'+source.executable;
+		QString name;
+		if (const QString *cached = m_private->desktopIcons.object(key)) name = *cached;
+		else {
+			name = LinuxClipboardIcon::desktopIcon(source);
+			if (!name.isEmpty()) m_private->desktopIcons.insert(key, new QString(name));
 		}
-
-		return true;
-	} else {
-		return false;
-	}
-}
-
-static QString strip_cmd(QString window_title)
-{
-	if (window_title.contains("Qt Selection Owner")) {
-		return window_title.mid(23);
-	} else if (window_title.contains("Chromium ")) {
-		return "chrome";
-	}
-
-	return window_title;
+		if (m_private->thread.isInterruptionRequested()) return;
+		QMetaObject::invokeMethod(this, [this, request, name](void) {
+			QImage image;
+			if (const QImage *cached = m_private->images.object(name)) image = *cached;
+			else if (!name.isEmpty()) {
+				/* QIcon theme engines and QPixmap stay on the GUI thread. */
+				const QIcon icon = QDir::isAbsolutePath(name) ? QIcon(name) : QIcon::fromTheme(name);
+				image = SourceIcon::bounded(icon.pixmap(SourceIcon::maxPixels, SourceIcon::maxPixels).toImage());
+				if (!image.isNull()) m_private->images.insert(name, new QImage(image));
+			}
+			if (request == m_private->request) m_private->icon = image;
+			emit iconReady(request, image);
+		}, Qt::QueuedConnection);
+	}, Qt::QueuedConnection);
 }
 
 QImage ClipboardSource::snapshotIcon(void)
 {
-	QPixmap pixmap;
-
-	int i = 0;
-	Display *display = XOpenDisplay(NULL);
-	if (!display) return {};
-	Atom clipboard_atom = XInternAtom(display, "CLIPBOARD", False);
-	Window clipboard_owner_win = XGetSelectionOwner(display, clipboard_atom);
-	char buf[1024] = {0};
-	unsigned long nitems, bytesafter;
-	unsigned char *ret;
-	int format;
-	Atom type;
-	Atom wm_icon_atom = XInternAtom(display, "_NET_WM_ICON", True);
-	qDebug() << clipboard_owner_win;
-	/* Get clipboard owner title name */
-	get_window_name2(display, clipboard_owner_win, buf);
-	QString command = strip_cmd(buf);
-	qDebug() << buf << command;
-
-	/* Search from [-100, 100] */
-	clipboard_owner_win -= 100;
-again:
-	/* Get the width of the icon */
-	XGetWindowProperty(display,
-			   clipboard_owner_win,
-			   wm_icon_atom,
-			   0, 1, 0,
-			   XA_CARDINAL,
-			   &type,
-			   &format,
-			   &nitems,
-			   &bytesafter,
-			   &ret);
-	if (!ret) {
-		/* FIXME: In fact, Get clipboard window id from XLIB is not the
-		 * actual window id, but it is strange that his actual ID is
-		 * near this, between -100 and +100.
-		 *
-		 * I didn't find out what happened, but he seems to be working.
-		 * if anyone finds a good way, please let me know.
-		 */
-		clipboard_owner_win++;
-		if (i++ > 200) {
-			XCloseDisplay(display);
-			qDebug() << "Pastes: clipboard source icon unavailable";
-			return {};
-		}
-
-		goto again;
-	}
-
-	int width = *(int *)ret;
-	XFree(ret);
-
-	/* Get the height of the Icon */
-	XGetWindowProperty(display,
-			   clipboard_owner_win,
-			   wm_icon_atom,
-			   1, 1, 0,
-			   XA_CARDINAL,
-			   &type,
-			   &format,
-			   &nitems,
-			   &bytesafter,
-			   &ret);
-	if (!ret) {
-		qDebug() << "No X11 Icon height Found.";
-		return pixmap.scaled(32, 32, Qt::KeepAspectRatio,
-		Qt::SmoothTransformation).toImage();
-	}
-
-	int height = *(int *)ret;
-	XFree(ret);
-
-	/* Get data from Icon */
-	int size = width * height;
-	XGetWindowProperty(display,
-			   clipboard_owner_win,
-			   wm_icon_atom,
-			   2, size, 0,
-			   XA_CARDINAL,
-			   &type,
-			   &format,
-			   &nitems,
-			   &bytesafter,
-			   &ret);
-	if (!ret) {
-		qDebug() << "No X11 Icon Data Found.";
-		return pixmap.scaled(32, 32, Qt::KeepAspectRatio,
-		Qt::SmoothTransformation).toImage();
-	}
-
-	unsigned long *imgArr = (unsigned long*)(ret);
-	std::vector<uint32_t> imgARGB32(size);
-	for(int i=0; i<size; ++i)
-		imgARGB32[i] = (uint32_t)(imgArr[i]);
-
-	QImage *image = new QImage((uchar*)imgARGB32.data(), width, height, QImage::Format_ARGB32);
-	pixmap.convertFromImage(*image);
-
-	XFree(ret);
-	delete image;
-	XCloseDisplay(display);
-
-	return pixmap.scaled(32, 32, Qt::KeepAspectRatio,
-		Qt::SmoothTransformation).toImage();
+	return m_private->icon;
 }
 
 bool ClipboardSource::hasImageContent(void) const

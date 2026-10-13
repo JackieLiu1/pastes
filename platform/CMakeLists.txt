@@ -37,6 +37,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_sources(pastes_platform PRIVATE
         linux/secretstore.cpp
         linux/clipboardsource.cpp linux/pastetarget.cpp linux/shortcut.cpp
+        linux/clipboardicon.cpp linux/clipboardicon.h
         linux/shortcutstate.h
         linux/windowblur.cpp linux/panelobserver.cpp linux/fileicon.cpp linux/paths.cpp
         linux/startupintegration.cpp desktop/windowintegration.cpp
@@ -77,10 +78,12 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(X11 REQUIRED COMPONENTS Xi Xtst)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-2.0 glib-2.0 gio-unix-2.0)
+    pkg_check_modules(XCB REQUIRED IMPORTED_TARGET GLOBAL xcb xcb-res)
     target_link_libraries(pastes_platform PRIVATE
         X11::X11
         X11::Xi
         X11::Xtst
         PkgConfig::GIO
+        PkgConfig::XCB
     )
 endif()

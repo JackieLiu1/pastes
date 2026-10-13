@@ -40,6 +40,17 @@ if(APPLE)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_executable(clipboard_linux_test clipboard_linux_test.cpp)
+    target_link_libraries(clipboard_linux_test PRIVATE pastes_platform pastes_storage PkgConfig::XCB)
+    add_test(NAME clipboard_linux_contract COMMAND clipboard_linux_test)
+    set_tests_properties(clipboard_linux_contract PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    find_program(PASTES_XVFB_RUN_EXECUTABLE xvfb-run)
+    if(PASTES_XVFB_RUN_EXECUTABLE)
+        add_test(NAME clipboard_linux_x11_contract
+            COMMAND ${PASTES_XVFB_RUN_EXECUTABLE} -a $<TARGET_FILE:clipboard_linux_test> -platform xcb --isolated-x11)
+        set_tests_properties(clipboard_linux_x11_contract PROPERTIES TIMEOUT 30)
+    endif()
     add_test(NAME linux_packaging_contract
         COMMAND ${CMAKE_COMMAND} -DPASTES_SOURCE_DIR=${PROJECT_SOURCE_DIR}
             -DPASTES_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
