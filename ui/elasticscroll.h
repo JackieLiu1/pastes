@@ -31,6 +31,7 @@ protected:
 
 private:
 	enum class Mode { Idle, Drag, Pixels, Momentum, Wheel, Coast, Spring };
+	void updateDragVelocity(qreal distance, qreal seconds);
 	void synchronize(void);
 	void apply(void);
 	void moveTo(qreal position);
@@ -46,11 +47,17 @@ private:
 	QTimer m_wheel_end;
 	QElapsedTimer m_frame_clock;
 	QElapsedTimer m_input_clock;
+	QElapsedTimer m_drag_clock;
 	QPoint m_viewport_origin;
 	Mode m_mode = Mode::Idle;
 	qreal m_position = 0;
 	qreal m_target = 0;
 	qreal m_velocity = 0;
+	qreal m_drag_velocity = 0;
+	qreal m_coast_start = 0;
+	qreal m_coast_distance = 0;
+	qreal m_coast_duration = 0;
+	qreal m_coast_elapsed = 0;
 	qreal m_drag_origin = 0;
 	qreal m_drag_travel = 0;
 	qreal m_drag_peak = 0;

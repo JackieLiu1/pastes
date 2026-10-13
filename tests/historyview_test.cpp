@@ -9,6 +9,7 @@
 #include "ui/sourceiconview.h"
 #include "ui/filepreview.h"
 #include <QApplication>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QFocusEvent>
@@ -494,9 +495,10 @@ void pointerBrowsingKeepsPosition(void)
 		"Sync replacement rewound browsing or stole neutral panel focus");
 }
 
-void dragDistanceInertia(void)
+void dragReleaseInertia(void)
 {
 	QListWidget list;
+	list.setAttribute(Qt::WA_DontShowOnScreen);
 	list.resize(800, 300);
 	list.setFlow(QListView::LeftToRight);
 	list.setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
@@ -515,63 +517,138 @@ void dragDistanceInertia(void)
 	const QPoint origin = list.viewport()->pos();
 	auto pause = [](int milliseconds) {
 		QEventLoop loop;
-		QTimer::singleShot(milliseconds, &loop, &QEventLoop::quit);
+		QTimer::singleShot(milliseconds, Qt::PreciseTimer, &loop, &QEventLoop::quit);
 		loop.exec();
 	};
 	auto settle = [&] { waitUntil([&] { return !scroll.active(); }); };
-	auto fling = [&](qreal distance) {
+	auto fling = [&](qreal distance, int interval = 8, qreal finalTravel = 32,
+			 qint64 *duration = nullptr, int initialHold = 0, qreal *initialSpeed = nullptr,
+			 QList<QPointF> *samples = nullptr) {
 		bar->setValue(4000);
 		scroll.beginDrag();
+		if (initialHold) pause(initialHold);
 		const qreal direction = distance < 0 ? -1 : 1;
-		const qreal prefix = qAbs(distance)-32;
+		const qreal tail = qMin(qAbs(distance), finalTravel);
+		const qreal prefix = qAbs(distance)-tail;
 		scroll.dragTo(direction*prefix);
-		/* Identical final movement: only the earlier travel differs. */
-		for (int i = 1; i <= 16; ++i) {
-			pause(8);
-			scroll.dragTo(direction*(prefix+2*i));
+		/* Advance by elapsed time so late timer delivery does not change
+		 * the intended pointer speed. Earlier travel is independent. */
+		QElapsedTimer gestureClock;
+		gestureClock.start();
+		const int gestureDuration = interval*16;
+		qreal progress = 0;
+		while (progress < 1) {
+			pause(qMax(1, qMin(interval, gestureDuration-int(gestureClock.elapsed()))));
+			progress = qMin(qreal(1), gestureClock.nsecsElapsed()/(gestureDuration*1e6));
+			scroll.dragTo(direction*(prefix+tail*progress));
 		}
 		const qreal released = scroll.position();
 		require(qAbs(released-(4000-distance)) < 1, "Dragging stopped tracking the pointer");
+		QElapsedTimer coastClock;
+		coastClock.start();
+		QTimer sampleTimer;
+		sampleTimer.setTimerType(Qt::PreciseTimer);
+		sampleTimer.setInterval(16);
+		QObject::connect(&sampleTimer, &QTimer::timeout, &list, [&] {
+			samples->append(QPointF(coastClock.nsecsElapsed()/1e9, scroll.position()));
+		});
+		if (samples) {
+			samples->append(QPointF(0, released));
+			sampleTimer.start();
+		}
 		scroll.releaseDrag();
+		if (initialSpeed) {
+			pause(32);
+			*initialSpeed = (scroll.position()-released)/(coastClock.nsecsElapsed()/1e9);
+		}
 		settle();
+		sampleTimer.stop();
+		if (samples) samples->append(QPointF(coastClock.nsecsElapsed()/1e9, scroll.position()));
+		if (duration) *duration = coastClock.elapsed();
 		return scroll.position()-released;
 	};
-	const qreal shortTravel = fling(-64);
+	const qreal tinyTravel = fling(-24);
+	qint64 shortDuration = 0, fastDuration = 0;
+	const qreal shortTravel = fling(-64, 8, 32, &shortDuration);
 	const qreal longTravel = fling(-320);
-	qInfo() << "distance inertia: short" << shortTravel << "long" << longTravel;
-	require(shortTravel > 0 && shortTravel < 240, "Short drag flung past an entire card");
-	require(longTravel > shortTravel*3, "Longer drag with the same release movement did not gain inertia");
+	const qreal slowTravel = fling(-320, 24);
+	QList<QPointF> fastSamples;
+	const qreal fastTravel = fling(-320, 8, 128, &fastDuration, 0, nullptr, &fastSamples);
+	const qreal heldBeforeMoving = fling(-320, 8, 32, nullptr, 120);
+	qInfo() << "release inertia: tiny" << tinyTravel << "short" << shortTravel << "long" << longTravel
+		<< "slow" << slowTravel << "fast" << fastTravel << "held" << heldBeforeMoving
+		<< "duration ms" << shortDuration << fastDuration;
+	require(tinyTravel >= 0 && tinyTravel < 80, "Brief movement coasted too far");
+	require(shortTravel > 0 && shortTravel < 100, "Moderate release coasted too far");
+	require(qAbs(longTravel-shortTravel) < 8 && qAbs(heldBeforeMoving-longTravel) < 8,
+		"Earlier travel or time held changed the same release speed");
+	require(fastTravel > longTravel*2 && longTravel > slowTravel*2,
+		"Release speed did not control the coast distance");
+	require(shortDuration > 300 && shortDuration < 900 && fastDuration > 1300 && fastDuration < 1900,
+		"Release inertia stopped abruptly or lingered too long");
+	auto positionBeforeEnd = [&](qreal seconds) {
+		const qreal time = fastSamples.constLast().x()-seconds;
+		for (int i = fastSamples.size()-1; i >= 0; --i)
+			if (fastSamples[i].x() <= time) return fastSamples[i].y();
+		return fastSamples.constFirst().y();
+	};
+	const qreal tailTravel = qAbs(fastSamples.constLast().y()-positionBeforeEnd(0.24));
+	const qreal previousTravel = qAbs(positionBeforeEnd(0.24)-positionBeforeEnd(0.48));
+	qInfo() << "soft tail: last/previous 240 ms px" << tailTravel << previousTravel;
+	require(fastTravel < 600 && tailTravel < 6 && previousTravel > tailTravel*3,
+		"The final movement kept braking sharply or extended the browsing range");
 	const qreal capped = fling(-800);
 	const qreal veryLong = fling(-1500);
-	require(capped >= longTravel && veryLong < list.viewport()->width()*1.6 &&
-		qAbs(veryLong-capped) < 40, "Long drag inertia was unbounded");
-	require(fling(320) < -shortTravel*3, "Rightward drag lost its inertia direction");
+	qInfo() << "long-stroke inertia:" << capped << veryLong;
+	require(qAbs(capped-longTravel) < 8 && qAbs(veryLong-longTravel) < 8,
+		"Long strokes amplified the same release speed");
+	qreal fastInitialSpeed = 0, narrowInitialSpeed = 0;
+	const qreal fastBoundedTravel = fling(-1500, 8, 896, nullptr, 0, &fastInitialSpeed);
+	list.resize(160, 300); list.doItemsLayout();
+	const qreal narrowTravel = fling(-1500, 8, 896, nullptr, 0, &narrowInitialSpeed);
+	qInfo() << "fast flick: initial px/s" << fastInitialSpeed << narrowInitialSpeed
+		<< "tail px" << fastBoundedTravel << narrowTravel;
+	require(fastInitialSpeed > 3000 && narrowInitialSpeed > fastInitialSpeed*0.8,
+		"Fast flick velocity was capped by the viewport or tail distance");
+	require(fastBoundedTravel > 500 && fastBoundedTravel <= 901 && narrowTravel <= 901,
+		"A fast release coasted too far");
+	list.resize(800, 300); list.doItemsLayout();
+	require(fling(320) < -shortTravel/2, "Rightward drag lost its inertia direction");
 
 	bar->setValue(4000);
 	scroll.beginDrag(); scroll.dragTo(-320); scroll.dragTo(-308);
 	const qreal reversed = scroll.position();
 	scroll.releaseDrag(); settle();
-	require(scroll.position() < reversed && reversed-scroll.position() < shortTravel,
-		"Short reversal retained the previous long fling or went in the old direction");
+	require(scroll.position() < reversed && reversed-scroll.position() <= 901,
+		"Reversal retained forward momentum or exceeded the browsing range");
 	bar->setValue(4000);
 	scroll.beginDrag(); scroll.dragTo(-320); scroll.dragTo(-318);
 	const qreal jittered = scroll.position();
 	scroll.releaseDrag(); settle();
-	require(scroll.position()-jittered > longTravel/2, "Minor pointer jitter discarded the gesture distance");
+	require(scroll.position()-jittered > longTravel/2, "Minor pointer jitter discarded the release speed");
 
 	bar->setValue(4000);
 	scroll.beginDrag(); scroll.dragTo(-320); pause(120);
 	const qreal held = scroll.position();
+	/* MouseButtonRelease reports the same endpoint after stopping at B. */
+	scroll.dragTo(-320); scroll.releaseDrag();
+	require(!scroll.active() && scroll.position() == held, "Stopping at B still launched inertia");
+	pause(60);
+	require(scroll.position() == held, "Stopped release moved after the event returned");
+	scroll.beginDrag(); scroll.dragTo(-320); pause(60);
+	const qreal brieflyStopped = scroll.position();
 	scroll.releaseDrag();
-	require(!scroll.active() && scroll.position() == held, "Paused drag still started inertia");
+	require(!scroll.active() && scroll.position() == brieflyStopped, "A brief stop retained stale speed");
 	scroll.beginDrag(); scroll.dragTo(-320); pause(120); scroll.dragTo(-322);
+	const qreal corrected = scroll.position();
 	scroll.releaseDrag();
-	require(!scroll.active(), "A tiny correction after a pause restored the old long fling");
+	require(!scroll.active() && scroll.position() == corrected,
+		"A tiny correction after stopping restored the old fling");
 	bar->setValue(4000);
 	scroll.beginDrag(); scroll.dragTo(-320); pause(120); scroll.dragTo(-380);
 	const qreal resumed = scroll.position();
 	scroll.releaseDrag(); settle();
-	require(scroll.position()-resumed > longTravel, "An input timing gap discarded the accumulated drag distance");
+	require(scroll.position()-resumed > longTravel, "A resumed moving release lost its momentum");
 	scroll.beginDrag(); scroll.dragTo(-320); scroll.releaseDrag(false);
 	require(!scroll.active(), "Cancelled drag still started inertia");
 	const qreal beforeTouchpad = scroll.position();
@@ -1237,7 +1314,7 @@ int main(int argc, char **argv)
 {
 	QApplication app(argc, argv);
 	if (app.arguments().contains("--scroll-only"))
-		return runTest("drag distance controls bounded inertia and respects gesture endings", dragDistanceInertia);
+		return runTest("release velocity controls bounded inertia and stopping cancels momentum", dragReleaseInertia);
 	if (app.arguments().contains("--sync-selection-only"))
 		return runTest("sync replacement preserves selected content and input focus", syncedReplacementSelection);
 	if (app.arguments().contains("--browsing-only"))
@@ -1261,7 +1338,7 @@ int main(int argc, char **argv)
 	failures += runTest("search Tab advances the selected result and cycles", searchNavigation);
 	failures += runTest("search Tab keeps the card row in place", searchNavigationGeometry);
 	failures += runTest("pointer browsing survives restored card focus", pointerBrowsingKeepsPosition);
-	failures += runTest("drag distance controls bounded inertia and respects gesture endings", dragDistanceInertia);
+	failures += runTest("release velocity controls bounded inertia and stopping cancels momentum", dragReleaseInertia);
 	failures += runTest("type-to-search focuses before input method composition", searchInputMethod);
 	failures += runTest("Space previews selection across panel focus and preserves search input", previewKeyboardRouting);
 	failures += runTest("search composition keeps candidate keys", composingSearchCommands);

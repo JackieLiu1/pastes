@@ -1,15 +1,22 @@
 #include "ui/elasticscroll.h"
 
 #include <QEvent>
+#include <QEasingCurve>
 #include <QListWidget>
 #include <QScrollBar>
 #include <QtMath>
 
 namespace {
-constexpr qreal coastDecay = 5.5;
-constexpr qreal dragDistanceMultiplier = 3;
-constexpr qreal maxCoastDistance = 1800;
+constexpr qreal coastDeceleration = 600;
+constexpr qreal maxCoastDuration = 1.65;
+constexpr qreal restSpeed = 8;
+constexpr qreal maxDragVelocity = 5000;
+constexpr qreal dragVelocitySmoothing = 0.8;
+constexpr qreal dragSmoothingTime = 0.02;
+constexpr qreal dragStopTime = 0.05;
+constexpr qreal maxCoastDistance = 900;
 constexpr qreal directionChangeThreshold = 6;
+const QEasingCurve coastCurve(QEasingCurve::OutCubic);
 }
 
 ElasticScrollController::ElasticScrollController(QListWidget *list) : QObject(list), m_list(list)
@@ -95,8 +102,10 @@ void ElasticScrollController::beginDrag(void)
 	m_drag_travel = 0;
 	m_drag_peak = m_position;
 	m_velocity = 0;
+	m_drag_velocity = 0;
 	m_mode = Mode::Drag;
 	m_input_clock.start();
+	m_drag_clock.start();
 }
 
 void ElasticScrollController::dragTo(qreal distance)
@@ -106,19 +115,33 @@ void ElasticScrollController::dragTo(qreal distance)
 	const qreal delta = next-m_position;
 	if (qAbs(delta) < 0.01) return;
 	const qreal retreat = next-m_drag_peak;
-	/* Drop stale speed after a pause without losing the drag's distance.
-	 * Painting delays can also separate otherwise continuous input events. */
-	if (m_input_clock.elapsed() > 90) m_velocity = 0;
 	if (m_drag_travel*retreat < 0 && qAbs(retreat) >= directionChangeThreshold) {
 		m_drag_travel = retreat;
 		m_drag_peak = next;
-		m_velocity = 0;
+		m_drag_velocity = 0;
+		/* A deliberate reversal must not inherit forward momentum. */
 	} else {
 		/* Ignore tiny release-point reversals while retaining net travel. */
 		m_drag_travel += delta;
 		if (m_drag_travel*retreat >= 0) m_drag_peak = next;
 	}
+	this->updateDragVelocity(delta, m_drag_clock.nsecsElapsed()/1e9);
+	m_drag_clock.restart();
 	this->moveTo(next);
+	m_velocity = m_drag_velocity;
+}
+
+void ElasticScrollController::updateDragVelocity(qreal distance, qreal seconds)
+{
+	const qreal velocity = qBound(-maxDragVelocity, distance/qMax(qreal(0.001), seconds), maxDragVelocity);
+	/* Match QScroller's event velocity smoothing, with a shorter mouse
+	 * response time. A stopped pointer must not retain an older flick. */
+	if (m_drag_velocity == 0 || seconds >= dragStopTime) {
+		m_drag_velocity = velocity;
+	} else if (m_drag_velocity*velocity >= 0) {
+		const qreal blend = dragVelocitySmoothing*qMin(seconds/dragSmoothingTime, qreal(1));
+		m_drag_velocity += (velocity-m_drag_velocity)*blend;
+	}
 }
 
 void ElasticScrollController::moveTo(qreal next)
@@ -136,17 +159,23 @@ void ElasticScrollController::moveTo(qreal next)
 void ElasticScrollController::releaseDrag(bool coast)
 {
 	if (m_mode != Mode::Drag) return;
-	if (!coast || m_input_clock.elapsed() > 90) m_velocity = 0;
+	/* The release event includes time spent stationary at the endpoint. */
+	this->updateDragVelocity(0, m_drag_clock.nsecsElapsed()/1e9);
+	m_velocity = coast ? m_drag_velocity : 0;
 	if (qAbs(this->overshoot()) > 0.1) {
 		m_target = this->bounded(m_position);
 		m_mode = Mode::Spring;
-	} else if (qAbs(m_velocity) > 30 && qAbs(m_drag_travel) > 1) {
-		/* Mouse travel determines the coast distance. Exponential decay
-		 * travels approximately initial velocity / decay, independent of
-		 * event timing. Keep long strokes within a bounded browsing range. */
-		const qreal maximum = qMin(m_list->viewport()->width()*1.5, maxCoastDistance);
-		const qreal travel = qMin(qAbs(m_drag_travel)*dragDistanceMultiplier, maximum);
-		m_velocity = (m_drag_travel < 0 ? -travel : travel)*coastDecay;
+	} else if (qAbs(m_velocity) > 30) {
+		/* OutCubic reaches zero velocity and zero deceleration together.
+		 * Its initial slope is 3: retain the release speed and travel
+		 * budget, then use the extra time for a softer tail. */
+		const qreal speed = qAbs(m_velocity);
+		const qreal distance = qMin(maxCoastDistance, qMin(speed*speed/(2*coastDeceleration),
+			speed*maxCoastDuration/3));
+		m_coast_start = m_position;
+		m_coast_distance = m_velocity < 0 ? -distance : distance;
+		m_coast_duration = 3*distance/speed;
+		m_coast_elapsed = 0;
 		m_mode = Mode::Coast;
 	} else {
 		this->cancel();
@@ -233,8 +262,10 @@ void ElasticScrollController::advance(void)
 	while (remaining > 0) {
 		const qreal seconds = qMin(qreal(0.008), remaining);
 		if (m_mode == Mode::Coast) {
-			m_velocity *= qExp(-coastDecay*seconds);
-			m_position += m_velocity*seconds;
+			m_coast_elapsed = qMin(m_coast_duration, m_coast_elapsed+seconds);
+			const qreal progress = m_coast_elapsed/m_coast_duration;
+			m_position = m_coast_start+m_coast_distance*coastCurve.valueForProgress(progress);
+			m_velocity = 3*m_coast_distance/m_coast_duration*(1-progress)*(1-progress);
 			if (qAbs(this->overshoot()) > 0) {
 				m_target = this->bounded(m_position);
 				m_mode = Mode::Spring;
@@ -252,8 +283,8 @@ void ElasticScrollController::advance(void)
 		remaining -= seconds;
 	}
 	this->apply();
-	if (m_mode == Mode::Coast ? qAbs(m_velocity) < 8 :
-		(qAbs(m_target-m_position) < 0.3 && qAbs(m_velocity) < 8)) {
+	if (m_mode == Mode::Coast ? m_coast_elapsed >= m_coast_duration :
+		(qAbs(m_target-m_position) < 0.3 && qAbs(m_velocity) < restSpeed)) {
 		if (m_mode != Mode::Coast) m_position = m_target;
 		this->apply();
 		m_velocity = 0;
@@ -270,6 +301,7 @@ void ElasticScrollController::cancel(void)
 	m_timer.stop();
 	m_wheel_end.stop();
 	m_velocity = 0;
+	m_drag_velocity = 0;
 	if (m_list) {
 		m_position = m_list->horizontalScrollBar()->value();
 		m_list->viewport()->move(m_viewport_origin);
