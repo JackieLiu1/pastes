@@ -11,7 +11,8 @@ On Debian or Ubuntu, install the build and packaging dependencies:
 ```sh
 sudo apt-get install build-essential cmake qt6-base-dev qt6-tools-dev \
     qt6-tools-dev-tools libqt6svg6 libqt6sql6-sqlite qt6-image-formats-plugins \
-    libglib2.0-dev libxtst-dev libx11-dev libxi-dev pkg-config dpkg-dev patchelf
+    libglib2.0-dev libxtst-dev libx11-dev libxi-dev libxcb-res0-dev \
+    pkg-config dpkg-dev patchelf
 ```
 
 For a self-built Qt 6.3 or newer, including on Ubuntu 20.04, install the
@@ -19,7 +20,7 @@ system dependencies without the distribution's Qt packages:
 
 ```sh
 sudo apt-get install build-essential cmake libglib2.0-dev libxtst-dev \
-    libx11-dev libxi-dev pkg-config dpkg-dev patchelf
+    libx11-dev libxi-dev libxcb-res0-dev pkg-config dpkg-dev patchelf
 ```
 
 Point `CMAKE_PREFIX_QT_PATH` at the Qt installation prefix, rather than its
@@ -45,7 +46,7 @@ On Kylin V11 Server, install the build and packaging dependencies:
 
 ```sh
 sudo dnf install gcc-c++ cmake qt6-qtbase-devel qt6-qttools-devel \
-    qt6-qtsvg glib2-devel libXtst-devel libX11-devel libXi-devel \
+    qt6-qtsvg glib2-devel libXtst-devel libX11-devel libXi-devel libxcb-devel \
     pkgconf rpm-build chrpath patchelf
 ```
 
@@ -53,6 +54,17 @@ Qt package names can differ between RPM distributions. Packages bundle Qt
 by default, using the installation resolved by CMake. This also works with
 self-built Qt on Ubuntu 20.04 and does not require system Qt 6 packages on
 the destination machine.
+
+On X11, clipboard source icons are captured when the copy notification arrives.
+XRes associates hidden selection windows with their application's windows,
+without depending on titles or thread names. Window icons retain up to 128 px;
+installed desktop entries and the current icon theme provide a fallback.
+Servers without XRes use available window PID and client-leader hints instead.
+Native Wayland source identification still needs compositor integration.
+
+The clipboard tests always check icon decoding and desktop entry matching.
+Installing `xvfb` and `xauth` also enables the isolated native X11 CTest,
+including a Qt application's unnamed hidden selection window.
 
 Build and package with the same target used on Windows and macOS:
 
