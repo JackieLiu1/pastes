@@ -19,7 +19,7 @@ jobs:
         run: sudo apt-get update -y
 
       - name: Install build dependencies
-        run: sudo apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libqt6svg6 libqt6sql6-sqlite qt6-image-formats-plugins libglib2.0-dev libxtst-dev libx11-dev libxi-dev pkg-config dpkg-dev patchelf
+        run: sudo apt-get install -y build-essential cmake qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libqt6svg6 libqt6sql6-sqlite qt6-image-formats-plugins libglib2.0-dev libxtst-dev libx11-dev libxi-dev libxcb-res0-dev xvfb xauth pkg-config dpkg-dev patchelf
 
       - name: Build debian package
         id: build_debian_package
