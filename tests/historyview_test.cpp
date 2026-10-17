@@ -523,40 +523,48 @@ void dragReleaseInertia(void)
 	auto settle = [&] { waitUntil([&] { return !scroll.active(); }); };
 	auto fling = [&](qreal distance, int interval = 8, qreal finalTravel = 32,
 			 qint64 *duration = nullptr, int initialHold = 0, qreal *initialSpeed = nullptr,
-			 QList<QPointF> *samples = nullptr) {
+			 QList<QPointF> *samples = nullptr, int finalDelay = 0) {
 		bar->setValue(4000);
 		scroll.beginDrag();
 		if (initialHold) pause(initialHold);
 		const qreal direction = distance < 0 ? -1 : 1;
 		const qreal tail = qMin(qAbs(distance), finalTravel);
 		const qreal prefix = qAbs(distance)-tail;
-		scroll.dragTo(direction*prefix);
-		/* Advance by elapsed time so late timer delivery does not change
-		 * the intended pointer speed. Earlier travel is independent. */
-		QElapsedTimer gestureClock;
-		gestureClock.start();
-		const int gestureDuration = interval*16;
-		qreal progress = 0;
-		while (progress < 1) {
-			pause(qMax(1, qMin(interval, gestureDuration-int(gestureClock.elapsed()))));
-			progress = qMin(qreal(1), gestureClock.nsecsElapsed()/(gestureDuration*1e6));
-			scroll.dragTo(direction*(prefix+tail*progress));
-		}
-		const qreal released = scroll.position();
-		require(qAbs(released-(4000-distance)) < 1, "Dragging stopped tracking the pointer");
 		QElapsedTimer coastClock;
-		coastClock.start();
 		QTimer sampleTimer;
 		sampleTimer.setTimerType(Qt::PreciseTimer);
 		sampleTimer.setInterval(16);
 		QObject::connect(&sampleTimer, &QTimer::timeout, &list, [&] {
 			samples->append(QPointF(coastClock.nsecsElapsed()/1e9, scroll.position()));
 		});
+		scroll.dragTo(direction*prefix);
+		/* Advance by elapsed time so late timer delivery does not change
+		 * the intended pointer speed. Do not clamp the final sample: a
+		 * late event must keep moving at that speed beyond the deadline. */
+		QElapsedTimer gestureClock;
+		gestureClock.start();
+		const int gestureDuration = interval*16;
+		qreal progress = 0;
+		while (progress < 1) {
+			pause(interval);
+			if (finalDelay && gestureClock.elapsed()+interval >= gestureDuration) {
+				pause(finalDelay);
+				finalDelay = 0;
+			}
+			progress = gestureClock.nsecsElapsed()/(gestureDuration*1e6);
+			scroll.dragTo(direction*(prefix+tail*progress));
+		}
+		const qreal released = scroll.position();
+		coastClock.start();
+		/* Release immediately; timer setup and assertions must not add a
+		 * stationary interval that changes the velocity being compared. */
+		scroll.releaseDrag();
+		require(qAbs(released-(4000-direction*(prefix+tail*progress))) < 1,
+			"Dragging stopped tracking the pointer");
 		if (samples) {
 			samples->append(QPointF(0, released));
 			sampleTimer.start();
 		}
-		scroll.releaseDrag();
 		if (initialSpeed) {
 			pause(32);
 			*initialSpeed = (scroll.position()-released)/(coastClock.nsecsElapsed()/1e9);
@@ -575,11 +583,14 @@ void dragReleaseInertia(void)
 	QList<QPointF> fastSamples;
 	const qreal fastTravel = fling(-320, 8, 128, &fastDuration, 0, nullptr, &fastSamples);
 	const qreal heldBeforeMoving = fling(-320, 8, 32, nullptr, 120);
+	const qreal delayedTravel = fling(-320, 8, 32, nullptr, 0, nullptr, nullptr, 40);
 	qInfo() << "release inertia: tiny" << tinyTravel << "short" << shortTravel << "long" << longTravel
 		<< "slow" << slowTravel << "fast" << fastTravel << "held" << heldBeforeMoving
+		<< "delayed" << delayedTravel
 		<< "duration ms" << shortDuration << fastDuration;
 	require(tinyTravel >= 0 && tinyTravel < 80, "Brief movement coasted too far");
 	require(shortTravel > 0 && shortTravel < 100, "Moderate release coasted too far");
+	require(qAbs(delayedTravel-longTravel) < 8, "A late final pointer sample changed the release speed");
 	require(qAbs(longTravel-shortTravel) < 8 && qAbs(heldBeforeMoving-longTravel) < 8,
 		"Earlier travel or time held changed the same release speed");
 	require(fastTravel > longTravel*2 && longTravel > slowTravel*2,
