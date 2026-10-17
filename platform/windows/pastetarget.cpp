@@ -97,11 +97,13 @@ void PasteTarget::tryPaste(void)
 	cancel();
 	INPUT input[4] = {};
 	input[0].type = input[1].type = input[2].type = input[3].type = INPUT_KEYBOARD;
-	input[0].ki.wVk = VK_CONTROL;
-	input[1].ki.wVk = 'V';
-	input[2].ki.wVk = 'V';
-	input[2].ki.dwFlags = KEYEVENTF_KEYUP;
-	input[3].ki.wVk = VK_CONTROL;
+	/* Shift+Insert is a standard paste command in desktop controls and
+	 * terminals, where Ctrl+V can instead be forwarded as terminal input. */
+	input[0].ki.wVk = VK_SHIFT;
+	input[1].ki.wVk = input[2].ki.wVk = VK_INSERT;
+	input[1].ki.dwFlags = KEYEVENTF_EXTENDEDKEY;
+	input[2].ki.dwFlags = input[1].ki.dwFlags | KEYEVENTF_KEYUP;
+	input[3].ki.wVk = VK_SHIFT;
 	input[3].ki.dwFlags = KEYEVENTF_KEYUP;
 	if (SendInput(4, input, sizeof(INPUT)) != 4)
 		qCWarning(pasteLog) << "Unable to send paste shortcut:" << GetLastError();
