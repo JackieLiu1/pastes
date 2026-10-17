@@ -83,6 +83,13 @@ set_tests_properties(history_contract database_contract clipboard_contract
 set_property(TEST mainwindow_contract APPEND PROPERTY ENVIRONMENT "QT_FORCE_STDERR_LOGGING=1")
 
 if(WIN32)
+    add_executable(pastetarget_windows_test pastetarget_windows_test.cpp)
+    target_link_libraries(pastetarget_windows_test PRIVATE pastes_platform)
+    # A separate process receives real keyboard input on the native desktop.
+    add_test(NAME pastetarget_windows_contract COMMAND pastetarget_windows_test)
+    set_tests_properties(pastetarget_windows_contract PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=windows;QT_FORCE_STDERR_LOGGING=1"
+        TIMEOUT 30 RUN_SERIAL TRUE)
     add_executable(windowbackdrop_windows_test windowbackdrop_windows_test.cpp ../sources.qrc)
     target_link_libraries(windowbackdrop_windows_test PRIVATE pastes_ui)
     add_test(NAME windowbackdrop_windows_contract COMMAND windowbackdrop_windows_test)
@@ -93,7 +100,7 @@ if(WIN32)
     set(test_path "$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}")
     string(REPLACE ";" "\\;" test_path "${test_path}")
     set_property(TEST history_contract database_contract clipboard_contract diagnostics_contract
-        historyview_contract mainwindow_contract windowbackdrop_windows_contract
+        historyview_contract mainwindow_contract windowbackdrop_windows_contract pastetarget_windows_contract
         APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
 endif()
 
