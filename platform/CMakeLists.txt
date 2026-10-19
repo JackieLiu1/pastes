@@ -49,7 +49,6 @@ else()
 endif()
 
 if(WIN32)
-    set_target_properties(pastes PROPERTIES WIN32_EXECUTABLE TRUE)
     target_link_libraries(pastes_platform PRIVATE psapi gdi32 shell32 advapi32
         dwmapi d2d1 runtimeobject)
 elseif(APPLE)
@@ -61,19 +60,6 @@ elseif(APPLE)
     target_link_libraries(pastes_platform PRIVATE ${CARBON_FRAMEWORK}
         ${APPKIT_FRAMEWORK} ${COREGRAPHICS_FRAMEWORK}
         ${APPLICATIONSERVICES_FRAMEWORK} ${SERVICEMANAGEMENT_FRAMEWORK})
-    set_target_properties(pastes PROPERTIES
-        MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in"
-        MACOSX_BUNDLE_BUNDLE_NAME Pastes
-        MACOSX_BUNDLE_ICON_FILE pastes.icns
-        MACOSX_BUNDLE_GUI_IDENTIFIER io.github.JackieLiu1.pastes
-        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
-    )
-    # Info.plist changes invalidate the bundle signature even without C++ edits.
-    set_property(TARGET pastes APPEND PROPERTY LINK_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in"
-        "$<TARGET_BUNDLE_DIR:pastes>/Contents/Info.plist")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(X11 REQUIRED COMPONENTS Xi Xtst)
     find_package(PkgConfig REQUIRED)
