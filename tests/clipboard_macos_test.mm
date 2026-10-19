@@ -1,4 +1,8 @@
 #include "tests/testsupport.h"
+#include "storage/database.h"
+#include "application/historyservice.h"
+#include <QProcess>
+#include <QUuid>
 #include "platform/macos/clipboardpolicy.h"
 #include "platform/macos/clipboardmetadata.h"
 #include "platform/diagnosticlog.h"
@@ -157,14 +161,63 @@ void localDiagnostics(void)
 		!ordinaryLog.contains("private-file-path"), "Diagnostics logged clipboard content");
 }
 
+void nativePersistenceReload(void)
+{
+	PrivatePasteboard isolated;
+	auto *board = isolated.board;
+	QTemporaryDir directory;
+	const auto path = directory.filePath("history.db");
+	const auto marker =
+		QStringLiteral("native persistence marker ") + QUuid::createUuid().toString();
+	[board clearContents];
+	require([board setString:marker.toNSString() forType:NSPasteboardTypeString],
+		"Cannot write isolated persistence clipboard");
+	require(Platform::allowsClipboardHistory(board), "Persistence marker was excluded");
+	{
+		Database repository(path);
+		HistoryService history(repository);
+		bool ready = false;
+		QObject::connect(&history, &HistoryService::loaded, &history, [&] { ready = true; });
+		history.load();
+		waitUntil([&] { return ready; });
+		history.record(
+			textEntry(QString::fromNSString([board stringForType:NSPasteboardTypeString])));
+	}
+	QProcess restart;
+	restart.start(QCoreApplication::applicationFilePath(), {"--reload-history", path, marker});
+	require(restart.waitForFinished(5000) && restart.exitStatus() == QProcess::NormalExit &&
+			restart.exitCode() == 0,
+		"Native clipboard history or clock did not survive process restart");
+}
 }
 
 int main(int argc, char **argv)
 {
 	QCoreApplication app(argc, argv);
+	if (app.arguments().size() == 4 && app.arguments()[1] == "--reload-history") {
+		return runTest("independent history reload", [&] {
+			Database repository(app.arguments()[2]);
+			HistoryService history(repository);
+			bool ready = false;
+			QObject::connect(&history, &HistoryService::loaded, &history, [&] { ready = true; });
+			history.load();
+			waitUntil([&] { return ready; });
+			require(history.entries().size() == 1 &&
+					history.entries().first()->mimeData->text() == app.arguments()[3],
+				"Reloaded clipboard marker changed");
+			const auto before = history.entries().first()->events.copy;
+			history.record(textEntry("after native restart"));
+			require(history.entries().first()->events.copy > before &&
+					history.entries().first()->events.copy.device == before.device,
+				"Process restart did not retain clock and device identity");
+		});
+	}
 	@autoreleasepool {
-		return runTest("macOS native clipboard markers without payload reads", nativeMarkers) |
-			runTest("native bitmap declarations exclude synthesized file icons", nativeImageDeclarations) |
+		return runTest("isolated native clipboard persistence and process reload",
+				   nativePersistenceReload) |
+			runTest("macOS native clipboard markers without payload reads", nativeMarkers) |
+			runTest("native bitmap declarations exclude synthesized file icons",
+				nativeImageDeclarations) |
 			runTest("bounded private clipboard metadata diagnostics", localDiagnostics);
 	}
 }

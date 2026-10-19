@@ -1,4 +1,5 @@
 #include "tests/testsupport.h"
+#include "core/sourceicon.h"
 #include "application/historyservice.h"
 #include "core/clipboarddata.h"
 #include "core/historypolicy.h"
@@ -192,7 +193,10 @@ void storedImageDuplicates(void)
 	history.load(); repository.finishLoad({newer, older});
 	require(history.entries().size() == 1 && history.entries().first() == newer,
 		"Restart retained duplicate stored images or decoded their full pixels");
-	require(repository.removals == QList<QByteArray>{older->md5}, "Startup removed the wrong stored image");
+	require(repository.removals.contains(older->md5) &&
+			repository.writes.last()->md5 == newer->md5 &&
+			ClipboardData::storedImage(repository.writes.last()->mimeData.get()) == bytes,
+		"Startup failed to atomically replace duplicates while retaining encoded pixels");
 }
 
 void syncedImageDuplicates(void)
@@ -224,6 +228,7 @@ void syncedSourceIcons(void)
 		local->icon = icon;
 		history.record(local, 7);
 		auto remote = textEntry("synced source", now);
+		remote->events.copy = nextVersion(local->events.copy);
 		if (normalized) remote->md5 = QByteArray("normalized identity");
 		history.mergeSynced(remote, {local->md5});
 		require(history.entries().size() == 1 && history.entries().first() == remote &&
@@ -231,7 +236,7 @@ void syncedSourceIcons(void)
 			"Newer iconless sync erased the local source icon or persisted an empty icon");
 		QImage late(64, 64, QImage::Format_ARGB32); late.fill(Qt::red);
 		history.setSourceIcon(7, late);
-		require(remote->icon == late && repository.iconUpdates.last() == remote->md5,
+		require(remote->icon == late && repository.writes.last()->icon == late,
 			"Sync replacement discarded the pending native source lookup");
 		history.remove(remote->id);
 		auto recopy = textEntry("synced source"); history.record(recopy, 8);
@@ -244,10 +249,64 @@ void syncedSourceIcons(void)
 	history.record(local, 9);
 	auto remote = textEntry("remote source", now);
 	QImage remoteIcon(64, 64, QImage::Format_ARGB32); remoteIcon.fill(Qt::blue);
-	remote->icon = remoteIcon;
+	remote->events.copy = nextVersion(local->events.copy);
+	observeIcon(
+		remote, SourceIcon::observed(remoteIcon, now.toMSecsSinceEpoch()), remote->events.copy);
 	history.mergeSynced(remote, {});
 	history.setSourceIcon(9, icon);
 	require(remote->icon == remoteIcon, "Old native lookup overwrote a newer remote source icon");
+}
+
+void sourceCapturePriority(void)
+{
+	const auto now = QDateTime::currentDateTime().addSecs(-10);
+	QImage original(64, 64, QImage::Format_ARGB32);
+	original.fill(Qt::blue);
+	const QImage native = SourceIcon::observed(original, now.toMSecsSinceEpoch());
+	QImage fallback(64, 64, QImage::Format_ARGB32);
+	fallback.fill(Qt::red);
+	for (bool newerCopy : {false, true})
+		for (bool legacy : {false, true}) {
+			MemoryRepository repository;
+			HistoryService history(repository);
+			history.load();
+			repository.finishLoad();
+			auto local = textEntry("source priority", now);
+			local->icon = native;
+			history.record(local);
+			auto echo = textEntry("source priority", now.addSecs(newerCopy ? 2 : -2));
+			echo->icon = legacy
+				? fallback
+				: SourceIcon::observed(fallback, now.addDays(-2).toMSecsSinceEpoch());
+			history.mergeSynced(echo, {});
+			const auto kept = history.entries().first();
+			require(kept->icon == native &&
+					SourceIcon::captured(kept->icon) == SourceIcon::captured(native),
+				"An inherited or legacy sync icon overwrote a real native observation");
+			auto newer = textEntry("source priority", now.addSecs(3));
+			newer->events.copy = nextVersion(kept->events.latest());
+			observeIcon(newer, SourceIcon::observed(fallback, newer->time.toMSecsSinceEpoch()),
+				newer->events.copy);
+			history.mergeSynced(newer, {});
+			require(history.entries().first()->icon == fallback &&
+					SourceIcon::captured(history.entries().first()->icon) ==
+						newer->time.toMSecsSinceEpoch(),
+				"A genuinely newer observed source icon was ignored");
+		}
+	MemoryRepository repository;
+	HistoryService history(repository);
+	history.load();
+	repository.finishLoad();
+	auto local = textEntry("late source", now);
+	history.record(local, 42);
+	auto echo = textEntry("late source", now.addSecs(2));
+	echo->icon = fallback;
+	echo->events.copy = nextVersion(local->events.copy);
+	history.mergeSynced(echo, {});
+	history.setSourceIcon(42, original);
+	require(history.entries().first()->icon == original &&
+			SourceIcon::captured(history.entries().first()->icon) == now.toMSecsSinceEpoch(),
+		"A late native lookup inherited the remote copy time instead of its original capture time");
 }
 
 QList<HistoryEntry> neighbors(void)
@@ -410,6 +469,8 @@ void favoriteNamesAndOrder(void)
 	remote->time = copied.addSecs(-10);
 	remote->favoriteDetails.name = "remote name";
 	remote->favoriteDetails.nameModified += 100;
+	remote->events.name = nextVersion(restored->events.latest());
+	remote->events.position = EventVersion::legacy(1);
 	remote->favoriteDetails.position = 999;
 	remote->favoriteDetails.positionModified = 1;
 	history.mergeSynced(remote, {});
@@ -454,6 +515,8 @@ int main(int argc, char **argv)
 	failures += runTest("stored image duplicates without startup decoding", storedImageDuplicates);
 	failures += runTest("synced image duplicates preserve newest copy time", syncedImageDuplicates);
 	failures += runTest("sync replacements retain source icons and pending lookups", syncedSourceIcons);
+	failures +=
+		runTest("observed source icons outrank inherited sync echoes", sourceCapturePriority);
 	failures += runTest("favorite retention, recopy, undo and remote metadata", favoritesLifetime);
 	failures += runTest("favorite names, fixed order and independent metadata", favoriteNamesAndOrder);
 	failures += runTest("undo original positions", undoPositions);

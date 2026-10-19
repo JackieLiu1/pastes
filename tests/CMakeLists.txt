@@ -17,7 +17,7 @@ set_tests_properties(diagnostics_contract PROPERTIES TIMEOUT 30)
 
 if(APPLE)
     add_executable(clipboard_macos_test clipboard_macos_test.mm)
-    target_link_libraries(clipboard_macos_test PRIVATE pastes_platform)
+    target_link_libraries(clipboard_macos_test PRIVATE pastes_platform pastes_storage)
     add_test(NAME clipboard_macos_contract COMMAND clipboard_macos_test)
     set_tests_properties(clipboard_macos_contract PROPERTIES TIMEOUT 30)
     add_executable(trayicon_macos_test MACOSX_BUNDLE trayicon_macos_test.mm ../sources.qrc)

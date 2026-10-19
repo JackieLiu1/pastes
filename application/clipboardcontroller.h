@@ -32,6 +32,9 @@ private:
 	QTimer m_timer;
 	quint64 m_sourceRequest = 0;
 	QImage m_sourceIcon;
+	bool m_sourceComplete = false;
+	QDateTime m_captureTime;
+	EventVersion m_copyVersion;
 	bool m_recordingEnabled;
 };
 

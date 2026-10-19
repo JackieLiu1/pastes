@@ -2,22 +2,39 @@
 #include "core/clipboarddata.h"
 #include "core/clipboardcontent.h"
 #include "core/historypolicy.h"
+#include "core/sourceicon.h"
+#include "core/synccontent.h"
 #include <QCryptographicHash>
+#include <QJsonDocument>
 #include <utility>
 #include <algorithm>
 
 namespace {
+void normalize(const HistoryEntry &entry)
+{
+	if (entry->favorite && !entry->favoriteModified)
+		entry->favoriteModified = qMax(qint64(1), entry->time.toMSecsSinceEpoch());
+	if (!entry->events.copy.valid())
+		entry->events.copy = EventVersion::legacy(entry->time.toMSecsSinceEpoch());
+	if (!entry->events.favorite.valid())
+		entry->events.favorite = EventVersion::legacy(entry->favoriteModified);
+	if (!entry->events.name.valid())
+		entry->events.name = EventVersion::legacy(entry->favoriteDetails.nameModified);
+	if (!entry->events.position.valid())
+		entry->events.position = EventVersion::legacy(entry->favoriteDetails.positionModified);
+}
 bool inheritFavorite(const HistoryEntry &entry, const HistoryEntry &previous)
 {
-	bool changed = mergeFavoriteDetails(entry->favoriteDetails, previous->favoriteDetails);
-	if (previous->favoriteModified > entry->favoriteModified ||
-		(!entry->favoriteModified && previous->favorite)) {
-		changed |= entry->favorite != previous->favorite ||
-			entry->favoriteModified != previous->favoriteModified;
-		entry->favorite = previous->favorite;
-		entry->favoriteModified = previous->favoriteModified;
-	}
-	return changed;
+	const auto old = SyncContent::snapshot(*entry);
+	const auto merged = SyncContent::merge(old, SyncContent::snapshot(*previous));
+	entry->icon = merged.icon;
+	entry->events = merged.events;
+	entry->favorite = merged.favorite;
+	entry->favoriteModified = merged.favoriteModified;
+	entry->favoriteDetails = merged.favoriteDetails;
+	return old.favorite != merged.favorite || old.favoriteModified != merged.favoriteModified ||
+		old.favoriteDetails != merged.favoriteDetails || old.icon != merged.icon ||
+		old.events.latest() != merged.events.latest();
 }
 }
 
@@ -27,6 +44,57 @@ HistoryService::HistoryService(HistoryRepository &repository, QObject *parent)
 	m_undoTimer.setSingleShot(true);
 	m_undoTimer.setInterval(8000);
 	connect(&m_undoTimer, &QTimer::timeout, this, &HistoryService::clearUndo);
+	connect(&m_repository, &HistoryRepository::clockLoaded, this,
+		[this](const QString &device, const EventVersion &version) {
+			m_clock.device = device;
+			m_clock.observe(version);
+		});
+	connect(&m_repository, &HistoryRepository::projected, this,
+		[this](quint64 request, const HistoryEntry &entry, bool deleted) {
+			if (!m_writes.contains(request)) return;
+			if (!entry->contentKey.isEmpty()) m_contentKeys[entry->md5] = entry->contentKey;
+			const auto &pending = m_writes[request];
+			auto replaced = pending.removed;
+			if (!pending.entry->md5.isEmpty()) replaced.append(pending.entry->md5);
+			mergeIncoming(deleted ? HistoryEntry() : entry, replaced, entry->events,
+				entry->contentKey, {}, {}, SyncContent::snapshot(*entry), false);
+		});
+	connect(&m_repository, &HistoryRepository::committed, this,
+		[this](quint64 request, const QByteArray &document) {
+			if (!m_writes.contains(request)) return;
+			const auto pending = m_writes.take(request);
+			m_imageRequests.remove(request);
+			if (!document.isEmpty()) {
+				const auto object = QJsonDocument::fromJson(document).object();
+				m_clock.observe(EventState::parse(object.value("events").toObject()).latest());
+				if (!pending.entry->md5.isEmpty()) {
+					m_contentKeys[pending.entry->md5] = object.value("key").toString();
+					const auto current = find(pending.entry->id);
+					if (current && current->events.copy == pending.entry->events.copy)
+						current->contentKey = object.value("key").toString();
+				}
+			}
+			emit durableChanged(document);
+			if (!pending.record.isEmpty()) emit syncApplied(pending.account, pending.record, true);
+			drainIncoming();
+			emit persistenceStateChanged();
+		});
+	connect(&m_repository, &HistoryRepository::commitFailed, this,
+		[this](quint64 request, const QString &error) {
+			if (!m_writes.contains(request)) return;
+			auto &pending = m_writes[request];
+			pending.failed = true;
+			m_imageRequests.remove(request);
+			emit persistenceFailed(error);
+			if (!pending.record.isEmpty()) emit syncApplied(pending.account, pending.record, false);
+			drainIncoming();
+			emit persistenceStateChanged();
+		});
+	connect(&m_repository, &HistoryRepository::appliedLoaded, this, &HistoryService::appliedLoaded);
+	connect(&m_repository, &HistoryRepository::outboxLoaded, this, &HistoryService::outboxLoaded);
+	connect(&m_repository, &HistoryRepository::published, this, &HistoryService::published);
+	connect(&m_repository, &HistoryRepository::publishFailed, this, &HistoryService::publishFailed);
+	connect(&m_repository, &HistoryRepository::syncWarning, this, &HistoryService::syncWarning);
 	connect(&m_repository, &HistoryRepository::loaded, this, &HistoryService::acceptLoaded);
 	connect(&m_repository, &HistoryRepository::imageEncoded, this,
 		[this](quint64 request, const QByteArray &encoded, int format, qreal ratio) {
@@ -50,7 +118,10 @@ void HistoryService::acceptLoaded(const QList<HistoryEntry> &entries)
 	QHash<QByteArray, HistoryEntry> storedImages;
 	for (const HistoryEntry &entry : entries) {
 		if (!entry || !entry->mimeData) continue;
-		bool rewrite = false;
+		normalize(entry);
+		m_clock.observe(entry->events.latest());
+		if (!entry->contentKey.isEmpty()) m_contentKeys[entry->md5] = entry->contentKey;
+		QList<QByteArray> rewrite;
 		if (!entry->favorite && HistoryPolicy::expired(entry->time, now)) {
 			m_repository.remove(entry->md5);
 			continue;
@@ -63,25 +134,14 @@ void HistoryService::acceptLoaded(const QList<HistoryEntry> &entries)
 			const QByteArray key = QCryptographicHash::hash(image, QCryptographicHash::Sha256);
 			const HistoryEntry previous = storedImages.value(key);
 			if (previous) {
-				if (entry->time > previous->time) {
+				if (entry->events.copy > previous->events.copy) {
 					inheritFavorite(entry, previous);
-					if (entry->icon.isNull()) entry->icon = previous->icon;
-					rewrite = entry->md5 == previous->md5;
-					erase(indexOf(previous->id), HistoryChange::Replaced);
-					if (!rewrite && (entry->favorite || entry->favoriteModified))
-						persistFavorite(entry);
+					rewrite = {previous->md5, entry->md5};
+					erase(indexOf(previous->id), HistoryChange::Replaced, false);
 				} else {
-					if (inheritFavorite(previous, entry)) {
-						persistFavorite(previous);
-						emit entryChanged(previous->id);
-					}
-					if (previous->icon.isNull() && !entry->icon.isNull()) {
-						previous->icon = entry->icon;
-						m_repository.updateIcon(previous->md5, previous->icon);
-						emit entryChanged(previous->id);
-					}
-					m_repository.remove(entry->md5);
-					if (entry->md5 == previous->md5) persist(previous);
+					const bool changed = inheritFavorite(previous, entry);
+					persistHousekeeping(previous, {previous->md5, entry->md5});
+					if (changed) emit entryChanged(previous->id);
 					continue;
 				}
 			}
@@ -90,7 +150,7 @@ void HistoryService::acceptLoaded(const QList<HistoryEntry> &entries)
 		entry->id = ++m_nextId;
 		initializeFavoritePosition(entry);
 		m_entries.append(entry);
-		if (rewrite) persist(entry);
+		if (!rewrite.isEmpty()) persistHousekeeping(entry, rewrite);
 		emit entryAdded(entry, m_entries.size()-1, HistoryChange::Loaded);
 	}
 	m_ready = true;
@@ -126,22 +186,52 @@ HistoryEntry HistoryService::find(EntryId id) const
 	return row < 0 ? HistoryEntry() : m_entries.at(row);
 }
 
-void HistoryService::erase(int row, HistoryChange change)
+void HistoryService::erase(int row, HistoryChange change, bool write)
 {
 	const HistoryEntry entry = m_entries.takeAt(row);
 	emit entryErasing(entry, change);
 	for (auto it = m_sourceRequests.begin(); it != m_sourceRequests.end(); )
-		it = it.value() == entry->id ? m_sourceRequests.erase(it) : ++it;
+		it = it.value().entry == entry->id ? m_sourceRequests.erase(it) : ++it;
 	for (auto it = m_imageRequests.begin(); it != m_imageRequests.end(); )
 		it = it.value() == entry->id ? m_imageRequests.erase(it) : ++it;
-	m_repository.remove(entry->md5);
+	if (write) {
+		if (change == HistoryChange::Deleted)
+			persist(entry, {entry->md5}, true);
+		else
+			m_repository.remove(entry->md5);
+	}
 	emit entryRemoved(entry->id, change);
 }
 
-void HistoryService::persist(const HistoryEntry &entry)
+void HistoryService::persist(const HistoryEntry &entry, const QList<QByteArray> &removed,
+	bool deleted, const QString &key, const QString &account, const QString &record, bool publish)
 {
-	const quint64 request = m_repository.insert(entry);
-	if (request) m_imageRequests.insert(request, entry->id);
+	const auto snapshot = cloneEntry(*entry);
+	snapshot->id = entry->id;
+	const quint64 request =
+		m_repository.save(snapshot, {removed, deleted, publish, key, account, record});
+	m_writes.insert(request, {snapshot, removed, deleted, key, account, record, false, publish});
+	emit persistenceStateChanged();
+	if (request && !deleted) m_imageRequests.insert(request, entry->id);
+}
+void HistoryService::retryPersistence(void)
+{
+	const auto pending = m_writes;
+	for (auto it = pending.cbegin(); it != pending.cend(); ++it) {
+		if (!it->failed) continue;
+		m_writes.remove(it.key());
+		auto value = it.value();
+		for (const auto &current : m_entries)
+			if (current->md5 == value.entry->md5) {
+				if (current->events.copy > value.entry->events.erase) {
+					value.entry = cloneEntry(*current);
+					value.entry->id = current->id;
+					value.deleted = false;
+				}
+			}
+		persist(value.entry, value.removed, value.deleted, value.key, value.account, value.record,
+			value.publish);
+	}
 }
 
 void HistoryService::record(HistoryEntry entry, quint64 sourceRequest)
@@ -152,12 +242,31 @@ void HistoryService::record(HistoryEntry entry, quint64 sourceRequest)
 		return;
 	}
 	const QDateTime now = QDateTime::currentDateTime();
+	if (!entry->time.isValid()) entry->time = now;
+	if (!entry->events.copy.valid()) entry->events.copy = m_clock.tick();
+	if (!entry->icon.isNull() && !entry->events.source.valid() && !entry->sourceInherited) {
+		entry->events.source = entry->events.copy;
+		entry->events.sourceCaptured = entry->time.toMSecsSinceEpoch();
+	}
+	m_clock.observe(entry->events.latest());
+	QList<QByteArray> replaced;
 	for (int row = 0; row < m_entries.size(); ) {
 		const HistoryEntry previous = m_entries.at(row);
 		if (sameContent(previous, entry)) {
-			if (entry->icon.isNull()) entry->icon = previous->icon;
+			if (previous->events.copy >= entry->events.copy) {
+				if (sourceRequest)
+					m_sourceRequests.insert(sourceRequest,
+						{previous->id, entry->time.toMSecsSinceEpoch(), entry->events.copy});
+				if (inheritFavorite(previous, entry)) {
+					persist(previous, {previous->md5});
+					emit entryChanged(previous->id);
+				}
+				return;
+			}
 			inheritFavorite(entry, previous);
-			erase(row, HistoryChange::Replaced);
+			entry->contentKey = previous->contentKey;
+			replaced.append(previous->md5);
+			erase(row, HistoryChange::Replaced, false);
 		} else if (!previous->favorite && HistoryPolicy::expired(previous->time, now)) {
 			erase(row, HistoryChange::Expired);
 		} else ++row;
@@ -166,21 +275,32 @@ void HistoryService::record(HistoryEntry entry, quint64 sourceRequest)
 	if (!entry->time.isValid()) entry->time = now;
 	initializeFavoritePosition(entry);
 	m_entries.prepend(entry);
-	if (sourceRequest) m_sourceRequests.insert(sourceRequest, entry->id);
-	persist(entry);
+	if (sourceRequest)
+		m_sourceRequests.insert(
+			sourceRequest, {entry->id, entry->time.toMSecsSinceEpoch(), entry->events.copy});
+	persist(entry, replaced);
 	emit entryAdded(entry, 0, HistoryChange::Captured);
 }
 
 void HistoryService::setSourceIcon(quint64 request, const QImage &icon)
 {
 	if (icon.isNull()) return;
-	/* A source lookup can finish while initial history is still loading. */
 	for (auto &capture : m_pendingCaptures)
-		if (capture.sourceRequest == request) capture.entry->icon = icon;
-	const HistoryEntry entry = find(m_sourceRequests.take(request));
-	if (!entry) return;
-	entry->icon = icon;
-	m_repository.updateIcon(entry->md5, icon);
+		if (capture.sourceRequest == request) {
+			capture.entry->icon = icon;
+			capture.entry->events.sourceRevision = 1;
+		}
+	const auto source = m_sourceRequests.take(request);
+	const auto entry = find(source.entry);
+	if (!entry || source.version < entry->events.source) return;
+	if (source.version == entry->events.source && entry->events.sourceRevision &&
+		!entry->icon.isNull() && SourceIcon::key(icon) <= SourceIcon::key(entry->icon))
+		return;
+	entry->icon = SourceIcon::observed(icon, source.captured);
+	entry->events.source = source.version;
+	entry->events.sourceCaptured = source.captured;
+	entry->events.sourceRevision = 1;
+	persist(entry, {entry->md5});
 	emit entryChanged(entry->id);
 }
 
@@ -195,6 +315,12 @@ bool HistoryService::remove(EntryId id)
 	if (m_deleted.size() == 20) m_deleted.erase(m_deleted.begin());
 	m_deleted.push_back(std::move(removed));
 	m_undoTimer.start();
+	m_entries.at(row)->events.erase = m_clock.tick();
+	m_entries.at(row)->events.erasedAt = QDateTime::currentMSecsSinceEpoch();
+	m_entries.at(row)->events.favorite = m_entries.at(row)->events.name =
+		m_entries.at(row)->events.position = m_entries.at(row)->events.erase;
+	m_entries.at(row)->favorite = false;
+	m_entries.at(row)->favoriteDetails = {};
 	erase(row, HistoryChange::Deleted);
 	emit undoChanged(true);
 	return true;
@@ -204,12 +330,14 @@ bool HistoryService::setFavorite(EntryId id, bool favorite)
 {
 	const HistoryEntry entry = find(id);
 	if (!entry || entry->favorite == favorite) return false;
+	entry->events.favorite = m_clock.tick();
 	entry->favorite = favorite;
-	entry->favoriteModified = qMax(QDateTime::currentMSecsSinceEpoch(), entry->favoriteModified+1);
+	entry->favoriteModified = entry->events.favorite.physical;
 	if (favorite && !entry->favoriteDetails.positionModified) {
 		qint64 position = 0;
 		for (const auto &other : favoriteEntries()) position = qMax(position, other->favoriteDetails.position);
 		entry->favoriteDetails.position = qMin(position+1024, FavoriteDetails::maxPosition);
+		entry->events.position = m_clock.tick();
 		entry->favoriteDetails.positionModified = entry->favoriteModified;
 	}
 	persistFavorite(entry);
@@ -222,7 +350,7 @@ bool HistoryService::setFavorite(EntryId id, bool favorite)
 
 void HistoryService::persistFavorite(const HistoryEntry &entry)
 {
-	m_repository.updateFavorite(entry->md5, entry->favorite, entry->favoriteModified, entry->favoriteDetails);
+	persist(entry, {entry->md5});
 }
 
 void HistoryService::initializeFavoritePosition(const HistoryEntry &entry)
@@ -256,8 +384,9 @@ bool HistoryService::setFavoriteName(EntryId id, const QString &name)
 		if (value.back().isHighSurrogate()) value.chop(1);
 	}
 	if (!entry || !entry->favorite || value == entry->favoriteDetails.name) return false;
+	entry->events.name = m_clock.tick();
 	entry->favoriteDetails.name = value;
-	entry->favoriteDetails.nameModified = qMax(QDateTime::currentMSecsSinceEpoch(), entry->favoriteDetails.nameModified+1);
+	entry->favoriteDetails.nameModified = entry->events.name.physical;
 	persistFavorite(entry);
 	emit favoriteChanged(entry);
 	return true;
@@ -280,7 +409,8 @@ bool HistoryService::moveFavorite(EntryId id, EntryId neighbor)
 	if (!changed.contains(entry)) changed.append(entry);
 	if (!changed.contains(other)) changed.append(other);
 	for (const auto &item : changed) {
-		item->favoriteDetails.positionModified = qMax(QDateTime::currentMSecsSinceEpoch(), item->favoriteDetails.positionModified+1);
+		item->events.position = m_clock.tick();
+		item->favoriteDetails.positionModified = item->events.position.physical;
 		persistFavorite(item);
 	}
 	/* Publish after all values change; observers see a complete swap. */
@@ -336,7 +466,12 @@ HistoryService::UndoResult HistoryService::undo(void)
 	UndoResult result;
 	for (const auto &entry : m_entries) {
 		if (sameContent(entry, removed.entry)) {
+			const auto previousDetails = entry->favoriteDetails;
 			const bool changed = mergeFavoriteDetails(entry->favoriteDetails, removed.entry->favoriteDetails);
+			if (entry->favoriteDetails.name != previousDetails.name)
+				entry->events.name = m_clock.tick();
+			if (entry->favoriteDetails.position != previousDetails.position)
+				entry->events.position = m_clock.tick();
 			if (removed.entry->favorite && !entry->favorite) setFavorite(entry->id, true);
 			else if (changed) { persistFavorite(entry); emit favoriteChanged(entry); }
 			result.entry = entry;
@@ -345,6 +480,9 @@ HistoryService::UndoResult HistoryService::undo(void)
 	}
 	if (!result.entry) {
 		const int row = restorationRow(removed);
+		removed.entry->events.copy = m_clock.tick();
+		removed.entry->events.favorite = removed.entry->events.name =
+			removed.entry->events.position = removed.entry->events.copy;
 		removed.entry->id = ++m_nextId;
 		m_entries.insert(row, removed.entry);
 		persist(removed.entry);
@@ -358,54 +496,104 @@ HistoryService::UndoResult HistoryService::undo(void)
 
 void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &replaced)
 {
+	EventState events;
+	if (entry) {
+		normalize(entry);
+		events = entry->events;
+	}
+	mergeIncoming(entry, replaced, events, {}, {}, {});
+}
+void HistoryService::applySynced(HistoryEntry entry, const QList<QByteArray> &replaced,
+	const EventState &events, const QString &key, const QString &account, const QString &record,
+	const SyncContent::Snapshot &metadata)
+{
+	m_clock.observe(events.latest());
+	Incoming incoming{entry, replaced, events, key, account, record, metadata, {}};
+	for (auto it = m_writes.cbegin(); it != m_writes.cend(); ++it)
+		incoming.barrier.insert(it.key());
+	m_incoming.append(incoming);
+	drainIncoming();
+}
+void HistoryService::drainIncoming(void)
+{
+	for (int i = 0; i < m_incoming.size();) {
+		bool waiting = false, failed = false;
+		for (auto request : m_incoming[i].barrier)
+			if (m_writes.contains(request)) {
+				if (m_writes[request].failed)
+					failed = true;
+				else
+					waiting = true;
+			}
+		if (waiting) {
+			++i;
+			continue;
+		}
+		const auto incoming = m_incoming.takeAt(i);
+		if (failed) {
+			emit syncApplied(incoming.account, incoming.record, false);
+			continue;
+		}
+		mergeIncoming(incoming.entry, incoming.replaced, incoming.events, incoming.key,
+			incoming.account, incoming.record, incoming.metadata);
+	}
+}
+void HistoryService::mergeIncoming(HistoryEntry entry, const QList<QByteArray> &replaced,
+	const EventState &events, const QString &key, const QString &account, const QString &record,
+	const SyncContent::Snapshot &metadata, bool persistResult)
+{
 	if (!m_ready) return;
+	if (entry && !key.isEmpty()) entry->contentKey = key;
+	m_clock.observe(events.latest());
 	const QDateTime now = QDateTime::currentDateTime();
 	EntryId replacementId = 0;
-	for (int row = 0; row < m_entries.size(); ) {
-		const auto &previous = m_entries.at(row);
+	QList<QByteArray> removed;
+	for (int row = 0; row < m_entries.size();) {
+		const auto previous = m_entries.at(row);
 		const bool duplicate = entry && sameContent(previous, entry);
-		/* Metadata changes retain the newest known copy time, including legacy
-		 * images whose stored identity came from a temporary URL. */
-		if (duplicate && previous->time >= entry->time) {
-			if (inheritFavorite(previous, entry)) {
-				initializeFavoritePosition(previous);
-				persistFavorite(previous);
-				emit entryChanged(previous->id);
-			}
-			if (!previous->favorite && HistoryPolicy::expired(previous->time, now)) {
-				erase(row, HistoryChange::Synced);
-				return;
-			}
-			if (!entry->icon.isNull() && previous->icon != entry->icon) {
-				previous->icon = entry->icon;
-				m_repository.updateIcon(previous->md5, previous->icon);
-				emit entryChanged(previous->id);
-			}
+		if (!duplicate && !replaced.contains(previous->md5) &&
+			(key.isEmpty() || m_contentKeys.value(previous->md5) != key)) {
+			++row;
+			continue;
+		}
+		if (!entry && events.erase.valid() && previous->events.copy > events.erase) {
+			auto tombstone = SyncContent::materialize(metadata);
+			tombstone->events = events;
+			if (inheritFavorite(previous, tombstone)) emit entryChanged(previous->id);
+			if (persistResult) persist(previous, {previous->md5}, false, key, account, record);
 			return;
 		}
-		if (entry && duplicate) inheritFavorite(entry, previous);
-		const bool replacing = replaced.contains(previous->md5) || duplicate;
-		if (entry && replacing && (entry->favorite || !HistoryPolicy::expired(entry->time, now))) {
+		if (duplicate && previous->events.copy >= entry->events.copy) {
+			const bool changed = inheritFavorite(previous, entry);
+			if (persistResult) persist(previous, {previous->md5}, false, key, account, record);
+			if (changed) emit entryChanged(previous->id);
+			return;
+		}
+		if (entry) inheritFavorite(entry, previous);
+		if (entry && (entry->favorite || !HistoryPolicy::expired(entry->time, now))) {
 			if (!replacementId) replacementId = ++m_nextId;
-			/* A copy without a source does not erase a known icon. Keep an
-			 * outstanding native lookup attached to the replacement as well. */
-			if (entry->icon.isNull()) {
-				entry->icon = previous->icon;
-				for (auto &id : m_sourceRequests)
-					if (id == previous->id) id = replacementId;
-			}
+			for (auto &source : m_sourceRequests)
+				if (source.entry == previous->id) source.entry = replacementId;
 			emit entryReplacing(previous->id, replacementId);
 		}
-		if (replacing)
-			erase(row, HistoryChange::Synced);
-		else ++row;
+		removed.append(previous->md5);
+		erase(row, HistoryChange::Synced, false);
 	}
-	if (!entry || (!entry->favorite && HistoryPolicy::expired(entry->time, now))) return;
+	if (!entry || (!entry->favorite && HistoryPolicy::expired(entry->time, now))) {
+		if (!record.isEmpty()) {
+			auto tombstone = SyncContent::materialize(metadata);
+			tombstone->events = events;
+			if (persistResult) persist(tombstone, removed, true, key, account, record);
+		} else if (persistResult)
+			for (const auto &md5 : removed)
+				m_repository.remove(md5);
+		return;
+	}
 	int row = 0;
-	while (row < m_entries.size() && m_entries.at(row)->time > entry->time) ++row;
+	while (row < m_entries.size() && m_entries.at(row)->time > entry->time)
+		++row;
 	entry->id = replacementId ? replacementId : ++m_nextId;
-	initializeFavoritePosition(entry);
 	m_entries.insert(row, entry);
-	persist(entry);
+	if (persistResult) persist(entry, removed, false, key, account, record);
 	emit entryAdded(entry, row, HistoryChange::Synced);
 }

@@ -489,6 +489,7 @@ void pointerBrowsingKeepsPosition(void)
 		"A remote arrival scrolled back to the selected card");
 	auto replacement = cloneEntry(*chosen);
 	replacement->time = QDateTime::currentDateTime().addSecs(10);
+	replacement->events.copy = nextVersion(chosen->events.copy);
 	history.mergeSynced(replacement, {});
 	require(qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == replacement &&
 		list->horizontalScrollBar()->value() == browsingPosition && view.hasFocus(),

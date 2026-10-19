@@ -1,5 +1,6 @@
 #include "tests/testsupport.h"
 #include "application/clipboardcontroller.h"
+#include "core/sourceicon.h"
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QPointer>
@@ -9,7 +10,7 @@
 class TestFeed final : public ClipboardFeed
 {
 public:
-	int settleInterval(void) const override { return 0; }
+	int settleInterval(void) const override { return interval; }
 	void capture(quint64 request) override { lastRequest = request; }
 	bool synchronize(void) override
 	{
@@ -20,6 +21,8 @@ public:
 	bool allowsCapture(void) const override { return allowed; }
 	bool hasImageContent(void) const override { return imageContent; }
 	void notify(void) { emit clipboardChanged(); }
+	void finish(quint64 request, const QImage &image) { emit iconReady(request, image); }
+	int interval = 0;
 	bool allowed = true;
 	bool imageContent = true;
 	QImage icon;
@@ -125,9 +128,19 @@ void clipboardLifecycle(void)
 	clipboard.setText("second"); feed.notify();
 	waitUntil([&] { return history.entries().size() == 2; });
 	const auto original = history.entries().last();
+	const auto previousCopy = history.entries().first()->events.copy;
+	const auto originalSource = original->events.source;
 	require(controller.copy(*original), "Internal copy failed");
 	waitUntil([&] { return history.entries().first()->mimeData->text() == "first"; });
 	require(history.entries().size() == 2, "Internal copy failed to deduplicate");
+	const auto internalCopy = history.entries().first()->events.copy;
+	require(
+		internalCopy > previousCopy && history.entries().first()->events.source == originalSource,
+		"Explicit internal copy reused a copy event or refreshed its inherited source");
+	feed.notify();
+	controller.flushPending();
+	require(history.entries().first()->events.copy == internalCopy,
+		"Own clipboard notification manufactured a second copy event");
 	require(history.entries().first()->icon == original->icon, "Internal copy changed original source");
 
 	/* Invalidate a snapshot after MIME duplication, as promised native
@@ -142,6 +155,44 @@ void clipboardLifecycle(void)
 	waitUntil([&] { return history.entries().first()->mimeData->text() == "newest"; });
 	for (const auto &entry : history.entries())
 		require(entry->mimeData->text() != "superseded", "Invalidated snapshot entered history");
+}
+
+void delayedCaptureRetainsObservationTime(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	history.load();
+	repository.finishLoad();
+	TestFeed feed;
+	feed.interval = 25;
+	feed.icon = QImage(16, 16, QImage::Format_ARGB32);
+	feed.icon.fill(Qt::green);
+	QClipboard &clipboard = *QGuiApplication::clipboard();
+	ClipboardController controller(history, feed, clipboard, true);
+	clipboard.setText("copy delayed by platform settling");
+	const auto before = QDateTime::currentDateTime();
+	feed.notify();
+	const auto after = QDateTime::currentDateTime();
+	const auto request = feed.lastRequest;
+	auto remote = textEntry("copy delayed by platform settling", after.addSecs(1));
+	remote->events.copy = {after.addMSecs(100).toMSecsSinceEpoch(), 0, "remote"};
+	remote->mimeData->setHtml("<b>newer remote copy</b>");
+	history.mergeSynced(remote, {});
+	waitUntil([&] { return !history.entries().first()->icon.isNull(); });
+	const auto kept = history.entries().first();
+	const auto observed = kept->events.source;
+	require(kept == remote && kept->time == remote->time &&
+			kept->events.copy == remote->events.copy &&
+			kept->events.sourceCaptured >= before.toMSecsSinceEpoch() &&
+			kept->events.sourceCaptured <= after.toMSecsSinceEpoch(),
+		"Settling completion changed the copy winner or used completion time as observation time");
+	QImage final(16, 16, QImage::Format_ARGB32);
+	final.fill(Qt::red);
+	feed.finish(request, final);
+	waitUntil([&] { return kept->icon == final; });
+	require(kept->events.source == observed && kept->events.sourceRevision == 1 &&
+			kept->mimeData->html() == "<b>newer remote copy</b>",
+		"Late source completion changed the original observation or rewound content");
 }
 
 void mixedImageSnapshot(void)
@@ -229,10 +280,46 @@ void clipboardOwnership(void)
 	if (clipboard.supportsSelection()) clipboard.clear(QClipboard::Selection);
 }
 
+void sourceObservationClock(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	history.load();
+	repository.finishLoad();
+	TestFeed feed;
+	feed.icon = QImage(64, 64, QImage::Format_ARGB32);
+	feed.icon.fill(Qt::blue);
+	auto &clipboard = *QGuiApplication::clipboard();
+	ClipboardController controller(history, feed, clipboard, true);
+	clipboard.setText("observation clock");
+	feed.notify();
+	waitUntil([&] { return history.entries().size() == 1; });
+	const auto original = history.entries().first();
+	const qint64 observed = SourceIcon::captured(original->icon);
+	require(observed == original->time.toMSecsSinceEpoch() && observed > 0 &&
+			!SourceIcon::captured(feed.icon),
+		"Native capture did not timestamp its own snapshot independently of the feed cache");
+	waitUntil([&] { return QDateTime::currentMSecsSinceEpoch() > observed + 2; });
+	require(controller.copy(*original), "Internal source copy failed");
+	waitUntil([&] { return history.entries().first() != original; });
+	require(SourceIcon::captured(history.entries().first()->icon) == observed,
+		"Internal copying refreshed an inherited icon's observation time");
+	feed.icon.fill(Qt::red);
+	clipboard.setText("observation clock");
+	feed.notify();
+	waitUntil([&] { return SourceIcon::captured(history.entries().first()->icon) > observed; });
+	require(history.entries().first()->icon == feed.icon,
+		"A real native re-copy failed to replace the previous source icon");
+}
+
 int main(int argc, char **argv)
 {
 	QGuiApplication app(argc, argv);
-	return runTest("clipboard pause, copy and native synchronization", clipboardLifecycle) |
+	return runTest("settled captures retain event identity and original observation time",
+			   delayedCaptureRetainsObservationTime) |
+		runTest("clipboard pause, copy and native synchronization", clipboardLifecycle) |
+		runTest("native captures timestamp source icons while internal copies retain provenance",
+			sourceObservationClock) |
 		runTest("clipboard capture exclusion and recovery", capturePolicy) |
 		runTest("mixed clipboard image snapshots preserve original formats", mixedImageSnapshot) |
 		runTest("clipboard transfer, plain text and reentrant replacement", clipboardOwnership);
