@@ -140,3 +140,21 @@ set_tests_properties(eventstate_contract PROPERTIES TIMEOUT 30)
 if(WIN32)
     set_property(TEST eventstate_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
 endif()
+
+# Headless includes offscreen widgets and native X11 on an isolated Xvfb server.
+# Desktop tests can change foreground focus, send input or open native menus.
+foreach(contract history_contract database_contract clipboard_contract diagnostics_contract
+        clipboard_macos_contract macos_signing_contract clipboard_linux_contract
+        clipboard_linux_x11_contract linux_packaging_contract panel_linux_contract
+        historyview_contract mainwindow_contract windowbackdrop_windows_contract
+        architecture_dependencies webdav_contract settings_contract
+        syncordering_contract eventstate_contract)
+    if(TEST ${contract})
+        set_tests_properties(${contract} PROPERTIES LABELS headless)
+    endif()
+endforeach()
+foreach(contract pastetarget_windows_contract trayicon_macos_contract shortcut_linux_contract)
+    if(TEST ${contract})
+        set_tests_properties(${contract} PROPERTIES LABELS desktop)
+    endif()
+endforeach()
