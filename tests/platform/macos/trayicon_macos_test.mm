@@ -1,4 +1,4 @@
-#include "tests/testsupport.h"
+#include "tests/application/memoryrepository.h"
 #include "platform/applicationintegration.h"
 #include "platform/trayicon.h"
 #include "application/clipboardcontroller.h"

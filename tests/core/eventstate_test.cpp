@@ -1,4 +1,4 @@
-#include "tests/testsupport.h"
+#include "tests/core/entryfixtures.h"
 #include "core/synccontent.h"
 #include <QCoreApplication>
 #include <algorithm>

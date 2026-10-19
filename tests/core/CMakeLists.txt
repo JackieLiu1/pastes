@@ -1,0 +1,3 @@
+add_executable(eventstate_test eventstate_test.cpp)
+target_link_libraries(eventstate_test PRIVATE pastes_core)
+pastes_add_contract(eventstate_contract headless eventstate_test)

@@ -1,5 +1,5 @@
-#include "tests/testsupport.h"
-#include "tests/davfixture.h"
+#include "tests/application/memoryrepository.h"
+#include "tests/sync/davfixture.h"
 #include "sync/webdavsync.h"
 #include "core/clipboarddata.h"
 #include "core/sourceicon.h"

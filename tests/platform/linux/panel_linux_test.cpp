@@ -1,4 +1,4 @@
-#include "tests/testsupport.h"
+#include "tests/application/memoryrepository.h"
 #include "application/clipboardcontroller.h"
 #include "ui/window/mainwindow.h"
 #include "ui/history/historyview.h"

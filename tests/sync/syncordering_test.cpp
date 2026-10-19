@@ -1,4 +1,5 @@
-#include "tests/davfixture.h"
+#include "tests/sync/davfixture.h"
+#include "tests/core/entryfixtures.h"
 #include "storage/database.h"
 #include <QCoreApplication>
 #include <QSettings>

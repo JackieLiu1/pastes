@@ -1,4 +1,4 @@
-#include "tests/testsupport.h"
+#include "tests/support/testsupport.h"
 #include "platform/clipboardsource.h"
 #include "platform/linux/clipboardicon.h"
 #include "application/clipboardcontroller.h"

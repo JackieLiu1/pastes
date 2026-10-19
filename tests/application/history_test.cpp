@@ -1,4 +1,4 @@
-#include "tests/testsupport.h"
+#include "tests/application/memoryrepository.h"
 #include "core/sourceicon.h"
 #include "application/historyservice.h"
 #include "core/clipboarddata.h"

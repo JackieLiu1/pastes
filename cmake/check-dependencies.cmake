@@ -17,6 +17,12 @@ set(dialogs_forbidden "ui/(window|history|cards|preview)/")
 foreach(layer core application storage sync ui platform)
     file(GLOB_RECURSE sources "${PASTES_SOURCE_DIR}/${layer}/*.h"
         "${PASTES_SOURCE_DIR}/${layer}/*.cpp" "${PASTES_SOURCE_DIR}/${layer}/*.mm")
+    if(layer STREQUAL "core")
+        file(GLOB_RECURSE core_tests "${PASTES_SOURCE_DIR}/tests/core/*.h"
+            "${PASTES_SOURCE_DIR}/tests/core/*.cpp"
+            "${PASTES_SOURCE_DIR}/tests/support/*.h")
+        list(APPEND sources ${core_tests})
+    endif()
     foreach(source IN LISTS sources)
         file(STRINGS "${source}" includes REGEX "^[ \t]*#[ \t]*include")
         foreach(include IN LISTS includes)

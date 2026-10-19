@@ -33,4 +33,4 @@ jobs:
           dpkg-deb --info build/dist/*.deb
           dpkg-deb --contents build/dist/*.deb
           dpkg-deb --extract build/dist/*.deb build/package-test-root
-          python3 tests/linux_package_test.py build/package-test-root
+          python3 tests/packaging/linux_package_test.py build/package-test-root

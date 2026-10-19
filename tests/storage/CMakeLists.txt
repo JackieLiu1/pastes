@@ -1,0 +1,3 @@
+add_executable(database_test database_test.cpp)
+target_link_libraries(database_test PRIVATE pastes_storage Qt6::Sql)
+pastes_add_contract(database_contract headless database_test)

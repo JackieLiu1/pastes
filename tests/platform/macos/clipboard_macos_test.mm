@@ -1,4 +1,4 @@
-#include "tests/testsupport.h"
+#include "tests/core/entryfixtures.h"
 #include "storage/database.h"
 #include "application/historyservice.h"
 #include <QProcess>

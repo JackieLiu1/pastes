@@ -1,6 +1,6 @@
 #ifndef PASTES_DAV_FIXTURE_H
 #define PASTES_DAV_FIXTURE_H
-#include "tests/testsupport.h"
+#include "tests/support/testsupport.h"
 #include "sync/webdavsync.h"
 #include "core/sourceicon.h"
 #include "platform/secretstore.h"

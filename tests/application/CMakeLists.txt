@@ -1,0 +1,7 @@
+add_executable(history_test history_test.cpp)
+target_link_libraries(history_test PRIVATE pastes_application)
+pastes_add_contract(history_contract headless history_test)
+
+add_executable(clipboard_test clipboard_test.cpp)
+target_link_libraries(clipboard_test PRIVATE pastes_application)
+pastes_add_contract(clipboard_contract offscreen clipboard_test)

@@ -1,68 +1,8 @@
-#ifndef PASTES_TESTSUPPORT_H
-#define PASTES_TESTSUPPORT_H
+#ifndef PASTES_MEMORY_REPOSITORY_H
+#define PASTES_MEMORY_REPOSITORY_H
 
+#include "tests/core/entryfixtures.h"
 #include "application/historyrepository.h"
-#include "core/clipboardcontent.h"
-#include <QBuffer>
-#include <QDebug>
-#include <QEventLoop>
-#include <QTimer>
-#include <functional>
-#include <stdexcept>
-
-inline void require(bool value, const char *message)
-{
-	if (!value) throw std::runtime_error(message);
-}
-
-inline HistoryEntry textEntry(const QString &text, QDateTime time = QDateTime::currentDateTime())
-{
-	auto entry = HistoryEntry::create();
-	entry->mimeData = std::make_unique<QMimeData>();
-	entry->mimeData->setText(text);
-	entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
-	entry->time = time;
-	return entry;
-}
-
-inline EventVersion nextVersion(EventVersion previous, const QString &device = "test-peer")
-{
-	++previous.logical;
-	previous.device = device;
-	return previous;
-}
-inline void observeIcon(const HistoryEntry &entry, const QImage &icon, EventVersion version = {})
-{
-	if (!version.valid())
-		version = entry->events.copy.valid()
-			? entry->events.copy
-			: EventVersion{entry->time.toMSecsSinceEpoch(), 0, "test-source"};
-	entry->events.source = version;
-	entry->events.sourceCaptured = entry->time.toMSecsSinceEpoch();
-	entry->icon = icon;
-}
-
-inline QByteArray png(const QImage &image)
-{
-	QByteArray bytes;
-	QBuffer buffer(&bytes);
-	buffer.open(QIODevice::WriteOnly);
-	require(image.save(&buffer, "PNG"), "PNG encoding failed");
-	return bytes;
-}
-
-inline void waitUntil(const std::function<bool()> &condition, int timeout = 3000)
-{
-	if (condition()) return;
-	QEventLoop loop;
-	QTimer poll;
-	poll.setInterval(5);
-	QObject::connect(&poll, &QTimer::timeout, &loop, [&] { if (condition()) loop.quit(); });
-	QTimer::singleShot(timeout, &loop, &QEventLoop::quit);
-	poll.start();
-	loop.exec();
-	require(condition(), "Timed out waiting for asynchronous completion");
-}
 
 class MemoryRepository final : public HistoryRepository
 {
@@ -134,11 +74,5 @@ public:
 	QList<QByteArray> iconUpdates;
 	QList<QByteArray> favoriteUpdates;
 };
-
-inline int runTest(const char *name, const std::function<void()> &test)
-{
-	try { test(); qInfo() << "PASS" << name; return 0; }
-	catch (const std::exception &error) { qCritical() << "FAIL" << name << error.what(); return 1; }
-}
 
 #endif

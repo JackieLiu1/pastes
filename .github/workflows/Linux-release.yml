@@ -35,7 +35,7 @@ jobs:
             test "${#packages[@]}" -eq 1
             dpkg-deb --info "${packages[0]}"
             dpkg-deb --extract "${packages[0]}" build/package-test-root
-            python3 tests/linux_package_test.py build/package-test-root
+            python3 tests/packaging/linux_package_test.py build/package-test-root
             filename=$(basename "${packages[0]}")
             echo "filepath=${packages[0]}" >> "$GITHUB_OUTPUT"
             echo "filename=$filename" >> "$GITHUB_OUTPUT"

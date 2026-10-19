@@ -1,0 +1,11 @@
+add_executable(diagnosticlog_test diagnosticlog_test.cpp)
+target_link_libraries(diagnosticlog_test PRIVATE pastes_platform)
+pastes_add_contract(diagnostics_contract headless diagnosticlog_test)
+
+if(WIN32)
+    add_subdirectory(windows)
+elseif(APPLE)
+    add_subdirectory(macos)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_subdirectory(linux)
+endif()

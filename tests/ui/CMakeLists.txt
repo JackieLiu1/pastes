@@ -1,0 +1,11 @@
+add_executable(historyview_test historyview_test.cpp ${pastes_test_resources})
+target_link_libraries(historyview_test PRIVATE pastes_ui)
+pastes_add_contract(historyview_contract offscreen historyview_test)
+
+add_executable(mainwindow_test mainwindow_test.cpp ${pastes_test_resources})
+target_link_libraries(mainwindow_test PRIVATE pastes_ui)
+pastes_add_contract(mainwindow_contract offscreen mainwindow_test)
+
+add_executable(settings_test settings_test.cpp ${pastes_test_resources})
+target_link_libraries(settings_test PRIVATE pastes_ui)
+pastes_add_contract(settings_contract offscreen settings_test)

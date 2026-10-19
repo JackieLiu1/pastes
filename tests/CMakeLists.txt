@@ -1,160 +1,41 @@
-add_executable(history_test history_test.cpp)
-target_link_libraries(history_test PRIVATE pastes_application)
-add_test(NAME history_contract COMMAND history_test)
+# Keep test executable locations stable while sources follow module ownership.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+set(pastes_test_working_directory "${CMAKE_CURRENT_BINARY_DIR}")
+set(pastes_test_resources "${PROJECT_SOURCE_DIR}/sources.qrc")
+if(WIN32)
+    set(pastes_test_path "$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}")
+    string(REPLACE ";" "\\;" pastes_test_path "${pastes_test_path}")
+endif()
 
-add_executable(database_test database_test.cpp)
-target_link_libraries(database_test PRIVATE pastes_storage Qt6::Sql)
-add_test(NAME database_contract COMMAND database_test)
-
-add_executable(clipboard_test clipboard_test.cpp)
-target_link_libraries(clipboard_test PRIVATE pastes_application)
-add_test(NAME clipboard_contract COMMAND clipboard_test)
-
-add_executable(diagnosticlog_test diagnosticlog_test.cpp)
-target_link_libraries(diagnosticlog_test PRIVATE pastes_platform)
-add_test(NAME diagnostics_contract COMMAND diagnosticlog_test)
-set_tests_properties(diagnostics_contract PROPERTIES TIMEOUT 30)
-
-if(APPLE)
-    add_executable(clipboard_macos_test clipboard_macos_test.mm)
-    target_link_libraries(clipboard_macos_test PRIVATE pastes_platform pastes_storage)
-    add_test(NAME clipboard_macos_contract COMMAND clipboard_macos_test)
-    set_tests_properties(clipboard_macos_contract PROPERTIES TIMEOUT 30)
-    add_executable(trayicon_macos_test MACOSX_BUNDLE trayicon_macos_test.mm ../sources.qrc)
-    set_target_properties(trayicon_macos_test PROPERTIES
-        MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/platform/macos/Info.plist.in"
-        MACOSX_BUNDLE_BUNDLE_NAME PastesTrayTests
-        MACOSX_BUNDLE_GUI_IDENTIFIER io.pastes.validation.tray
-    )
-    target_link_libraries(trayicon_macos_test PRIVATE pastes_ui)
-    add_dependencies(trayicon_macos_test pastes)
-    add_test(NAME trayicon_macos_contract COMMAND trayicon_macos_test
-        $<TARGET_BUNDLE_DIR:pastes>)
-    set_tests_properties(trayicon_macos_contract PROPERTIES TIMEOUT 30)
-    find_package(Python3 3.9 QUIET COMPONENTS Interpreter)
-    if(Python3_Interpreter_FOUND)
-        add_test(NAME macos_signing_contract
-            COMMAND ${Python3_EXECUTABLE} -B ${CMAKE_CURRENT_SOURCE_DIR}/macos_signing_test.py)
-        set_tests_properties(macos_signing_contract PROPERTIES TIMEOUT 30)
+# Every contract declares whether it needs a real desktop. Offscreen widgets
+# and isolated Xvfb servers belong to the headless group.
+function(pastes_add_contract name mode)
+    if(NOT mode MATCHES "^(headless|offscreen|desktop)$")
+        message(FATAL_ERROR "Unknown execution environment for ${name}: ${mode}")
     endif()
-endif()
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    add_executable(clipboard_linux_test clipboard_linux_test.cpp)
-    target_link_libraries(clipboard_linux_test PRIVATE pastes_platform pastes_storage PkgConfig::XCB)
-    add_test(NAME clipboard_linux_contract COMMAND clipboard_linux_test)
-    set_tests_properties(clipboard_linux_contract PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
-    find_program(PASTES_XVFB_RUN_EXECUTABLE xvfb-run)
-    if(PASTES_XVFB_RUN_EXECUTABLE)
-        add_test(NAME clipboard_linux_x11_contract
-            COMMAND ${PASTES_XVFB_RUN_EXECUTABLE} -a $<TARGET_FILE:clipboard_linux_test> -platform xcb --isolated-x11)
-        set_tests_properties(clipboard_linux_x11_contract PROPERTIES TIMEOUT 30)
+    add_test(NAME ${name} COMMAND ${ARGN})
+    set_tests_properties(${name} PROPERTIES
+        TIMEOUT 30 ENVIRONMENT "QT_FORCE_STDERR_LOGGING=1"
+        WORKING_DIRECTORY "${pastes_test_working_directory}")
+    if(mode STREQUAL "offscreen")
+        set_tests_properties(${name} PROPERTIES LABELS headless)
+        set_property(TEST ${name} APPEND PROPERTY ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    else()
+        set_tests_properties(${name} PROPERTIES LABELS ${mode})
     endif()
-    add_test(NAME linux_packaging_contract
-        COMMAND ${CMAKE_COMMAND} -DPASTES_SOURCE_DIR=${PROJECT_SOURCE_DIR}
-            -DPASTES_TEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/linux_packaging_test.cmake)
-    find_package(X11 REQUIRED COMPONENTS Xtst)
-    add_executable(shortcut_linux_test shortcut_linux_test.cpp)
-    target_link_libraries(shortcut_linux_test PRIVATE pastes_platform X11::X11 X11::Xtst)
-    add_test(NAME shortcut_linux_contract COMMAND shortcut_linux_test)
-    set_tests_properties(shortcut_linux_contract PROPERTIES TIMEOUT 30)
-    add_executable(panel_linux_test panel_linux_test.cpp ../sources.qrc)
-    target_link_libraries(panel_linux_test PRIVATE pastes_ui X11::X11 X11::Xtst)
-    add_test(NAME panel_linux_contract COMMAND panel_linux_test)
-    set_tests_properties(panel_linux_contract PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_FORCE_STDERR_LOGGING=1" TIMEOUT 30)
-endif()
-
-add_executable(historyview_test historyview_test.cpp ../sources.qrc)
-target_link_libraries(historyview_test PRIVATE pastes_ui)
-add_test(NAME historyview_contract COMMAND historyview_test)
-
-add_executable(mainwindow_test mainwindow_test.cpp ../sources.qrc)
-target_link_libraries(mainwindow_test PRIVATE pastes_ui)
-add_test(NAME mainwindow_contract COMMAND mainwindow_test)
-
-# These test injected adapters and widget commands, not native window focus.
-set_tests_properties(clipboard_contract historyview_contract mainwindow_contract PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-set_tests_properties(history_contract database_contract clipboard_contract
-    historyview_contract mainwindow_contract PROPERTIES TIMEOUT 30)
-set_property(TEST mainwindow_contract APPEND PROPERTY ENVIRONMENT "QT_FORCE_STDERR_LOGGING=1")
-
-if(WIN32)
-    add_executable(pastetarget_windows_test pastetarget_windows_test.cpp)
-    target_link_libraries(pastetarget_windows_test PRIVATE pastes_platform)
-    # A separate process receives real keyboard input on the native desktop.
-    add_test(NAME pastetarget_windows_contract COMMAND pastetarget_windows_test)
-    set_tests_properties(pastetarget_windows_contract PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=windows;QT_FORCE_STDERR_LOGGING=1"
-        TIMEOUT 30 RUN_SERIAL TRUE)
-    add_executable(windowbackdrop_windows_test windowbackdrop_windows_test.cpp ../sources.qrc)
-    target_link_libraries(windowbackdrop_windows_test PRIVATE pastes_ui)
-    add_test(NAME windowbackdrop_windows_contract COMMAND windowbackdrop_windows_test)
-    set_tests_properties(windowbackdrop_windows_contract PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_FORCE_STDERR_LOGGING=1" TIMEOUT 30)
-    # CTest child processes need the Qt/compiler runtime directory even when
-    # launched from an IDE or a shell without the toolchain on its PATH.
-    set(test_path "$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}")
-    string(REPLACE ";" "\\;" test_path "${test_path}")
-    set_property(TEST history_contract database_contract clipboard_contract diagnostics_contract
-        historyview_contract mainwindow_contract windowbackdrop_windows_contract pastetarget_windows_contract
-        APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
-endif()
-
-add_test(NAME architecture_dependencies
-    COMMAND ${CMAKE_COMMAND} -DPASTES_SOURCE_DIR=${PROJECT_SOURCE_DIR}
-        -P ${PROJECT_SOURCE_DIR}/cmake/check-dependencies.cmake)
-
-add_executable(webdav_test webdav_test.cpp)
-target_link_libraries(webdav_test PRIVATE pastes_sync pastes_platform Qt6::Network)
-add_test(NAME webdav_contract COMMAND webdav_test)
-set_tests_properties(webdav_contract PROPERTIES TIMEOUT 60)
-if(WIN32)
-    set_property(TEST webdav_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
-endif()
-
-add_executable(settings_test settings_test.cpp ../sources.qrc)
-target_link_libraries(settings_test PRIVATE pastes_ui)
-add_test(NAME settings_contract COMMAND settings_test)
-set_tests_properties(settings_contract PROPERTIES
-    ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
-if(WIN32)
-    set_property(TEST settings_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
-endif()
-
-add_executable(syncordering_test syncordering_test.cpp)
-target_link_libraries(syncordering_test PRIVATE pastes_sync pastes_storage pastes_platform Qt6::Network Qt6::Sql)
-add_test(NAME syncordering_contract COMMAND syncordering_test)
-set_tests_properties(syncordering_contract PROPERTIES TIMEOUT 60)
-if(WIN32)
-    set_property(TEST syncordering_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
-endif()
-
-add_executable(eventstate_test eventstate_test.cpp)
-target_link_libraries(eventstate_test PRIVATE pastes_core)
-add_test(NAME eventstate_contract COMMAND eventstate_test)
-set_tests_properties(eventstate_contract PROPERTIES TIMEOUT 30)
-if(WIN32)
-    set_property(TEST eventstate_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
-endif()
-
-# Headless includes offscreen widgets and native X11 on an isolated Xvfb server.
-# Desktop tests can change foreground focus, send input or open native menus.
-foreach(contract history_contract database_contract clipboard_contract diagnostics_contract
-        clipboard_macos_contract macos_signing_contract clipboard_linux_contract
-        clipboard_linux_x11_contract linux_packaging_contract panel_linux_contract
-        historyview_contract mainwindow_contract windowbackdrop_windows_contract
-        architecture_dependencies webdav_contract settings_contract
-        syncordering_contract eventstate_contract)
-    if(TEST ${contract})
-        set_tests_properties(${contract} PROPERTIES LABELS headless)
+    if(WIN32)
+        set_property(TEST ${name} APPEND PROPERTY ENVIRONMENT "PATH=${pastes_test_path}")
     endif()
-endforeach()
-foreach(contract pastetarget_windows_contract trayicon_macos_contract shortcut_linux_contract)
-    if(TEST ${contract})
-        set_tests_properties(${contract} PROPERTIES LABELS desktop)
-    endif()
-endforeach()
+endfunction()
+
+add_subdirectory(core)
+add_subdirectory(application)
+add_subdirectory(storage)
+add_subdirectory(sync)
+add_subdirectory(ui)
+add_subdirectory(platform)
+add_subdirectory(packaging)
+
+pastes_add_contract(architecture_dependencies headless
+    ${CMAKE_COMMAND} -DPASTES_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+    -P ${PROJECT_SOURCE_DIR}/cmake/check-dependencies.cmake)

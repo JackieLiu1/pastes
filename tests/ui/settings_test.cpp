@@ -1,4 +1,4 @@
-#include "tests/testsupport.h"
+#include "tests/support/testsupport.h"
 #include "ui/dialogs/settingsdialog.h"
 #include "ui/dialogs/syncsettingspage.h"
 #include "application/syncservice.h"

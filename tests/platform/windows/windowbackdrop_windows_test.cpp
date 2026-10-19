@@ -1,5 +1,5 @@
-#include "tests/testsupport.h"
-#include "tests/colorcontrast.h"
+#include "tests/core/entryfixtures.h"
+#include "tests/support/colorcontrast.h"
 #include "platform/windowintegration.h"
 #include "ui/common/roundedwidgets.h"
 #include "ui/dialogs/appdialog.h"

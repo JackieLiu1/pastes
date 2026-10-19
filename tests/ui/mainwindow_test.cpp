@@ -1,5 +1,5 @@
-#include "tests/testsupport.h"
-#include "tests/colorcontrast.h"
+#include "tests/application/memoryrepository.h"
+#include "tests/support/colorcontrast.h"
 #include "application/clipboardcontroller.h"
 #include "ui/window/mainwindow.h"
 #include "ui/history/historyview.h"

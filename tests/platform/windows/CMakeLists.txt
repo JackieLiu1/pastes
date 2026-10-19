@@ -1,0 +1,12 @@
+add_executable(pastetarget_windows_test pastetarget_windows_test.cpp)
+target_link_libraries(pastetarget_windows_test PRIVATE pastes_platform)
+# A separate process receives real keyboard input on the native desktop.
+pastes_add_contract(pastetarget_windows_contract desktop pastetarget_windows_test)
+set_tests_properties(pastetarget_windows_contract PROPERTIES RUN_SERIAL TRUE)
+set_property(TEST pastetarget_windows_contract APPEND PROPERTY ENVIRONMENT
+    "QT_QPA_PLATFORM=windows")
+
+add_executable(windowbackdrop_windows_test
+    windowbackdrop_windows_test.cpp ${pastes_test_resources})
+target_link_libraries(windowbackdrop_windows_test PRIVATE pastes_ui)
+pastes_add_contract(windowbackdrop_windows_contract offscreen windowbackdrop_windows_test)

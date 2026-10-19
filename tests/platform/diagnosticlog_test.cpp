@@ -1,4 +1,4 @@
-#include "tests/testsupport.h"
+#include "tests/support/testsupport.h"
 #include "platform/diagnosticlog.h"
 
 #include <QCoreApplication>
