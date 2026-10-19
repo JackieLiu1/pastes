@@ -52,7 +52,9 @@ retention period.
 
 The project requires C++17 and Qt 6.3 or newer. `core/` owns data and rules,
 `application/` owns use cases and ports, `storage/` implements SQLite, and
-`ui/` presents history. `app/` assembles their concrete dependencies.
+`sync/` implements WebDAV. `ui/` groups windows, history interactions, cards,
+previews, dialogs and shared rendering. Each module owns its CMake target;
+`app/` assembles their concrete dependencies and owns application packaging metadata.
 See [the architecture and testing guide](docs/architecture.md).
 
 UI and clipboard adapters use public C++/Qt contracts in `platform/`. Native

@@ -39,6 +39,9 @@ ctest --test-dir build --output-on-failure
   时钟偏差与回退、迟到图标、删除后重复制、关闭同步后重启、空历史切换账户、缓存恢复、
   SQL 故障不确认及重试、事务回滚；只使用临时数据库和本机假服务器。
 - 具体测试结果和未覆盖场景记录在任务回复或测试日志中，不写入提交说明。
+- 日常无桌面干扰的回归可用 `ctest --test-dir build -L headless --output-on-failure`；
+  真实焦点、键盘输入和原生菜单使用 `-L desktop`，会操作桌面，需单独安排。
+  无标签过滤的完整 CTest 仍覆盖两组；新增测试须标明运行环境。
 - 数据库文件位置：Windows 在 exe 同目录，Linux 在 `~/.cache/PastesDatabase.db`。
 
 ## 架构与数据流
@@ -53,27 +56,33 @@ ClipboardSource / ClipboardFeed
       → HistoryView / PasteItem             # 类型化条目绑定、筛选、选择和动画
 ```
 
-目录分为 `app/`、`core/`、`application/`、`storage/`、`platform/`、`ui/`，各自有构建目标。
+目录分为 `app/`、`core/`、`application/`、`storage/`、`sync/`、`platform/`、`ui/`，
+各自的 `CMakeLists.txt` 管理本模块构建目标；根 CMake 只组织模块、翻译、打包和验证。
+`ui/` 按 `window/`、`history/`、`cards/`、`preview/`、`dialogs/`、`common/` 组织，
+公共呈现不依赖具体功能，卡片不反向依赖历史视图，各功能不反向依赖主窗口。
+`tests/` 按被测模块及原生平台组织，每个子目录管理自己的合约目标；
+公共断言在 `tests/support/`，条目夹具、内存仓库及 WebDAV 假服务器分别归属
+`tests/core/`、`tests/application/`、`tests/sync/`，不要通过公共测试头混入应用层依赖。
 依赖方向和所有权详见 `docs/architecture.md`；`cmake/check-dependencies.cmake` 检查禁止的跨层 include。
 
 关键类：
 
-- `MainWindow`（ui/mainwindow.cpp）— 窗口显示、主题、菜单、弹窗和目标粘贴协调。
-- `HistoryView`（ui/historyview.cpp）— 卡片绑定、筛选、导航、撤销入口和动画编排。
-- `CardInteractionController`（ui/cardinteraction.cpp）— 鼠标状态、双击、浏览与上拖删除命令。
+- `MainWindow`（ui/window/mainwindow.cpp）— 窗口显示、主题、菜单、弹窗和目标粘贴协调。
+- `HistoryView`（ui/history/historyview.cpp）— 卡片绑定、筛选、导航、撤销入口和动画编排。
+- `CardInteractionController`（ui/history/cardinteraction.cpp）— 鼠标状态、双击、浏览与上拖删除命令。
 - `HistoryService`（application/historyservice.cpp）— 历史生命周期、去重、30 天清理、原位置撤销和异步请求匹配。
 - `ClipboardController`（application/clipboardcontroller.cpp）— 采集、暂停/恢复、普通/纯文本复制；不依赖 UI 或 SQL。
 - `HistoryRepository` / `ClipboardFeed`（application/）— 应用层拥有的仓库与原生通知接口；具体实现在入口注入。
-- `AppDialog` / `AboutDialog`（ui/appdialog.cpp）、`SettingsDialog`（ui/settingsdialog.cpp）— 统一圆角弹窗；设置通过信号即时应用主题、快捷键提示与记录暂停，并由 QSettings 保存。暂停时取消防抖，不记录当时的剪贴板；恢复后仅记录新复制。
+- `AppDialog` / `AboutDialog`（ui/dialogs/appdialog.cpp）、`SettingsDialog`（ui/dialogs/settingsdialog.cpp）— 统一圆角弹窗；设置通过信号即时应用主题、快捷键提示与记录暂停，并由 QSettings 保存。暂停时取消防抖，不记录当时的剪贴板；恢复后仅记录新复制。
 - `StartupIntegration`（platform/startupintegration.cpp 与各系统实现）— Windows 当前账户 Run 注册表项、Linux 用户 autostart 文件；以系统项为状态来源，写入失败须恢复开关并显示错误，不能只保存一个假状态。旧 Windows 安装的全用户项需要升级安装器清理。
 - `Database` + `Database::Worker`（storage/database.cpp）— 仓库适配器 + SQL 工作线程；只传值快照，使用事务，退出排空写入并在原线程关闭连接。
 - `ClipboardData`（core/clipboarddata.cpp）— 共享压缩原图、按需解码的 MIME 数据与最大 1024 像素的卡片缩略图；预览与复制仍读取原始尺寸，灰度和高精度格式不进行运行时压缩替换。
 - `ClipboardSource`（platform/clipboardsource.h）— 统一剪贴板通知与来源图标接口，各系统实现位于 platform/{windows,macos,linux}/；异步结果用请求编号匹配仍存在的条目，迟到图标经 Database 更新。
-- `PasteItem`（ui/pasteitem.cpp）— 卡片持有类型化 HistoryEntry；`copyData()` 发出命令，由 ClipboardController 写入剪贴板并保留原来源图标。
-- `CardSwipeOverlay`（ui/cardswipe.cpp）— GUI 线程缓存卡片快照，拖动可越过面板边界；松手后上沿向后翻倒至亮线，再向中心收成光点，散出短促粒子并熄灭，整体共 480 ms，未达到阈值时回弹；撤销从细线反向展开并落回卡槽，不播放关机闪光或粒子，快速撤销接续当前翻转姿态；删除在松手时提交，动画不持有剪贴板数据。
-- `CardReflowOverlay`（ui/cardreflow.cpp）— 删除或撤销前记录相邻卡片位置，实际列表更新后用缓存快照平移补位或让位；取消动画恢复真实卡片，连续操作接续当前视觉位置。
-- `ElasticScrollController`（ui/elasticscroll.cpp）— GUI 线程控制横向滚动的惯性与边界阻力/回弹，通过平移真实 viewport 保持卡片和点击位置一致；触控板不重复施加系统惯性，列表变化、搜索、导航或隐藏时取消运动。
-- `StackedWidget`/`TextFrame`/`PixmapFrame`/`FileFrame`（ui/pasteitemcontext.cpp）— 条目内容渲染。
+- `PasteItem`（ui/cards/pasteitem.cpp）— 卡片持有类型化 HistoryEntry；`copyData()` 发出命令，由 ClipboardController 写入剪贴板并保留原来源图标。
+- `CardSwipeOverlay`（ui/history/cardswipe.cpp）— GUI 线程缓存卡片快照，拖动可越过面板边界；松手后上沿向后翻倒至亮线，再向中心收成光点，散出短促粒子并熄灭，整体共 480 ms，未达到阈值时回弹；撤销从细线反向展开并落回卡槽，不播放关机闪光或粒子，快速撤销接续当前翻转姿态；删除在松手时提交，动画不持有剪贴板数据。
+- `CardReflowOverlay`（ui/history/cardreflow.cpp）— 删除或撤销前记录相邻卡片位置，实际列表更新后用缓存快照平移补位或让位；取消动画恢复真实卡片，连续操作接续当前视觉位置。
+- `ElasticScrollController`（ui/history/elasticscroll.cpp）— GUI 线程控制横向滚动的惯性与边界阻力/回弹，通过平移真实 viewport 保持卡片和点击位置一致；触控板不重复施加系统惯性，列表变化、搜索、导航或隐藏时取消运动。
+- `StackedWidget`/`TextFrame`/`PixmapFrame`/`FileFrame`（ui/cards/pasteitemcontext.cpp）— 条目内容渲染。
 - `GlobalShortcut`（platform/globalshortcut.h）— 全局唤出快捷键门面；
   后台细节在 platform/shortcut_p.h，系统实现位于各平台目录。
 - `Platform` 的窗口、菜单、应用、路径和文件图标接口位于 platform/；

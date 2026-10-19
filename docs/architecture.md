@@ -11,20 +11,56 @@ Pastes 使用 C++17 和 Qt **6.3 及以上**。架构以剪贴板历史的生命
 | `core/` | `pastes_core` | 条目、事件版本、确定性合并、可移植编码、MIME 与图片规则 |
 | `application/` | `pastes_application` | 历史用例、删除与撤销、剪贴板采集与复制、仓库及原生通知接口 |
 | `storage/` | `pastes_storage` | SQLite、跨线程值快照、事务、后台图片编码、关闭时排空写入 |
+| `sync/` | `pastes_sync` | WebDAV 协议、网络工作线程、远端事件传输与缓存 |
 | `platform/` | `pastes_platform` | Windows / macOS / Linux 的剪贴板来源、窗口、菜单、快捷键、粘贴目标和系统设置 |
 | `ui/` | `pastes_ui` | 历史视图、卡片、手势、动画、窗口及弹窗 |
 | `app/` | `pastes` | 进程入口、单实例、翻译、构造与连接具体实现 |
-| `tests/` | 四个测试程序 | 业务、存储、剪贴板和界面交互的回归检查 |
+| `tests/` | 按合约注册的测试程序 | 核心、业务、存储、同步、界面和原生平台回归；按当前平台选择 |
 | `cmake/` | 依赖检查 | 检查源码是否越过层级边界 |
+
+每个源码模块的 `CMakeLists.txt` 管理自己的源文件、依赖和编译选项。
+根 CMake 负责工具链基线、模块顺序、翻译、打包和验证入口，不维护模块的源文件清单。
+`app/CMakeLists.txt` 管理可执行程序、应用包元数据与签名；平台库只管理系统适配器和系统库，
+不反向配置应用目标。可执行程序仍输出在构建根目录。
+
+UI 内部按功能归组，继续共用一个 `pastes_ui` 构建目标：
+
+```text
+ui/
+├── window/    主窗口、托盘菜单及各功能的协调
+├── history/   历史视图、搜索、键盘导航、手势与动画
+├── cards/     条目卡片、标题栏和内容呈现
+├── preview/   独立预览窗口
+├── dialogs/   通用弹窗、设置及同步设置页
+└── common/    圆角控件、来源图标与文件预览渲染工具
+```
+
+主窗口协调历史视图、预览和弹窗；历史视图使用卡片，功能组件共享 `common/` 的呈现工具。
+公共呈现代码不依赖业务服务或具体功能，卡片不依赖历史视图，预览和设置也不反向引用主窗口。
+跨目录引用写完整的模块路径，例如 `ui/cards/pasteitem.h`，不添加旧路径转发头或额外搜索目录。
+新增代码优先放入已有责任目录，只有独立的依赖或生命周期需求才新增构建目标。
+
+测试按被测模块组织为 `tests/core/`、`application/`、`storage/`、`sync/`、`ui/`、
+`platform/` 和 `packaging/`；原生平台测试继续分到对应的系统子目录。
+每个测试模块维护自己的目标和合约，根 `tests/CMakeLists.txt` 只提供统一注册函数和公共环境。
+注册时显式选择 `headless`、`offscreen` 或 `desktop`，避免新增测试遗漏运行标签；
+offscreen 组件归入 headless 标签。测试可执行文件仍输出在构建目录的 `tests/` 下。
+
+`tests/support/` 只放通用断言、事件等待和颜色计算，不包含应用层接口。
+条目构造夹具归属 `tests/core/entryfixtures.h`，内存仓库归属
+`tests/application/memoryrepository.h`，WebDAV 假服务器归属 `tests/sync/davfixture.h`。
+核心测试和公共测试工具沿用核心层的依赖检查，避免通过测试辅助头重新引入应用层依赖。
 
 ```mermaid
 flowchart TD
     App[app: 组装与生命周期] --> UI[ui: 窗口和历史视图]
     App --> Storage[storage: SQLite 仓库]
+    App --> Sync[sync: WebDAV 适配器]
     App --> Platform[platform: 原生适配]
     UI --> Application[application: 用例与接口]
     UI --> Platform
     Storage --> Application
+    Sync --> Application
     Platform --> Application
     Application --> Core[core: 数据与规则]
 ```
@@ -34,7 +70,8 @@ flowchart TD
 卡片或原生适配器。核心和应用目标只依赖 Qt Core / Gui；SQL 和 Widgets 分别属于外层。
 
 `cmake/check-dependencies.cmake` 检查禁止的 include：核心不能依赖外层，应用不能依赖
-界面、存储或平台实现，存储不能引用界面，平台不能引用项目窗口类，界面不能访问 SQL。
+界面、存储或平台实现；存储、同步与平台适配器不能互相依赖；界面不能访问 SQL 或同步实现。
+所有库禁止反向引用 `app/`，UI 功能目录之间的上述依赖方向也由同一检查约束。
 这项检查注册为 CTest，新增依赖必须同时满足构建和检查。
 
 ## 主要职责
@@ -118,8 +155,24 @@ ctest --test-dir build --output-on-failure
 ```
 
 无需 Qt Test 模块。测试通过假仓库/原生通知接口和临时 SQLite 文件验证行为，不读写用户数据库。
-两个 GUI 组件测试使用 offscreen 平台验证数据与命令，不能代替原生焦点、全屏或输入注入验证。
+GUI 组件测试使用 offscreen 平台验证数据与命令，不能代替原生焦点、全屏或输入注入验证。
 Windows 测试的 Qt 运行目录由 CMake 从 Qt 导入目标取得。
+
+CTest 按运行环境提供两个标签，所有测试仍注册在完整测试入口中：
+
+```sh
+# 日常回归：纯逻辑、临时数据库、本机假服务器与 offscreen 组件
+ctest --test-dir build -L headless --output-on-failure
+# 原生桌面回归：可能显示窗口、改变焦点或发送键盘输入
+ctest --test-dir build -L desktop --output-on-failure
+```
+
+`QApplication` 和测试中的 `show()` 用于驱动控件布局、绘制与事件生命周期，
+不代表一定会在屏幕上显示窗口；组件测试由 `QT_QPA_PLATFORM=offscreen` 隔离。
+Windows 的 `pastetarget_windows_contract`、macOS 托盘菜单和 Linux 原生快捷键测试
+属于 `desktop`，需要可交互桌面。Linux 的独立 Xvfb 剪贴板测试属于 `headless`：
+它验证真实 X11 协议，但窗口只存在于虚拟显示服务器。
+新增测试必须标明运行环境，不能把 offscreen 的结果当作原生焦点或输入注入的覆盖。
 
 新增或移动面向用户的字符串后，运行 `cmake --build build --target update_translations`，
 它扫描各层及各平台的 C++ / Objective-C++ 源码。正常构建只运行 `lrelease` 生成翻译，
@@ -136,8 +189,9 @@ Windows 测试的 Qt 运行目录由 CMake 从 Qt 导入目标取得。
 | `historyview_contract` | 卡片绑定、复制/删除/撤销、搜索恢复、空条目清理、拖动方向锁定、回弹及即时撤销 |
 | `architecture_dependencies` | 各层禁止的源码依赖 |
 
-本轮在 Windows / Qt 6.11.2 上构建，并执行原生剪贴板入库、单实例、重启加载冒烟检查。
-Ubuntu 20.04 + Qt 6.3、Linux 原生输入和 macOS 原生窗口行为需要在对应环境复验。
+以当前平台 `ctest --test-dir build -N` 注册的全部测试为准，不固定测试程序或用例数量。
+各次任务的实际构建与冒烟结果保留在任务回复或本地测试日志；
+Ubuntu 20.04 + Qt 6.3、Linux 原生输入和 macOS 原生窗口行为需要在对应环境验证。
 
 ## WebDAV 同步适配器
 
