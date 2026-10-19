@@ -1,5 +1,5 @@
-#include "ui/cardswipe.h"
-#include "ui/pasteitem.h"
+#include "ui/history/cardswipe.h"
+#include "ui/cards/pasteitem.h"
 #include "platform/windowintegration.h"
 
 #include <QApplication>

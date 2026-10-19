@@ -1,4 +1,4 @@
-#include "ui/sourceiconview.h"
+#include "ui/common/sourceiconview.h"
 
 #include <QPainter>
 #include <QtMath>

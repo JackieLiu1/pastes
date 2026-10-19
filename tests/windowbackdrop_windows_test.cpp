@@ -1,10 +1,10 @@
 #include "tests/testsupport.h"
 #include "tests/colorcontrast.h"
 #include "platform/windowintegration.h"
-#include "ui/roundedwidgets.h"
-#include "ui/appdialog.h"
-#include "ui/settingsdialog.h"
-#include "ui/previewdialog.h"
+#include "ui/common/roundedwidgets.h"
+#include "ui/dialogs/appdialog.h"
+#include "ui/dialogs/settingsdialog.h"
+#include "ui/preview/previewdialog.h"
 
 #include <QApplication>
 #include <QDir>

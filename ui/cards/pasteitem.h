@@ -1,8 +1,8 @@
 #ifndef PASTEITEM_H
 #define PASTEITEM_H
 
-#include "ui/pasteitemcontext.h"
-#include "ui/pasteitembarnner.h"
+#include "ui/cards/pasteitemcontext.h"
+#include "ui/cards/pasteitembarnner.h"
 #include "core/clipboarddata.h"
 #include "core/itemdata.h"
 

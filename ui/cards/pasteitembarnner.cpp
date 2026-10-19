@@ -1,5 +1,5 @@
-#include "ui/pasteitembarnner.h"
-#include "ui/sourceiconview.h"
+#include "ui/cards/pasteitembarnner.h"
+#include "ui/common/sourceiconview.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>

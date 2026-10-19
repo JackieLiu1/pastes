@@ -1,4 +1,4 @@
-#include "ui/filepreview.h"
+#include "ui/common/filepreview.h"
 
 #include <QDir>
 #include <QBuffer>

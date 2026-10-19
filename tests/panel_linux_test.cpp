@@ -1,8 +1,8 @@
 #include "tests/testsupport.h"
 #include "application/clipboardcontroller.h"
-#include "ui/mainwindow.h"
-#include "ui/historyview.h"
-#include "ui/previewdialog.h"
+#include "ui/window/mainwindow.h"
+#include "ui/history/historyview.h"
+#include "ui/preview/previewdialog.h"
 #include <QApplication>
 #include <QLabel>
 #include <QListWidget>

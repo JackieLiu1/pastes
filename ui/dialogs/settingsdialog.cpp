@@ -1,6 +1,6 @@
 #include "platform/windowintegration.h"
-#include "ui/settingsdialog.h"
-#include "ui/roundedwidgets.h"
+#include "ui/dialogs/settingsdialog.h"
+#include "ui/common/roundedwidgets.h"
 
 #include <QAbstractButton>
 #include <QApplication>
@@ -18,7 +18,7 @@
 #include <QStyle>
 #include <QTabWidget>
 #include <QTabBar>
-#include "ui/syncsettingspage.h"
+#include "ui/dialogs/syncsettingspage.h"
 #include <QTimer>
 #include <QVariantAnimation>
 #include <QVBoxLayout>

@@ -1,8 +1,8 @@
-#include "ui/cardinteraction.h"
-#include "ui/pasteitem.h"
-#include "ui/cardswipe.h"
-#include "ui/cardreflow.h"
-#include "ui/elasticscroll.h"
+#include "ui/history/cardinteraction.h"
+#include "ui/cards/pasteitem.h"
+#include "ui/history/cardswipe.h"
+#include "ui/history/cardreflow.h"
+#include "ui/history/elasticscroll.h"
 #include <QAbstractButton>
 #include <QApplication>
 #include <QMouseEvent>

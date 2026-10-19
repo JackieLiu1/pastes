@@ -6,7 +6,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QAction>
-#include "ui/roundedwidgets.h"
+#include "ui/common/roundedwidgets.h"
 
 class LineEdit : public QLineEdit
 {

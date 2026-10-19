@@ -1,7 +1,7 @@
 #ifndef PASTES_HISTORYVIEW_H
 #define PASTES_HISTORYVIEW_H
 
-#include "ui/mainframe.h"
+#include "ui/history/mainframe.h"
 #include "application/historyservice.h"
 #include "platform/diagnosticlog.h"
 #include <QHash>

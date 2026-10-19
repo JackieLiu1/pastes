@@ -1,5 +1,5 @@
 #include "platform/fileicon.h"
-#include "ui/filepreview.h"
+#include "ui/common/filepreview.h"
 #include "core/clipboarddata.h"
 
 #include <algorithm>
@@ -17,7 +17,7 @@
 #include <QDebug>
 #include <QtMath>
 
-#include "ui/pasteitemcontext.h"
+#include "ui/cards/pasteitemcontext.h"
 
 TextFrame::TextFrame(QWidget *parent) : RoundedLabel(RoundedRole::Content, parent),
 	m_mask_label(new RoundedLabel(RoundedRole::Footer, this))

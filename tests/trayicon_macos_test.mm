@@ -3,9 +3,9 @@
 #include "platform/trayicon.h"
 #include "application/clipboardcontroller.h"
 #include "application/historyservice.h"
-#include "ui/mainwindow.h"
-#include "ui/historyview.h"
-#include "ui/pasteitem.h"
+#include "ui/window/mainwindow.h"
+#include "ui/history/historyview.h"
+#include "ui/cards/pasteitem.h"
 #include <QContextMenuEvent>
 #include <QListWidget>
 #include <QPushButton>

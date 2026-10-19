@@ -1,7 +1,7 @@
 #ifndef MAINFRAME_H
 #define MAINFRAME_H
 
-#include "ui/roundedwidgets.h"
+#include "ui/common/roundedwidgets.h"
 
 class MainFrame : public RoundedWidget
 {

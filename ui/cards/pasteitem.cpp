@@ -1,8 +1,8 @@
-#include "ui/pasteitem.h"
-#include "ui/roundedwidgets.h"
+#include "ui/cards/pasteitem.h"
+#include "ui/common/roundedwidgets.h"
 #include "core/clipboardcontent.h"
 #include "platform/menuintegration.h"
-#include "ui/filepreview.h"
+#include "ui/common/filepreview.h"
 
 #include <QApplication>
 #include <QVBoxLayout>

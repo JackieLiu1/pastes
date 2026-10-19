@@ -10,7 +10,7 @@
 #include "sync/webdavsync.h"
 #include "platform/secretstore.h"
 
-#include "ui/mainwindow.h"
+#include "ui/window/mainwindow.h"
 #include "application/clipboardcontroller.h"
 #include "storage/database.h"
 #include "platform/clipboardsource.h"

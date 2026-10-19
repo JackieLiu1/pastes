@@ -1,11 +1,11 @@
-#include "ui/previewdialog.h"
-#include "ui/sourceiconview.h"
+#include "ui/preview/previewdialog.h"
+#include "ui/common/sourceiconview.h"
 #include "core/itemdata.h"
 #include "core/clipboarddata.h"
 #include "core/clipboardcontent.h"
-#include "ui/roundedwidgets.h"
+#include "ui/common/roundedwidgets.h"
 #include "platform/windowintegration.h"
-#include "ui/filepreview.h"
+#include "ui/common/filepreview.h"
 
 #include <QApplication>
 #include <QDateTime>

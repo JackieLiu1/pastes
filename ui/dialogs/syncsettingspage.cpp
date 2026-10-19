@@ -1,5 +1,5 @@
-#include "ui/syncsettingspage.h"
-#include "ui/roundedwidgets.h"
+#include "ui/dialogs/syncsettingspage.h"
+#include "ui/common/roundedwidgets.h"
 #include "application/syncservice.h"
 #include <QCheckBox>
 #include <QFormLayout>

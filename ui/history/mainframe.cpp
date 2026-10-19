@@ -1,7 +1,7 @@
 #include <QEvent>
 #include <QKeyEvent>
 
-#include "ui/mainframe.h"
+#include "ui/history/mainframe.h"
 
 MainFrame::MainFrame(QWidget *parent) : RoundedWidget(RoundedRole::Panel, parent)
 {

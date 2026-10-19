@@ -1,4 +1,4 @@
-#include "ui/elasticscroll.h"
+#include "ui/history/elasticscroll.h"
 
 #include <QEvent>
 #include <QEasingCurve>

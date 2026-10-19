@@ -1,6 +1,6 @@
 #include "tests/testsupport.h"
-#include "ui/settingsdialog.h"
-#include "ui/syncsettingspage.h"
+#include "ui/dialogs/settingsdialog.h"
+#include "ui/dialogs/syncsettingspage.h"
 #include "application/syncservice.h"
 #include <QApplication>
 #include <QCheckBox>

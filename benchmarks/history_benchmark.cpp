@@ -1,8 +1,8 @@
 #include "application/historyservice.h"
 #include "core/clipboarddata.h"
 #include "storage/database.h"
-#include "ui/historyview.h"
-#include "ui/searchbar.h"
+#include "ui/history/historyview.h"
+#include "ui/history/searchbar.h"
 #include "pastes_build_version.h"
 
 #include <QApplication>

@@ -1,11 +1,18 @@
 # Fail on outward dependencies instead of relying on directory names alone.
-set(core_forbidden "ui/|storage/|sync/|application/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
-set(application_forbidden "ui/|storage/|sync/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
-set(storage_forbidden "ui/|platform/|QWidget|QApplication|QPixmap|QtWidgets|windows.h|X11/|AppKit|Carbon")
-set(ui_forbidden "sync/|storage/|QSql|QtSql|windows.h|X11/|AppKit|Carbon")
-set(platform_forbidden "ui/|storage/")
+set(core_forbidden "app/|ui/|storage/|sync/|application/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
+set(application_forbidden "app/|ui/|storage/|sync/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
+set(storage_forbidden "app/|ui/|sync/|platform/|QWidget|QApplication|QPixmap|QtWidgets|windows.h|X11/|AppKit|Carbon")
+set(ui_forbidden "app/|sync/|storage/|QSql|QtSql|windows.h|X11/|AppKit|Carbon")
+set(platform_forbidden "app/|ui/|storage/|sync/")
 
-set(sync_forbidden "ui/|storage/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
+set(sync_forbidden "app/|ui/|storage/|platform/|QWidget|QApplication|QPixmap|QSql|QtWidgets|QtSql|windows.h|X11/|AppKit|Carbon")
+
+# Presentation flows from the window through features to shared rendering.
+set(common_forbidden "ui/(window|history|cards|preview|dialogs)/|application/")
+set(cards_forbidden "ui/(window|history|preview|dialogs)/")
+set(history_forbidden "ui/(window|preview|dialogs)/")
+set(preview_forbidden "ui/(window|history|cards|dialogs)/")
+set(dialogs_forbidden "ui/(window|history|cards|preview)/")
 
 foreach(layer core application storage sync ui platform)
     file(GLOB_RECURSE sources "${PASTES_SOURCE_DIR}/${layer}/*.h"
@@ -15,6 +22,13 @@ foreach(layer core application storage sync ui platform)
         foreach(include IN LISTS includes)
             if(include MATCHES "${${layer}_forbidden}")
                 message(FATAL_ERROR "Forbidden ${layer} dependency in ${source}: ${include}")
+            endif()
+            if(layer STREQUAL "ui")
+                file(RELATIVE_PATH relative "${PASTES_SOURCE_DIR}/ui" "${source}")
+                string(REGEX MATCH "^[^/]+" feature "${relative}")
+                if(DEFINED ${feature}_forbidden AND include MATCHES "${${feature}_forbidden}")
+                    message(FATAL_ERROR "Forbidden ui/${feature} dependency in ${source}: ${include}")
+                endif()
             endif()
         endforeach()
     endforeach()

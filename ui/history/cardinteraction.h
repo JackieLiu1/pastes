@@ -5,7 +5,7 @@
 #include <QElapsedTimer>
 #include <QPointer>
 #include <QPoint>
-#include "ui/pasteitem.h"
+#include "ui/cards/pasteitem.h"
 
 class QWidget;
 class QListWidget;

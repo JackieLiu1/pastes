@@ -1,27 +1,27 @@
 add_library(pastes_ui STATIC
-    mainwindow.cpp mainwindow.h
+    window/mainwindow.cpp window/mainwindow.h
 
-    historyview.cpp historyview.h
-    mainframe.cpp mainframe.h
-    searchbar.cpp searchbar.h
-    cardinteraction.cpp cardinteraction.h
-    cardreflow.cpp cardreflow.h
-    cardswipe.cpp cardswipe.h
-    elasticscroll.cpp elasticscroll.h
+    history/historyview.cpp history/historyview.h
+    history/mainframe.cpp history/mainframe.h
+    history/searchbar.cpp history/searchbar.h
+    history/cardinteraction.cpp history/cardinteraction.h
+    history/cardreflow.cpp history/cardreflow.h
+    history/cardswipe.cpp history/cardswipe.h
+    history/elasticscroll.cpp history/elasticscroll.h
 
-    pasteitem.cpp pasteitem.h
-    pasteitembarnner.cpp pasteitembarnner.h
-    pasteitemcontext.cpp pasteitemcontext.h
+    cards/pasteitem.cpp cards/pasteitem.h
+    cards/pasteitembarnner.cpp cards/pasteitembarnner.h
+    cards/pasteitemcontext.cpp cards/pasteitemcontext.h
 
-    previewdialog.cpp previewdialog.h
+    preview/previewdialog.cpp preview/previewdialog.h
 
-    appdialog.cpp appdialog.h
-    settingsdialog.cpp settingsdialog.h
-    syncsettingspage.cpp syncsettingspage.h
+    dialogs/appdialog.cpp dialogs/appdialog.h
+    dialogs/settingsdialog.cpp dialogs/settingsdialog.h
+    dialogs/syncsettingspage.cpp dialogs/syncsettingspage.h
 
-    roundedwidgets.cpp roundedwidgets.h
-    sourceiconview.cpp sourceiconview.h
-    filepreview.cpp filepreview.h
+    common/roundedwidgets.cpp common/roundedwidgets.h
+    common/sourceiconview.cpp common/sourceiconview.h
+    common/filepreview.cpp common/filepreview.h
 )
 target_link_libraries(pastes_ui PUBLIC pastes_application pastes_platform Qt6::Widgets)
 target_compile_definitions(pastes_ui PRIVATE PASTES_VERSION="${PROJECT_VERSION}")

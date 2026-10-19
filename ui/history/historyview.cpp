@@ -1,10 +1,10 @@
-#include "ui/historyview.h"
-#include "ui/pasteitem.h"
-#include "ui/searchbar.h"
-#include "ui/cardswipe.h"
-#include "ui/cardreflow.h"
-#include "ui/cardinteraction.h"
-#include "ui/elasticscroll.h"
+#include "ui/history/historyview.h"
+#include "ui/cards/pasteitem.h"
+#include "ui/history/searchbar.h"
+#include "ui/history/cardswipe.h"
+#include "ui/history/cardreflow.h"
+#include "ui/history/cardinteraction.h"
+#include "ui/history/elasticscroll.h"
 #include "platform/windowintegration.h"
 #include <QApplication>
 #include <QButtonGroup>

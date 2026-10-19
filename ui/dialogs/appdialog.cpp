@@ -1,8 +1,8 @@
-#include "ui/appdialog.h"
+#include "ui/dialogs/appdialog.h"
 #include "core/historypolicy.h"
 #include "core/itemdata.h"
 #include "platform/pastetarget.h"
-#include "ui/roundedwidgets.h"
+#include "ui/common/roundedwidgets.h"
 #include "platform/windowintegration.h"
 #include "pastes_build_version.h"
 
