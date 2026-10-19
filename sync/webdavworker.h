@@ -1,7 +1,7 @@
 #ifndef PASTES_WEBDAVWORKER_H
 #define PASTES_WEBDAVWORKER_H
 #include "application/syncservice.h"
-#include "sync/synccontent.h"
+#include "core/synccontent.h"
 #include <QHash>
 #include <QSet>
 #include <functional>
