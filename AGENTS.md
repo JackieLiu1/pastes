@@ -26,11 +26,16 @@ ctest --test-dir build --output-on-failure
 - Windows/MSYS2 工具链：`C:\msys64\ucrt64\bin`（ucrt64 环境，`qmake` 即 Qt6）。
   依赖 qt6-base、qt6-tools（lrelease）、psapi、gdi32。
 - Linux 依赖：qt6-base-dev、qt6-tools-dev、libglib2.0-dev、libxtst-dev、libx11-dev、libxi-dev、pkg-config（gio）。
-- CTest 注册业务、数据库、剪贴板、历史视图及依赖边界五组测试，不需要 Qt Test 模块。
+- CTest 覆盖业务、数据库、剪贴板、历史视图、同步及依赖边界，不需要 Qt Test 模块；
+  以当前平台注册的全部测试为准，不固定测试组数。
   GUI 组件测试使用 offscreen，只验证数据与命令，不能代替原生平台交互。
   验证手段：编译零错误、零新增警告 + CTest + 冒烟测试
   （启动程序 → `Set-Clipboard` 写入标记文本 → 约 2 秒后确认 `PastesDatabase.db`
   中出现该文本 → 重启程序确认历史加载不崩溃）。
+- 各平台使用 Release 构建并运行全部 CTest。涉及滚动或焦点时，补充原生交互回归：
+  双指滚动、惯性与回弹、滚动中点击、Home/End、方向键及 Tab 切换；确认首尾卡片、
+  选中框和点击位置一致。涉及剪贴板或持久化时，检查采集入库及重启加载。
+- 具体测试结果和未覆盖场景记录在任务回复或测试日志中，不写入提交说明。
 - 数据库文件位置：Windows 在 exe 同目录，Linux 在 `~/.cache/PastesDatabase.db`。
 
 ## 架构与数据流
@@ -122,8 +127,10 @@ ClipboardSource / ClipboardFeed
   不写 `This patch ...`，Git 提交标题不加邮件用的 `[PATCH]` 前缀。
 - **每行最多 80 个字符**，标题建议不超过 75 个字符，正文优先按 75 列换行；
   不把“80 字符”理解为必须补齐到 80 列。标题后空一行，正文与 trailers 间也空一行。
-- 正文先交代问题及原因，再说明解决方式、行为影响和必要的验证结果；
-  不编造测试、评审或故障归因，不仅罗列改动文件。
+- 提交说明详略适当，不刻意压缩。正文说明问题及原因、解决方式和关键行为变化；
+  简单改动几句话说清，复杂改动保留理解方案所需的背景、取舍和限制。
+  不堆砌文件清单、测试步骤、通过数量或 `Validation:` 段落；通用验证要求维护在
+  本文件中。不编造测试、评审或故障归因。
 - **每个提交必须带 SOB**：末尾添加 `Signed-off-by: Real Name <email>`，
   使用真实贡献者身份；本项目通常用 `git commit -s` 自动加入提交人的签署。
   保留已有的有效贡献者签署，不重复添加同一人的 Signed-off-by。
