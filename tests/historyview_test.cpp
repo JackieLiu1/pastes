@@ -495,6 +495,126 @@ void pointerBrowsingKeepsPosition(void)
 		"Sync replacement rewound browsing or stole neutral panel focus");
 }
 
+void interruptedScrollNavigation(void)
+{
+	MemoryRepository repository; HistoryService history(repository);
+	QWidget window; window.resize(1200, 450);
+	HistoryView view(history, &window);
+	QVBoxLayout layout(&window); layout.addWidget(&view);
+	QList<HistoryEntry> entries;
+	for (int i = 0; i < 20; ++i) entries.append(textEntry(QString("navigation %1").arg(i)));
+	history.load(); repository.finishLoad(entries);
+	auto *list = view.findChild<QListWidget *>();
+	auto *scroll = view.findChild<ElasticScrollController *>();
+	window.show(); window.activateWindow(); view.focusCurrent();
+	waitUntil([&] { return QApplication::activeWindow() == &window; });
+	list->doItemsLayout();
+	const QPoint origin = list->viewport()->pos();
+	auto wheel = [&](int distance, Qt::ScrollPhase phase) {
+		QWidget *viewport = list->viewport();
+		const QPoint point = viewport->rect().center();
+		QWheelEvent event(point, viewport->mapToGlobal(point), QPoint(-distance, 0), {},
+			Qt::NoButton, Qt::NoModifier, phase, false);
+		QCoreApplication::sendEvent(viewport, &event);
+	};
+	auto press = [&](int key) {
+		QKeyEvent event(QEvent::KeyPress, key, Qt::NoModifier);
+		QCoreApplication::sendEvent(QApplication::focusWidget(), &event);
+	};
+	auto mouse = [&](QWidget *target, QEvent::Type type) {
+		const QPoint point = target->rect().center();
+		QMouseEvent event(type, point, target->mapToGlobal(point), Qt::LeftButton,
+			type == QEvent::MouseButtonRelease ? Qt::NoButton : Qt::LeftButton, Qt::NoModifier);
+		QCoreApplication::sendEvent(target, &event);
+	};
+	wheel(900, Qt::ScrollBegin);
+	require(list->horizontalScrollBar()->value() == 900 && view.hasFocus(),
+		"Touchpad fixture did not scroll with panel focus");
+	press(Qt::Key_Home);
+	require(list->currentRow() == 0 && list->horizontalScrollBar()->value() == 0 && !scroll->active() &&
+		list->viewport()->pos() == origin && list->itemWidget(list->item(0))->hasFocus(),
+		"Home during touchpad scrolling did not restore the first card and viewport");
+	/* Remaining native inertia belongs to the interrupted gesture. */
+	wheel(120, Qt::ScrollMomentum); wheel(0, Qt::ScrollEnd);
+	require(list->horizontalScrollBar()->value() == 0 && list->viewport()->pos() == origin,
+		"Late touchpad momentum moved the Home selection offscreen");
+	for (int repeat = 0; repeat < 12; ++repeat) {
+		wheel(-120, Qt::ScrollBegin);
+		require(list->viewport()->x() > origin.x(), "Fixture did not reach elastic overshoot");
+		QWidget *first = list->itemWidget(list->item(0));
+		if (repeat%2) {
+			/* A native momentum event may arrive between mouse-down and up. */
+			mouse(first, QEvent::MouseButtonPress);
+			wheel(20, Qt::ScrollMomentum);
+		}
+		press(Qt::Key_Home);
+		require(list->horizontalScrollBar()->value() == 0 && !scroll->active() &&
+			list->viewport()->pos() == origin && list->currentRow() == 0,
+			"Home at the left boundary retained overshoot with an unchanged scrollbar");
+		if (repeat%2) mouse(first, QEvent::MouseButtonRelease);
+		wheel(40, Qt::ScrollMomentum); wheel(0, Qt::ScrollEnd);
+		require(list->viewport()->pos() == origin && list->horizontalScrollBar()->value() == 0 &&
+			list->currentItem()->isSelected() && !first->isHidden() &&
+			list->visualItemRect(list->item(0)).intersects(list->viewport()->rect()) &&
+			first->geometry() == list->visualItemRect(list->item(0)),
+			"Click release or late inertia hid the Home selection or shifted the viewport");
+		press(Qt::Key_End);
+		require(list->currentRow() == list->count()-1 && !scroll->active() &&
+			list->viewport()->pos() == origin &&
+			list->visualItemRect(list->currentItem()).intersects(list->viewport()->rect()),
+			"End did not reveal the final selected card");
+		wheel(120, Qt::ScrollBegin); press(Qt::Key_Home);
+		require(list->horizontalScrollBar()->value() == 0 && list->viewport()->pos() == origin,
+			"Returning Home from right overshoot shifted the viewport");
+	}
+	view.setFocus();
+	press(Qt::Key_Right);
+	require(list->currentRow() == 1 && list->itemWidget(list->item(1))->hasFocus(),
+		"Arrow navigation failed after interrupted touchpad scrolling");
+	/* Filtered boundary commands skip hidden cards; an empty result is safe. */
+	auto *search = view.findChild<LineEdit *>(); search->setText("navigation 1"); view.setFocus();
+	press(Qt::Key_End);
+	require(list->currentRow() == 19, "End selected a hidden search result");
+	press(Qt::Key_Home);
+	require(list->currentRow() == 1, "Home selected a hidden search result");
+	search->setText("no matching cards"); view.setFocus(); press(Qt::Key_Home); press(Qt::Key_End);
+	require(list->currentRow() == -1 && list->horizontalScrollBar()->maximum() == 0,
+		"Boundary navigation retained a stale scroll range for empty results");
+	/* Home/End in the editor retain their text-editing meaning. */
+	search->setFocus();
+	search->setText("navigation"); search->setCursorPosition(5);
+	const int searchRow = list->currentRow();
+	press(Qt::Key_Home);
+	require(search->hasFocus() && list->currentRow() == searchRow && search->text() == "navigation",
+		"History navigation intercepted Home in the search editor");
+}
+
+void elasticViewportRelayout(void)
+{
+	QListWidget list;
+	list.resize(800, 300); list.setFlow(QListView::LeftToRight);
+	list.setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+	list.setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	list.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+	for (int i = 0; i < 12; ++i) {
+		auto *item = new QListWidgetItem(QString::number(i), &list);
+		item->setSizeHint(QSize(250, 250));
+	}
+	ElasticScrollController scroll(&list);
+	list.show(); list.doItemsLayout();
+	scroll.wheel(-120, true, Qt::ScrollBegin);
+	list.setStyleSheet("QListWidget { border: 6px solid black; }");
+	list.doItemsLayout();
+	const QPoint layoutOrigin = list.contentsRect().topLeft();
+	scroll.cancel();
+	require(list.viewport()->pos() == layoutOrigin,
+		"Cancelling an interrupted layout restored an obsolete viewport origin");
+	scroll.wheel(400, true, Qt::ScrollBegin); scroll.cancel();
+	list.horizontalScrollBar()->setValue(0);
+	require(list.viewport()->pos() == layoutOrigin && list.visualItemRect(list.item(0)).left() == 0,
+		"Scrolling after a viewport layout change could not return to the left edge");
+}
+
 void dragReleaseInertia(void)
 {
 	QListWidget list;
@@ -1326,6 +1446,11 @@ int main(int argc, char **argv)
 	QApplication app(argc, argv);
 	if (app.arguments().contains("--scroll-only"))
 		return runTest("release velocity controls bounded inertia and stopping cancels momentum", dragReleaseInertia);
+	if (app.arguments().contains("--scroll-navigation-only")) {
+		int failures = runTest("keyboard navigation interrupts touchpad scrolling", interruptedScrollNavigation);
+		failures += runTest("elastic scrolling follows viewport layout changes", elasticViewportRelayout);
+		return failures ? 1 : 0;
+	}
 	if (app.arguments().contains("--sync-selection-only"))
 		return runTest("sync replacement preserves selected content and input focus", syncedReplacementSelection);
 	if (app.arguments().contains("--browsing-only"))
@@ -1349,6 +1474,8 @@ int main(int argc, char **argv)
 	failures += runTest("search Tab advances the selected result and cycles", searchNavigation);
 	failures += runTest("search Tab keeps the card row in place", searchNavigationGeometry);
 	failures += runTest("pointer browsing survives restored card focus", pointerBrowsingKeepsPosition);
+	failures += runTest("keyboard navigation interrupts touchpad scrolling", interruptedScrollNavigation);
+	failures += runTest("elastic scrolling follows viewport layout changes", elasticViewportRelayout);
 	failures += runTest("release velocity controls bounded inertia and stopping cancels momentum", dragReleaseInertia);
 	failures += runTest("type-to-search focuses before input method composition", searchInputMethod);
 	failures += runTest("Space previews selection across panel focus and preserves search input", previewKeyboardRouting);

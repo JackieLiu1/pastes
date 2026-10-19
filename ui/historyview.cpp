@@ -151,7 +151,7 @@ void HistoryView::traceFocus(const char *event) const
 	 * Detailed filter/add traces remain available through QT_LOGGING_RULES. */
 	if (!historyFocusLog().isDebugEnabled() && reason != "currentItemChanged" &&
 		reason != "history.loaded" && reason != "focusChanged.state" &&
-		!reason.startsWith("sync.")) return;
+		!reason.startsWith("sync.") && !reason.startsWith("navigation.")) return;
 	const PasteItem *card = currentCard();
 	const QJsonObject metadata{
 		{"event", QString::fromLatin1(event)},
@@ -161,6 +161,11 @@ void HistoryView::traceFocus(const char *event) const
 		{"replacementId", QString::number(m_syncSelection)},
 		{"currentContent", card && card->entry() ? QString::fromLatin1(card->entry()->md5.toHex()) : QString()},
 		{"scrollX", m_list->horizontalScrollBar()->value()},
+		{"scrollMaximum", m_list->horizontalScrollBar()->maximum()},
+		{"viewportX", m_list->viewport()->x()}, {"viewportY", m_list->viewport()->y()},
+		{"elasticPosition", m_scroll->position()}, {"overshoot", m_scroll->overshoot()},
+		{"currentCardX", card ? card->x() : 0},
+		{"currentSelected", card && m_list->currentItem()->isSelected()},
 		{"focus", focusDescription(QApplication::focusWidget(), m_list)},
 		{"visible", m_window->isVisible()}, {"active", QApplication::activeWindow() == m_window}
 	};
@@ -196,9 +201,7 @@ void HistoryView::setupShortcuts(void)
 
 void HistoryView::moveSelection(bool prev, bool wrap)
 {
-	this->m_scroll->cancel();
-	if (this->m_swipe->sourceCard()) this->m_swipe->cancel();
-	this->m_reflow->cancel();
+	this->cancelInteractions();
 	const int count = this->m_list->count();
 	if (count == 0)
 		return;
@@ -235,6 +238,25 @@ void HistoryView::moveSelection(bool prev, bool wrap)
 		this->m_list->setCurrentRow(row);
 		this->m_list->scrollToItem(this->m_list->item(row));
 		widget->setFocus();
+	}
+}
+
+void HistoryView::selectBoundary(bool first)
+{
+	cancelInteractions();
+	/* Complete any deferred item layout before using the scroll range. */
+	m_list->doItemsLayout();
+	for (int row = first ? 0 : m_list->count()-1;
+		row >= 0 && row < m_list->count(); row += first ? 1 : -1) {
+		QListWidgetItem *item = m_list->item(row);
+		if (item->isHidden()) continue;
+		m_list->setCurrentItem(item);
+		m_list->scrollToItem(item);
+		if (QWidget *card = m_list->itemWidget(item)) card->setFocus();
+		QScrollBar *bar = m_list->horizontalScrollBar();
+		bar->setValue(first ? bar->minimum() : bar->maximum());
+		traceFocus(first ? "navigation.home" : "navigation.end");
+		return;
 	}
 }
 
@@ -592,6 +614,16 @@ bool HistoryView::eventFilter(QObject *object, QEvent *event)
 		auto *receiver = qobject_cast<QWidget *>(object);
 		if (receiver && receiver->window() == m_window && object != search) {
 			QKeyEvent *key = static_cast<QKeyEvent *>(event);
+			if (!search->hasFocus() && (key->key() == Qt::Key_Home || key->key() == Qt::Key_End) &&
+				!(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier | Qt::ShiftModifier)) &&
+				(receiver == m_window || receiver == this || receiver == m_list ||
+				 receiver == m_list->viewport() || qobject_cast<PasteItem *>(receiver))) {
+				/* Pointer browsing leaves focus on the panel. Handle boundary
+				 * navigation there and cancel overshoot even if the bar is at 0. */
+				event->accept();
+				if (event->type() == QEvent::KeyPress) selectBoundary(key->key() == Qt::Key_Home);
+				return true;
+			}
 			if (key->key() == Qt::Key_Space) {
 				/* Preview follows the selected entry even when the panel or
 				 * list has focus. Search and buttons retain their own Space. */

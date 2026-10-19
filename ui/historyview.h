@@ -65,6 +65,7 @@ private:
 	void updateShortcutHint(void);
 	void resetItemTabOrder(void);
 	void moveSelection(bool previous, bool wrap);
+	void selectBoundary(bool first);
 	void pasteNumberedItem(int number, bool plainText);
 	void previewCurrent(void);
 	PasteItem *currentCard(void) const;
