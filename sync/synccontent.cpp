@@ -202,6 +202,7 @@ Record parse(const QByteArray &data, QString *error)
 		const qint64 copied = object.value("copied").toInteger();
 		const auto content = decode(object.value("content").toObject(), error);
 		if (!error->isEmpty()) return {};
+		record.hasIcon = !content.icon.isNull();
 		if (copied <= 0 || copied > record.modified || key(content) != record.key) {
 			*error = QObject::tr("The sync record failed its content check."); return {};
 		}

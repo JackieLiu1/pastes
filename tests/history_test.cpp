@@ -213,6 +213,43 @@ void syncedImageDuplicates(void)
 		"A newer remote image did not replace its local duplicate");
 }
 
+void syncedSourceIcons(void)
+{
+	const auto now = QDateTime::currentDateTime();
+	QImage icon(64, 64, QImage::Format_ARGB32); icon.fill(Qt::green);
+	for (bool normalized : {false, true}) {
+		MemoryRepository repository;
+		HistoryService history(repository); history.load(); repository.finishLoad();
+		auto local = textEntry("synced source", now.addSecs(-10));
+		local->icon = icon;
+		history.record(local, 7);
+		auto remote = textEntry("synced source", now);
+		if (normalized) remote->md5 = QByteArray("normalized identity");
+		history.mergeSynced(remote, {local->md5});
+		require(history.entries().size() == 1 && history.entries().first() == remote &&
+			remote->icon == icon && repository.writes.last()->icon == icon,
+			"Newer iconless sync erased the local source icon or persisted an empty icon");
+		QImage late(64, 64, QImage::Format_ARGB32); late.fill(Qt::red);
+		history.setSourceIcon(7, late);
+		require(remote->icon == late && repository.iconUpdates.last() == remote->md5,
+			"Sync replacement discarded the pending native source lookup");
+		history.remove(remote->id);
+		auto recopy = textEntry("synced source"); history.record(recopy, 8);
+		history.setSourceIcon(7, icon);
+		require(recopy->icon.isNull(), "Deleted source request changed a later copy");
+	}
+	MemoryRepository repository;
+	HistoryService history(repository); history.load(); repository.finishLoad();
+	auto local = textEntry("remote source", now.addSecs(-10)); local->icon = icon;
+	history.record(local, 9);
+	auto remote = textEntry("remote source", now);
+	QImage remoteIcon(64, 64, QImage::Format_ARGB32); remoteIcon.fill(Qt::blue);
+	remote->icon = remoteIcon;
+	history.mergeSynced(remote, {});
+	history.setSourceIcon(9, icon);
+	require(remote->icon == remoteIcon, "Old native lookup overwrote a newer remote source icon");
+}
+
 QList<HistoryEntry> neighbors(void)
 {
 	QList<HistoryEntry> result;
@@ -416,6 +453,7 @@ int main(int argc, char **argv)
 	failures += runTest("image copies, file references and undo", imageCopiesAndUndo);
 	failures += runTest("stored image duplicates without startup decoding", storedImageDuplicates);
 	failures += runTest("synced image duplicates preserve newest copy time", syncedImageDuplicates);
+	failures += runTest("sync replacements retain source icons and pending lookups", syncedSourceIcons);
 	failures += runTest("favorite retention, recopy, undo and remote metadata", favoritesLifetime);
 	failures += runTest("favorite names, fixed order and independent metadata", favoriteNamesAndOrder);
 	failures += runTest("undo original positions", undoPositions);

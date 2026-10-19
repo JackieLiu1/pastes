@@ -387,6 +387,13 @@ void HistoryService::mergeSynced(HistoryEntry entry, const QList<QByteArray> &re
 		const bool replacing = replaced.contains(previous->md5) || duplicate;
 		if (entry && replacing && (entry->favorite || !HistoryPolicy::expired(entry->time, now))) {
 			if (!replacementId) replacementId = ++m_nextId;
+			/* A copy without a source does not erase a known icon. Keep an
+			 * outstanding native lookup attached to the replacement as well. */
+			if (entry->icon.isNull()) {
+				entry->icon = previous->icon;
+				for (auto &id : m_sourceRequests)
+					if (id == previous->id) id = replacementId;
+			}
 			emit entryReplacing(previous->id, replacementId);
 		}
 		if (replacing)

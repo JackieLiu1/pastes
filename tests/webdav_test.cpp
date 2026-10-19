@@ -497,6 +497,41 @@ void sourceIconRoundTrip()
 		history.entries().first()->icon == item->icon, "Icon upgrade replaced or duplicated the visible item");
 }
 
+void missingSyncedSourceIcons()
+{
+	DavServer server; QTemporaryDir directory;
+	Client first(server.settings(), directory.path()+"/a"), second(server.settings(), directory.path()+"/b");
+	auto item = textEntry("retain source icon", QDateTime::currentDateTime().addSecs(-30));
+	QImage icon(64, 64, QImage::Format_ARGB32); icon.fill(Qt::green);
+	item->icon = icon;
+	first.capture(item); first.run(); second.run();
+	require(first.success && second.success && server.files.size() == 1, "Initial icon fixture failed");
+	/* Model an existing device publishing a newer copy without its source. */
+	auto document = QJsonDocument::fromJson(server.files.cbegin().value()).object();
+	auto content = document.value("content").toObject(); content.remove("icon");
+	document["content"] = content;
+	document["modified"] = document.value("modified").toInteger()+1;
+	document["copied"] = item->time.addSecs(1).toMSecsSinceEpoch();
+	const auto bytes = SyncContent::bytes(document);
+	server.files["/Pastes/v1/events/"+SyncContent::digest(bytes)+".json"] = bytes;
+	second.run();
+	require(second.success && second.deliveries.size() == 1 &&
+		second.deliveries.first().content.icon == icon &&
+		second.deliveries.first().content.time == item->time.addSecs(1),
+		"An iconless remote head did not recover its cached source icon");
+	/* A local capture without an icon must also preserve the known source,
+	 * and the repaired record must reach devices with an empty cache. */
+	item->time = item->time.addSecs(2); item->icon = {};
+	second.capture(item); second.run();
+	Client fresh(server.settings(), directory.path()+"/fresh"); fresh.run();
+	require(second.success && fresh.success && fresh.deliveries.size() == 1 &&
+		fresh.deliveries.first().content.icon == icon && fresh.deliveries.first().content.time == item->time,
+		"An iconless re-copy erased the source icon on another device");
+	second.capture(item, false, true); second.run(); fresh.run();
+	require(second.success && fresh.success && fresh.deliveries.size() == 1 && fresh.deliveries.first().deleted,
+		"Recovering source icons resurrected deleted content");
+}
+
 void localCredentialFiles()
 {
 	QTemporaryDir temp;
@@ -610,6 +645,7 @@ int main(int argc, char **argv)
 	failures += runTest("favorite changes survive disabled sync and restart", disabledFavoriteRestart);
 	failures += runTest("image content and timestamp round trip", imageRoundTrip);
 	failures += runTest("source icon resolution and incremental upgrades", sourceIconRoundTrip);
+	failures += runTest("missing source icons recover across sync and re-copy", missingSyncedSourceIcons);
 	failures += runTest("private local credential files and process restart", localCredentialFiles);
 	failures += runTest("saved local credentials resume automatic sync", localCredentialSyncRestart);
 	return failures ? 1 : 0;

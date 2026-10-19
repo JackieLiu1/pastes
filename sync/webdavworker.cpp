@@ -273,11 +273,18 @@ bool WebDavWorker::prepareRetention(void)
 {
 	const qint64 now = QDateTime::currentMSecsSinceEpoch();
 	QHash<QString, SyncContent::Record> favorites;
+	QHash<QString, SyncContent::Record> icons;
 	QHash<QString, qint64> copies;
 	QHash<QString, FavoriteDetails> details;
 	for (const auto &record : m_records) {
 		mergeFavoriteDetails(details[record.key], record.favoriteDetails);
 		if (!record.deleted) copies[record.key] = qMax(copies.value(record.key), record.copied);
+		if (record.hasIcon) {
+			const auto previous = icons.value(record.key);
+			if (!previous.hasIcon || record.modified > previous.modified ||
+				(record.modified == previous.modified && record.id > previous.id))
+				icons[record.key] = record;
+		}
 		if (!record.favoriteModified) continue;
 		const auto previous = favorites.value(record.key);
 		if (record.favoriteModified > previous.favoriteModified ||
@@ -296,9 +303,20 @@ bool WebDavWorker::prepareRetention(void)
 			const auto favorite = favorites.value(record.key, record);
 			const qint64 copied = copies.value(record.key, record.copied);
 			const auto mergedDetails = details.value(record.key);
+			const auto icon = icons.value(record.key);
+			const bool inheritIcon = !record.hasIcon && icon.hasIcon;
 			if ((favorite.favoriteModified && (record.favoriteModified != favorite.favoriteModified ||
-				record.favorite != favorite.favorite || record.copied != copied)) || record.favoriteDetails != mergedDetails) {
+				record.favorite != favorite.favorite || record.copied != copied)) ||
+				record.favoriteDetails != mergedDetails || inheritIcon) {
 				auto document = QJsonDocument::fromJson(read(id)).object();
+				/* Older clients may publish a newer copy with no source icon.
+				 * Recover the last known source before superseded records expire. */
+				if (inheritIcon) {
+					auto content = document.value("content").toObject();
+					content["icon"] = QJsonDocument::fromJson(read(icon.id)).object()
+						.value("content").toObject().value("icon");
+					document["content"] = content;
+				}
 				document["version"] = 2;
 				document["favorite"] = favorite.favorite;
 				document["favoriteModified"] = favorite.favoriteModified;

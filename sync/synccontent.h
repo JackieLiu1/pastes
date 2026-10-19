@@ -30,6 +30,7 @@ struct Record {
 	qint64 modified = 0;
 	qint64 copied = 0;
 	bool deleted = false;
+	bool hasIcon = false;
 	bool favorite = false;
 	qint64 favoriteModified = 0;
 	FavoriteDetails favoriteDetails;
