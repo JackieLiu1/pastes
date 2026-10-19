@@ -30,8 +30,11 @@ HistoryEntry cloneEntry(const ItemData &source)
 	auto entry = HistoryEntry::create();
 	entry->mimeData = source.mimeData ? ClipboardData::duplicate(source.mimeData.get()) :
 		std::make_unique<QMimeData>();
+	entry->events = source.events;
+	entry->sourceInherited = source.sourceInherited;
 	entry->icon = source.icon;
 	entry->md5 = source.md5;
+	entry->contentKey = source.contentKey;
 	entry->imageContentKey = source.imageContentKey;
 	entry->time = source.time;
 	entry->favorite = source.favorite;

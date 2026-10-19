@@ -124,3 +124,11 @@ set_tests_properties(settings_contract PROPERTIES
 if(WIN32)
     set_property(TEST settings_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
 endif()
+
+add_executable(eventstate_test eventstate_test.cpp)
+target_link_libraries(eventstate_test PRIVATE pastes_core)
+add_test(NAME eventstate_contract COMMAND eventstate_test)
+set_tests_properties(eventstate_contract PROPERTIES TIMEOUT 30)
+if(WIN32)
+    set_property(TEST eventstate_contract APPEND PROPERTY ENVIRONMENT "PATH=${test_path}")
+endif()

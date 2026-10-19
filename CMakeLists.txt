@@ -32,7 +32,8 @@ add_library(pastes_core STATIC
     core/clipboarddata.cpp core/clipboarddata.h
     core/clipboardcontent.cpp core/clipboardcontent.h
     core/historypolicy.h
-    core/sourceicon.h
+    core/sourceicon.h core/eventstate.h
+    core/synccontent.cpp core/synccontent.h
 )
 # Core has no Qt meta-object declarations; avoid an empty moc archive member.
 set_target_properties(pastes_core PROPERTIES AUTOMOC OFF)
@@ -53,7 +54,6 @@ add_library(pastes_storage STATIC
 target_link_libraries(pastes_storage PUBLIC pastes_application PRIVATE Qt6::Sql)
 
 add_library(pastes_sync STATIC
-    sync/synccontent.cpp sync/synccontent.h
     sync/webdavworker.cpp sync/webdavworker.h
     sync/webdavsync.cpp sync/webdavsync.h
 )

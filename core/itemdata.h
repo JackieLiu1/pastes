@@ -1,6 +1,7 @@
 #ifndef PASTES_ITEMDATA_H
 #define PASTES_ITEMDATA_H
 
+#include "core/eventstate.h"
 #include <QByteArray>
 #include <QDateTime>
 #include <QImage>
@@ -33,9 +34,12 @@ struct ItemData final
 	ItemData &operator=(const ItemData &) = delete;
 
 	EntryId id = 0;
+	EventState events;
+	bool sourceInherited = false;
 	std::unique_ptr<QMimeData> mimeData;
 	QImage icon;
 	QByteArray md5;
+	QString contentKey;
 	/* Cached pixel comparison; the persisted MD5 and original MIME stay intact. */
 	QByteArray imageContentKey;
 	QDateTime time;

@@ -25,6 +25,23 @@ inline HistoryEntry textEntry(const QString &text, QDateTime time = QDateTime::c
 	return entry;
 }
 
+inline EventVersion nextVersion(EventVersion previous, const QString &device = "test-peer")
+{
+	++previous.logical;
+	previous.device = device;
+	return previous;
+}
+inline void observeIcon(const HistoryEntry &entry, const QImage &icon, EventVersion version = {})
+{
+	if (!version.valid())
+		version = entry->events.copy.valid()
+			? entry->events.copy
+			: EventVersion{entry->time.toMSecsSinceEpoch(), 0, "test-source"};
+	entry->events.source = version;
+	entry->events.sourceCaptured = entry->time.toMSecsSinceEpoch();
+	entry->icon = icon;
+}
+
 inline QByteArray png(const QImage &image)
 {
 	QByteArray bytes;
