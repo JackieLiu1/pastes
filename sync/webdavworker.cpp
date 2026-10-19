@@ -1,5 +1,6 @@
 #include "sync/webdavworker.h"
 #include "core/historypolicy.h"
+#include "core/sourceicon.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonArray>
@@ -42,19 +43,26 @@ QByteArray WebDavWorker::read(const QString &id)
 void WebDavWorker::remember(SyncContent::Record record)
 {
 	record.document = {}; // Payloads stay on disk; the index contains metadata only.
-	m_clock = qMax(m_clock, record.modified);
 	const QString previous = m_heads.value(record.key);
-	if (previous.isEmpty() || m_records[previous].modified < record.modified ||
-		(m_records[previous].modified == record.modified && previous < record.id))
+	const auto version = qMax(record.events.copy, record.events.erase);
+	const auto oldVersion =
+		qMax(m_records.value(previous).events.copy, m_records.value(previous).events.erase);
+	if (previous.isEmpty() || version > oldVersion ||
+		(version == oldVersion &&
+			(record.modified > m_records[previous].modified ||
+				(record.modified == m_records[previous].modified && previous < record.id))))
 		m_heads[record.key] = record.id;
 	m_records.insert(record.id, std::move(record));
 }
-void WebDavWorker::configure(const SyncSettings &settings, const QString &password, const QString &directory)
+void WebDavWorker::configure(const SyncSettings &settings, const QString &password,
+	const QString &directory, bool committedOnly)
 {
 	stop();
 	m_settings = settings; m_password = password; m_directory = directory;
 	m_records.clear(); m_heads.clear(); m_bindings.clear(); m_pending.clear(); m_local.clear(); m_delivered.clear(); m_error.clear();
-	m_clock = 0; m_serial = 0;
+	m_committedOnly = committedOnly;
+	m_durable.clear();
+	m_remote.clear();
 	if (!m_network) m_network = new QNetworkAccessManager(this);
 	if (!QDir().mkpath(m_directory+"/events")) { m_error = tr("Could not create the local sync cache."); return; }
 	QFile index(m_directory+"/index.json");
@@ -104,51 +112,29 @@ bool WebDavWorker::store(const QByteArray &bytes, bool pending)
 	remember(std::move(record));
 	return persistIndex();
 }
-void WebDavWorker::capture(SyncContent::Snapshot value, bool bootstrap, bool deleted, quint64 serial)
+void WebDavWorker::accept(QByteArray document, bool pending, const QString &knownId)
 {
-	m_serial = qMax(m_serial, serial);
-	if (!m_error.isEmpty() || value.kind.isEmpty()) return;
-	const qint64 changed = qMax(qMax(value.time.toMSecsSinceEpoch(), value.favoriteModified),
-		qMax(value.favoriteDetails.nameModified, value.favoriteDetails.positionModified));
-	if (value.favorite && !value.favoriteModified) value.favoriteModified = changed;
-	if (!value.favorite && value.favoriteModified &&
-		QDateTime::currentMSecsSinceEpoch()-value.time.toMSecsSinceEpoch() >= qint64(HistoryPolicy::retentionDays)*86400000) deleted = true;
-	QString key = m_bindings.value(value.md5);
-	auto hasNewMetadata = [&value](const SyncContent::Record &head) {
-		auto details = head.favoriteDetails;
-		return mergeFavoriteDetails(details, value.favoriteDetails) ||
-			value.favoriteModified > head.favoriteModified || value.time.toMSecsSinceEpoch() > head.copied;
-	};
-	if (bootstrap && m_heads.contains(key)) {
-		const auto head = m_records.value(m_heads.value(key));
-		/* Keep the cached startup fast path, including encoded images. */
-		if (head.modified >= changed && (head.deleted || !hasNewMetadata(head))) return;
+	if (!m_error.isEmpty()) return;
+	const auto id = knownId.isEmpty() ? SyncContent::digest(document) : knownId;
+	if (m_records.contains(id)) {
+		m_durable.insert(id);
+		if (pending)
+			m_pending.insert(id);
+		else
+			m_pending.remove(id);
+		return;
 	}
-	QJsonObject payload;
-	QString error;
-	if (!deleted || key.isEmpty()) {
-		payload = SyncContent::encode(value, &error);
-		if (!error.isEmpty()) { emit warning(error); return; }
-		auto decoded = SyncContent::decode(payload, &error);
-		if (!error.isEmpty()) { emit warning(error); return; }
-		key = SyncContent::key(decoded);
+	if (document.isEmpty() || SyncContent::digest(document) != id) {
+		m_error = tr("Could not read a committed sync record.");
+		emit warning(m_error);
+		return;
 	}
-	m_bindings[value.md5] = key;
-	qint64 modified = bootstrap ? changed : qMax(changed, qMax(QDateTime::currentMSecsSinceEpoch(), m_clock+1));
-	const auto head = m_records.value(m_heads.value(key));
-	if (bootstrap && head.modified >= modified) {
-		if (head.deleted || !hasNewMetadata(head)) { persistIndex(); return; }
-		modified = head.modified+1;
-	}
-	QJsonObject document{{"version", value.favoriteModified ? 2 : 1}, {"key", key}, {"modified", modified}, {"deleted", deleted}};
-	if (value.favoriteModified) document["favoriteModified"] = value.favoriteModified;
-	if (!deleted) {
-		SyncContent::writeFavoriteDetails(document, value.favoriteDetails);
-		document["favorite"] = value.favorite;
-		document["copied"] = value.time.toMSecsSinceEpoch(); document["content"] = payload;
-	}
-	if (!store(SyncContent::bytes(document), true)) emit warning(m_error);
+	if (store(document, pending))
+		m_durable.insert(id);
+	else
+		emit warning(m_error);
 }
+
 void WebDavWorker::request(const QByteArray &method, const QString &relative, const QByteArray &body, Response done)
 {
 	QUrl url = m_settings.url;
@@ -243,6 +229,7 @@ void WebDavWorker::list(void)
 			if (!m_records.contains(id)) m_downloads.append(id);
 			else if (SyncContent::expired(m_records[id], QDateTime::currentMSecsSinceEpoch())) m_cleanup.append(id);
 		}
+		m_remote = remote;
 		// Restore active cached records if a server copy was lost; never mirror
 		// an empty remote folder as local deletion.
 		for (const auto &id : m_heads) if (!remote.contains(id)) m_pending.insert(id);
@@ -271,92 +258,60 @@ void WebDavWorker::downloadNext(void)
 }
 bool WebDavWorker::prepareRetention(void)
 {
-	const qint64 now = QDateTime::currentMSecsSinceEpoch();
-	QHash<QString, SyncContent::Record> favorites;
-	QHash<QString, SyncContent::Record> icons;
-	QHash<QString, qint64> copies;
-	QHash<QString, FavoriteDetails> details;
-	for (const auto &record : m_records) {
-		mergeFavoriteDetails(details[record.key], record.favoriteDetails);
-		if (!record.deleted) copies[record.key] = qMax(copies.value(record.key), record.copied);
-		if (record.hasIcon) {
-			const auto previous = icons.value(record.key);
-			if (!previous.hasIcon || record.modified > previous.modified ||
-				(record.modified == previous.modified && record.id > previous.id))
-				icons[record.key] = record;
+	QHash<QString, QList<SyncContent::Record>> groups;
+	for (const auto &record : m_records)
+		groups[record.key].append(record);
+	for (auto group = groups.cbegin(); group != groups.cend(); ++group) {
+		QString error;
+		auto document = SyncContent::reduce(
+			group.value(), [this](const QString &id) { return read(id); }, &error);
+		document = SyncContent::expire(document, QDateTime::currentMSecsSinceEpoch(), &error);
+		if (!error.isEmpty()) {
+			m_error = error;
+			return false;
 		}
-		if (!record.favoriteModified) continue;
-		const auto previous = favorites.value(record.key);
-		if (record.favoriteModified > previous.favoriteModified ||
-			(record.favoriteModified == previous.favoriteModified &&
-			 (record.modified > previous.modified ||
-			  (record.modified == previous.modified && record.id > previous.id))))
-			favorites[record.key] = record;
+		const auto id = SyncContent::digest(document);
+		if (!m_records.contains(id) && !store(document, !m_committedOnly)) return false;
+		m_heads[group.key()] = id;
+		m_local.remove(id);
+		if (!m_committedOnly) m_durable.insert(id);
 	}
-	const auto heads = m_heads.values();
-	for (const auto &id : heads) {
-		auto record = m_records.value(id);
-		if (!record.deleted) {
-			/* An icon update or re-copy can carry a stale favorite flag. Merge
-			 * the latest favorite operation independently of content changes,
-			 * retaining the newest known copy time for the same content. */
-			const auto favorite = favorites.value(record.key, record);
-			const qint64 copied = copies.value(record.key, record.copied);
-			const auto mergedDetails = details.value(record.key);
-			const auto icon = icons.value(record.key);
-			const bool inheritIcon = !record.hasIcon && icon.hasIcon;
-			if ((favorite.favoriteModified && (record.favoriteModified != favorite.favoriteModified ||
-				record.favorite != favorite.favorite || record.copied != copied)) ||
-				record.favoriteDetails != mergedDetails || inheritIcon) {
-				auto document = QJsonDocument::fromJson(read(id)).object();
-				/* Older clients may publish a newer copy with no source icon.
-				 * Recover the last known source before superseded records expire. */
-				if (inheritIcon) {
-					auto content = document.value("content").toObject();
-					content["icon"] = QJsonDocument::fromJson(read(icon.id)).object()
-						.value("content").toObject().value("icon");
-					document["content"] = content;
-				}
-				document["version"] = 2;
-				document["favorite"] = favorite.favorite;
-				document["favoriteModified"] = favorite.favoriteModified;
-				SyncContent::writeFavoriteDetails(document, mergedDetails);
-				document["copied"] = copied;
-				document["modified"] = record.modified+1;
-				const QByteArray data = SyncContent::bytes(document);
-				if (!store(data, true)) return false;
-				const QString merged = SyncContent::digest(data);
-				m_local.remove(merged);
-				record = m_records.value(merged);
-			}
-		}
-		if (!record.deleted && record.favoriteModified && SyncContent::expired(record, now)) {
-			/* An unstarred record may expire while every client is offline.
-			 * Replace its payload with a durable marker before deleting any
-			 * older favorite, and deliver it to clients still holding that item. */
-			QJsonObject marker{{"version", 2}, {"key", record.key}, {"deleted", true},
-				{"modified", qMax(record.modified+1, record.copied+qint64(HistoryPolicy::retentionDays)*86400000)},
-				{"favoriteModified", record.favoriteModified}};
-			const QByteArray data = SyncContent::bytes(marker);
-			if (!store(data, true)) return false;
-			m_local.remove(SyncContent::digest(data));
-		}
-	}
-	for (auto it = m_records.cbegin(); it != m_records.cend(); ++it) {
-		const bool superseded = m_heads.value(it->key) != it.key();
-		if (SyncContent::expired(it.value(), now) || (superseded && it->favoriteModified))
-			if (!m_cleanup.contains(it.key())) m_cleanup.append(it.key());
-	}
+	for (auto it = m_records.cbegin(); it != m_records.cend(); ++it)
+		if (SyncContent::expired(it.value(), QDateTime::currentMSecsSinceEpoch()) &&
+			!m_cleanup.contains(it.key()))
+			m_cleanup.append(it.key());
 	return true;
 }
 
 void WebDavWorker::uploadNext(void)
 {
-	if (m_uploads.isEmpty()) { cleanupNext(); return; }
+	if (m_uploads.isEmpty()) {
+		for (auto it = m_records.cbegin(); it != m_records.cend(); ++it) {
+			const auto id = m_heads.value(it->key);
+			const auto head = m_records.value(id);
+			const bool covered = head.events.copy >= it->events.copy &&
+				head.events.erase >= it->events.erase && head.events.source >= it->events.source &&
+				head.events.favorite >= it->events.favorite &&
+				head.events.name >= it->events.name && head.events.position >= it->events.position;
+			if (it->favoriteModified && id != it.key() && covered && m_remote.contains(id) &&
+				(!m_committedOnly || m_durable.contains(id)) && !m_cleanup.contains(it.key()))
+				m_cleanup.append(it.key());
+		}
+		cleanupNext();
+		return;
+	}
 	const QString id = m_uploads.takeLast();
-	if (!m_records.contains(id) || m_heads.value(m_records[id].key) != id ||
+	if (!m_records.contains(id) ||
 		SyncContent::expired(m_records[id], QDateTime::currentMSecsSinceEpoch())) {
-		m_pending.remove(id); uploadNext(); return;
+		m_pending.remove(id);
+		m_remote.insert(id);
+		emit uploaded(id);
+		uploadNext();
+		return;
+	}
+	if (m_committedOnly && !m_durable.contains(id)) {
+		uploadNext();
+		return;
 	}
 	const QByteArray data = read(id);
 	if (SyncContent::digest(data) != id) { complete(tr("Could not read an outgoing sync record.")); return; }
@@ -370,12 +325,16 @@ void WebDavWorker::uploadNext(void)
 					complete(tr("The downloaded record failed its integrity check.")); return;
 				}
 				m_pending.remove(id);
+				m_remote.insert(id);
+				emit uploaded(id);
 				if (!persistIndex()) { complete(m_error); return; }
 				uploadNext();
 			});
 			return;
 		}
 		m_pending.remove(id);
+		m_remote.insert(id);
+		emit uploaded(id);
 		if (!persistIndex()) { complete(m_error); return; }
 		uploadNext();
 	});
@@ -384,19 +343,41 @@ void WebDavWorker::cleanupNext(void)
 {
 	if (m_cleanup.isEmpty()) { deliver(); return; }
 	const QString id = m_cleanup.takeLast();
-	request("DELETE", "Pastes/v1/events/"+id+".json", {}, [this](int status, const QByteArray &) {
-		if (status != 200 && status != 204 && status != 404) { complete(tr("Could not remove expired sync data (HTTP %1).").arg(status)); return; }
-		cleanupNext();
-	});
+	request("DELETE", "Pastes/v1/events/" + id + ".json", {},
+		[this, id](int status, const QByteArray &) {
+			if (status != 200 && status != 204 && status != 404) {
+				complete(tr("Could not remove expired sync data (HTTP %1).").arg(status));
+				return;
+			}
+			if (m_heads.value(m_records.value(id).key) == id)
+				m_heads.remove(m_records.value(id).key);
+			m_records.remove(id);
+			m_pending.remove(id);
+			m_local.remove(id);
+			m_delivered.remove(id);
+			m_durable.remove(id);
+			m_remote.remove(id);
+			QFile::remove(path(id));
+			cleanupNext();
+		});
 }
 void WebDavWorker::deliver(void)
 {
 	const qint64 now = QDateTime::currentMSecsSinceEpoch();
 	for (const auto &id : m_heads) {
 		const auto &record = m_records[id];
-		if (SyncContent::expired(record, now) || m_local.contains(id) || m_delivered.contains(id)) continue;
+		if (SyncContent::expired(record, now) || (!m_committedOnly && m_local.contains(id)) ||
+			m_delivered.contains(id))
+			continue;
 		SyncDelivery delivery;
-		delivery.id = id; delivery.deleted = record.deleted; delivery.serial = m_serial;
+		delivery.id = id;
+		delivery.key = record.key;
+		delivery.events = record.events;
+		delivery.deleted = record.deleted;
+		delivery.content.favoriteModified = record.favoriteModified;
+		delivery.content.favorite = record.favorite;
+		delivery.content.favoriteDetails = record.favoriteDetails;
+		delivery.content.events = record.events;
 		for (auto it = m_bindings.begin(); it != m_bindings.end(); ++it)
 			if (it.value() == record.key) delivery.replaced.append(it.key());
 		if (!record.deleted) {
@@ -404,6 +385,7 @@ void WebDavWorker::deliver(void)
 			const auto object = QJsonDocument::fromJson(read(id)).object();
 			delivery.content = SyncContent::decode(object.value("content").toObject(), &error);
 			if (!error.isEmpty()) { complete(error); return; }
+			delivery.content.events = record.events;
 			delivery.content.time = QDateTime::fromMSecsSinceEpoch(record.copied).toUTC();
 			delivery.content.favorite = record.favorite;
 			delivery.content.favoriteModified = record.favoriteModified;
@@ -415,12 +397,12 @@ void WebDavWorker::deliver(void)
 	}
 	// Local cache follows the same retention policy, including deletion markers.
 	for (auto it = m_records.begin(); it != m_records.end(); ) {
-		if (SyncContent::expired(it.value(), now) ||
-			(m_heads.value(it->key) != it.key() && it->favoriteModified)) {
+		if (SyncContent::expired(it.value(), now)) {
 			if (m_heads.value(it->key) == it.key()) m_heads.remove(it->key);
 			QFile::remove(path(it.key())); m_pending.remove(it.key()); m_local.remove(it.key()); m_delivered.remove(it.key());
 			it = m_records.erase(it);
-		} else ++it;
+		} else
+			++it;
 	}
 	for (auto it = m_bindings.begin(); it != m_bindings.end(); )
 		it = m_heads.contains(it.value()) ? ++it : m_bindings.erase(it);

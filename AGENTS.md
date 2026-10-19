@@ -35,6 +35,9 @@ ctest --test-dir build --output-on-failure
 - 各平台使用 Release 构建并运行全部 CTest。涉及滚动或焦点时，补充原生交互回归：
   双指滚动、惯性与回弹、滚动中点击、Home/End、方向键及 Tab 切换；确认首尾卡片、
   选中框和点击位置一致。涉及剪贴板或持久化时，检查采集入库及重启加载。
+- 涉及同步或来源图标时，必须运行事件合并和真实 SQLite/WebDAV 跨层合约，覆盖毫秒时间、
+  时钟偏差与回退、迟到图标、删除后重复制、关闭同步后重启、空历史切换账户、缓存恢复、
+  SQL 故障不确认及重试、事务回滚；只使用临时数据库和本机假服务器。
 - 具体测试结果和未覆盖场景记录在任务回复或测试日志中，不写入提交说明。
 - 数据库文件位置：Windows 在 exe 同目录，Linux 在 `~/.cache/PastesDatabase.db`。
 
@@ -75,7 +78,7 @@ ClipboardSource / ClipboardFeed
   后台细节在 platform/shortcut_p.h，系统实现位于各平台目录。
 - `Platform` 的窗口、菜单、应用、路径和文件图标接口位于 platform/；
   原生句柄仅出现在系统实现中，公共 UI 不包含系统 SDK。详见 docs/platform-architecture.md。
-- `ItemData` / `HistoryEntry`（core/itemdata.h）— GUI 线程的条目与共享所有权；EntryId 表示本次条目身份，MD5 表示内容身份。
+- `ItemData` / `HistoryEntry`（core/itemdata.h）— GUI 线程的条目与共享所有权；EntryId 表示界面对象，MD5 表示本机内容，contentKey 表示可移植内容，EventState::copy 表示持久复制事件。
 - `StoredEntry`（storage/storedentry.h）— MIME 字节、QImage、编码图片、时间和指纹的跨线程值快照；不包含 QObject 或 UI 指针。
 
 ## 线程规则（最重要）
@@ -93,6 +96,10 @@ ClipboardSource / ClipboardFeed
    退出必须显式唤醒（见 platform/windows/shortcut.cpp 的 PostThreadMessage(WM_QUIT)）。
 6. 图片编码结果由 HistoryService 按唯一插入请求编号匹配仍存在的条目，不能仅匹配 MD5 或地址。
    删除/撤销或重新复制可能创建同内容的新对象；压缩字节不可变，副本通过隐式共享保留。
+
+7. 历史替换和待同步状态必须同事务提交；远端合并和已应用标记必须同事务提交。
+   同步层只上传已提交状态，确认接收必须等待仓库提交成功；关闭网络同步仍保存本地操作。
+   原生图标补全沿用原复制事件的观测版本，继承、重传和元数据合并不产生新的复制版本。
 
 ## 编码风格
 

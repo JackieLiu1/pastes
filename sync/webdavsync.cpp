@@ -31,21 +31,70 @@ WebDavSync::WebDavSync(HistoryService &history, SecretStore &secrets, const QStr
 		configure();
 		if (m_settings.enabled) { bootstrap(); m_timer.start(2000); }
 	});
-	connect(&history, &HistoryService::entryAdded, this, [this](HistoryEntry entry, int, HistoryChange change) {
-		if (m_settings.enabled && (change == HistoryChange::Captured || change == HistoryChange::Restored)) {
-			capture(entry); schedule();
+	connect(&history, &HistoryService::syncWarning, this, [this](const QString &message) {
+		m_warning = message;
+		if (m_settings.enabled) {
+			m_status = message;
+			emit statusChanged();
 		}
 	});
-	connect(&history, &HistoryService::entryChanged, this, [this](EntryId id) {
-		if (m_settings.enabled && !m_applying) { capture(m_history.find(id)); schedule(); }
-	});
-	connect(&history, &HistoryService::favoriteChanged, this, [this](HistoryEntry entry) {
-		if (m_configured && !m_applying) { capture(entry); schedule(); }
-	});
-	connect(&history, &HistoryService::entryErasing, this, [this](HistoryEntry entry, HistoryChange change) {
-		if (m_configured && change == HistoryChange::Deleted) {
-			capture(entry, false, true); schedule();
+	connect(&history, &HistoryService::persistenceStateChanged, this, [this] {
+		if (m_busy) {
+			m_again = true;
+			finishRun();
 		}
+	});
+	connect(&history, &HistoryService::durableChanged, this,
+		[this](const QByteArray &) { schedule(); });
+	connect(&history, &HistoryService::appliedLoaded, this,
+		[this](const QString &accountId, quint64 token, const QStringList &ids) {
+			if (!m_busy || token != m_runToken || accountId != account(m_settings)) return;
+			for (const auto &id : ids)
+				m_applied.insert(id);
+		});
+	connect(&history, &HistoryService::outboxLoaded, this,
+		[this](const QString &accountId, quint64 token,
+			const QList<SyncContent::JournalRecord> &documents) {
+			if (!m_busy || token != m_runToken || accountId != account(m_settings)) return;
+			for (const auto &record : documents)
+				m_loadedJournal.insert(record.id);
+			m_workerStarted = true;
+			QMetaObject::invokeMethod(
+				m_worker,
+				[worker = m_worker, documents] {
+					for (const auto &record : documents)
+						worker->accept(record.document, record.pending, record.id);
+					worker->run(false);
+				},
+				Qt::QueuedConnection);
+		});
+	connect(&history, &HistoryService::syncApplied, this,
+		[this](const QString &accountId, const QString &id, bool success) {
+			if (accountId != account(m_settings) || !m_pendingApplies.remove(id)) return;
+			if (success) {
+				m_applied.insert(id);
+				QMetaObject::invokeMethod(
+					m_worker, [worker = m_worker, id] { worker->acknowledge(id); });
+			} else if (m_runError.isEmpty())
+				m_runError = tr("Could not save synchronized history.");
+			finishRun();
+		});
+	connect(&history, &HistoryService::persistenceFailed, this, [this](const QString &error) {
+		m_runError = error;
+		m_status = error;
+		emit statusChanged();
+	});
+	connect(&history, &HistoryService::published, this,
+		[this](const QString &accountId, const QString &id) {
+			if (accountId != account(m_settings)) return;
+			m_pendingPublishes.remove(id);
+			finishRun();
+		});
+	connect(&history, &HistoryService::publishFailed, this, [this](const QString &error) {
+		m_runError = error;
+		m_pendingPublishes.clear();
+		if (!m_workerStarted) m_transportDone = true;
+		finishRun();
 	});
 }
 WebDavSync::~WebDavSync()
@@ -113,59 +162,69 @@ void WebDavSync::configure(void)
 	m_timer.stop(); m_busy = false; m_again = false;
 	QMetaObject::invokeMethod(m_worker, &WebDavWorker::stop, Qt::BlockingQueuedConnection);
 	m_worker->disconnect(this);
-	m_applied.clear(); m_warning.clear();
+	m_applied.clear();
+	m_loadedJournal.clear();
+	m_warning.clear();
+	m_pendingApplies.clear();
+	m_pendingPublishes.clear();
+	m_runError.clear();
+	m_transportDone = false;
+	m_workerStarted = false;
+	++m_runToken;
 	const quint64 epoch = m_epoch;
-	connect(m_worker, &WebDavWorker::warning, this, [this,epoch](const QString &message) {
+	connect(m_worker, &WebDavWorker::warning, this, [this, epoch](const QString &message) {
 		if (epoch != m_epoch) return;
-		m_warning = message; m_status = message; emit statusChanged();
-	});
-	connect(m_worker, &WebDavWorker::delivered, this, [this,epoch](const SyncDelivery &delivery) {
-		if (epoch != m_epoch || !m_settings.enabled || m_applied.contains(delivery.id)) return;
-		// A local command queued after this worker snapshot takes precedence.
-		// The next incremental pass will reconcile it with the remote head.
-		if (delivery.serial < m_serial) { m_again = true; return; }
-		m_applying = true;
-		m_history.mergeSynced(delivery.deleted ? HistoryEntry() : SyncContent::materialize(delivery.content), delivery.replaced);
-		m_applying = false;
-		m_applied.insert(delivery.id);
-		QMetaObject::invokeMethod(m_worker, [worker=m_worker,id=delivery.id] { worker->acknowledge(id); });
-	});
-	connect(m_worker, &WebDavWorker::finished, this, [this,epoch](const QString &error, bool success, bool probe) {
-		if (epoch != m_epoch) return;
-		m_busy = false;
-		if (!success) m_status = error;
-		else if (probe) m_status = tr("Connection verified: read, write and delete are available.");
-		else {
-			m_lastSuccess = QDateTime::currentDateTime();
-			QSettings().setValue("sync/lastSuccess", m_lastSuccess);
-			m_status = m_warning.isEmpty() ? tr("Up to date.") : tr("Sync finished with skipped items: %1").arg(m_warning);
-		}
+		m_warning = message;
+		m_status = message;
 		emit statusChanged();
-		if (m_settings.enabled) m_timer.start(m_again ? 2000 : (success ? 30000 : 60000));
-		m_again = false;
 	});
+	connect(m_worker, &WebDavWorker::uploaded, this, [this, epoch](const QString &id) {
+		if (epoch != m_epoch) return;
+		m_pendingPublishes.insert(id);
+		m_history.markPublished(account(m_settings), id);
+	});
+	connect(m_worker, &WebDavWorker::delivered, this, [this, epoch](const SyncDelivery &delivery) {
+		if (epoch != m_epoch || !m_settings.enabled || m_applied.contains(delivery.id) ||
+			m_pendingApplies.contains(delivery.id))
+			return;
+		m_pendingApplies.insert(delivery.id);
+		m_history.applySynced(
+			delivery.deleted ? HistoryEntry() : SyncContent::materialize(delivery.content),
+			delivery.replaced, delivery.events, delivery.key, account(m_settings), delivery.id,
+			delivery.content);
+	});
+	connect(m_worker, &WebDavWorker::finished, this,
+		[this, epoch](const QString &error, bool success, bool probe) {
+			if (epoch != m_epoch) return;
+			if (probe) {
+				m_busy = false;
+				m_status = success
+					? tr("Connection verified: read, write and delete are available.")
+					: error;
+				emit statusChanged();
+				return;
+			}
+			if (!success) m_runError = error;
+			m_transportDone = true;
+			finishRun();
+		});
 	const auto settings = m_settings;
 	const QString password = m_password;
 	const QString directory = m_directory+"/"+account(settings);
-	QMetaObject::invokeMethod(m_worker, [worker=m_worker,settings,password,directory] {
-		worker->configure(settings, password, directory);
-	}, Qt::QueuedConnection);
+	QMetaObject::invokeMethod(
+		m_worker,
+		[worker = m_worker, settings, password, directory] {
+			worker->configure(settings, password, directory, true);
+		},
+		Qt::QueuedConnection);
 	m_configured = true;
 }
 void WebDavSync::bootstrap(void)
 {
-	for (const auto &entry : m_history.entries()) capture(entry, true);
+	for (const auto &entry : m_history.entries())
+		m_history.ensureDurable(entry);
 }
-void WebDavSync::capture(const HistoryEntry &entry, bool bootstrap, bool deleted)
-{
-	if (!m_configured || !entry || !entry->mimeData) return;
-	const auto value = SyncContent::snapshot(*entry);
-	if (value.kind.isEmpty()) return;
-	const quint64 serial = ++m_serial;
-	QMetaObject::invokeMethod(m_worker, [worker=m_worker,value,bootstrap,deleted,serial] {
-		worker->capture(value, bootstrap, deleted, serial);
-	}, Qt::QueuedConnection);
-}
+
 void WebDavSync::schedule(void)
 {
 	if (!m_settings.enabled) return;
@@ -187,10 +246,49 @@ void WebDavSync::run(bool probe)
 		configure();
 		if (m_settings.enabled && m_ready) bootstrap();
 	}
-	m_timer.stop(); m_busy = true;
+	m_timer.stop();
+	m_busy = true;
+	m_runError.clear();
+	m_pendingApplies.clear();
+	m_pendingPublishes.clear();
+	m_transportDone = false;
+	m_workerStarted = false;
 	m_status = probe ? tr("Testing connection…") : tr("Syncing items…");
 	emit statusChanged();
-	QMetaObject::invokeMethod(m_worker, [worker=m_worker,probe] { worker->run(probe); }, Qt::QueuedConnection);
+	if (probe) {
+		m_workerStarted = true;
+		QMetaObject::invokeMethod(
+			m_worker, [worker = m_worker] { worker->run(true); }, Qt::QueuedConnection);
+	} else {
+		m_history.retryPersistence();
+		m_history.loadOutbox(account(m_settings), ++m_runToken, m_loadedJournal);
+	}
 }
 void WebDavSync::synchronize(void) { run(false); }
 void WebDavSync::testConnection(void) { run(true); }
+
+void WebDavSync::finishRun(void)
+{
+	if (!m_busy || !m_transportDone || !m_pendingApplies.isEmpty() ||
+		!m_pendingPublishes.isEmpty() || m_history.hasInFlightWrites())
+		return;
+	if (m_runError.isEmpty() && !m_history.hasPersistenceFailures() && m_again) {
+		m_again = false;
+		m_transportDone = false;
+		m_workerStarted = false;
+		m_history.loadOutbox(account(m_settings), ++m_runToken, m_loadedJournal);
+		return;
+	}
+	m_busy = false;
+	const bool success = m_runError.isEmpty() && !m_history.hasPersistenceFailures();
+	if (success) {
+		m_lastSuccess = QDateTime::currentDateTime();
+		QSettings().setValue("sync/lastSuccess", m_lastSuccess);
+		m_status = m_warning.isEmpty() ? tr("Up to date.")
+									   : tr("Sync finished with skipped items: %1").arg(m_warning);
+	} else
+		m_status = m_runError.isEmpty() ? tr("Could not save synchronized history.") : m_runError;
+	emit statusChanged();
+	if (m_settings.enabled) m_timer.start(success ? 30000 : 60000);
+	m_again = false;
+}

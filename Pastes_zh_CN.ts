@@ -2,6 +2,14 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_CN" sourcelanguage="en">
 <context>
+    <name>Database::Worker</name>
+    <message>
+        <location filename="storage/database.cpp" line="444"/>
+        <source>Could not save clipboard history.</source>
+        <translation>无法保存剪贴板历史。</translation>
+    </message>
+</context>
+<context>
     <name>QObject</name>
     <message>
         <location filename="ui/appdialog.cpp" line="163"/>
@@ -34,7 +42,7 @@
         <translation>未能识别来源应用</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="567"/>
+        <location filename="ui/historyview.cpp" line="709"/>
         <source>%1 Open   ·   ← → Browse   ·   Drag ↑ Delete   ·   Enter Paste   ·   Space Preview</source>
         <translation>%1 打开   ·   ← → 浏览   ·   ↑ 拖动删除   ·   Enter 粘贴   ·   Space 预览</translation>
     </message>
@@ -167,7 +175,7 @@
         <translation>条记录</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="380"/>
+        <location filename="ui/historyview.cpp" line="495"/>
         <source>Clipboard</source>
         <translation>剪贴板历史</translation>
     </message>
@@ -245,13 +253,13 @@
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="373"/>
+        <location filename="ui/historyview.cpp" line="488"/>
         <source>Pastes</source>
         <translation>Pastes</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="331"/>
-        <location filename="ui/historyview.cpp" line="332"/>
+        <location filename="ui/historyview.cpp" line="445"/>
+        <location filename="ui/historyview.cpp" line="446"/>
         <source>Menu</source>
         <translation>菜单</translation>
     </message>
@@ -261,32 +269,32 @@
         <translation>输入即可搜索</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="182"/>
+        <location filename="ui/historyview.cpp" line="289"/>
         <source>%1 favorites</source>
         <translation>%1 条收藏</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="183"/>
+        <location filename="ui/historyview.cpp" line="290"/>
         <source>%1 items</source>
         <translation>%1 条记录</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="184"/>
+        <location filename="ui/historyview.cpp" line="291"/>
         <source>%1 of %2 items</source>
         <translation>%2 条记录中找到 %1 条</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="188"/>
+        <location filename="ui/historyview.cpp" line="295"/>
         <source>Copy something to get started</source>
         <translation>复制一段文字或一张图片，从这里开始</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="190"/>
+        <location filename="ui/historyview.cpp" line="297"/>
         <source>No matching items</source>
         <translation>没有找到匹配的内容</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="190"/>
+        <location filename="ui/historyview.cpp" line="297"/>
         <source>Right-click an item in history to add it to Favorites</source>
         <translation>右键点击历史条目，选择“加入收藏”</translation>
     </message>
@@ -295,7 +303,7 @@
         <translation type="vanished">点击卡片上的星标，将常用内容加入收藏</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="383"/>
+        <location filename="ui/historyview.cpp" line="498"/>
         <source>Favorites</source>
         <translation>收藏</translation>
     </message>
@@ -357,17 +365,17 @@
         <translation type="vanished">预览（Space）</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="427"/>
+        <location filename="ui/historyview.cpp" line="542"/>
         <source>Removed from history</source>
         <translation>已从历史记录移除</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="431"/>
+        <location filename="ui/historyview.cpp" line="546"/>
         <source>Undo</source>
         <translation>撤销</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="432"/>
+        <location filename="ui/historyview.cpp" line="547"/>
         <source>Undo deletion (Ctrl+Z)</source>
         <translation>撤销删除（Ctrl+Z）</translation>
     </message>
@@ -602,7 +610,7 @@
         <translation>无法保存设置，请检查账户权限后重试。</translation>
     </message>
     <message>
-        <location filename="ui/historyview.cpp" line="410"/>
+        <location filename="ui/historyview.cpp" line="525"/>
         <location filename="ui/mainwindow.cpp" line="202"/>
         <source>Recording paused</source>
         <translation>记录已暂停</translation>
@@ -668,51 +676,63 @@ Then quit and reopen Pastes.</source>
 然后退出并重新打开 Pastes。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="84"/>
+        <location filename="core/synccontent.cpp" line="103"/>
         <source>An image is too large to sync (maximum 20 megapixels).</source>
         <translation>图片超过同步上限（最高 2000 万像素），已跳过。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="89"/>
-        <location filename="sync/synccontent.cpp" line="94"/>
+        <location filename="core/synccontent.cpp" line="109"/>
+        <location filename="core/synccontent.cpp" line="115"/>
         <source>An item is too large to sync (maximum 20 MB).</source>
         <translation>条目超过同步上限（最大 20 MB），已跳过。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="111"/>
+        <location filename="core/synccontent.cpp" line="137"/>
         <source>Invalid text in sync data.</source>
         <translation>同步数据中的文字无效。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="116"/>
-        <location filename="sync/synccontent.cpp" line="121"/>
+        <location filename="core/synccontent.cpp" line="145"/>
+        <location filename="core/synccontent.cpp" line="153"/>
         <source>Invalid links in sync data.</source>
         <translation>同步数据中的链接无效。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="129"/>
+        <location filename="core/synccontent.cpp" line="165"/>
         <source>Invalid or oversized image in sync data.</source>
         <translation>同步数据中的图片无效或过大。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="131"/>
+        <location filename="core/synccontent.cpp" line="170"/>
         <source>Unsupported sync content.</source>
         <translation>不支持此同步内容。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="169"/>
+        <location filename="core/synccontent.cpp" line="327"/>
         <source>Sync data exceeds the size limit.</source>
         <translation>同步数据超过大小限制。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="199"/>
+        <location filename="core/synccontent.cpp" line="367"/>
         <source>Invalid sync record or incompatible version.</source>
         <translation>同步记录无效或版本不兼容。</translation>
     </message>
     <message>
-        <location filename="sync/synccontent.cpp" line="206"/>
+        <location filename="core/synccontent.cpp" line="388"/>
         <source>The sync record failed its content check.</source>
         <translation>同步记录未通过内容校验。</translation>
+    </message>
+    <message>
+        <location filename="core/synccontent.cpp" line="398"/>
+        <source>Invalid sync event version.</source>
+        <translation>同步事件版本无效。</translation>
+    </message>
+    <message>
+        <location filename="core/synccontent.cpp" line="407"/>
+        <location filename="core/synccontent.cpp" line="442"/>
+        <location filename="core/synccontent.cpp" line="481"/>
+        <source>Invalid sync event state.</source>
+        <translation>同步事件状态无效。</translation>
     </message>
     <message>
         <location filename="platform/linux/secretstore.cpp" line="14"/>
@@ -818,15 +838,18 @@ Then quit and reopen Pastes.</source>
     </message>
     <message>
         <location filename="ui/syncsettingspage.cpp" line="47"/>
+        <location filename="ui/syncsettingspage.cpp" line="47"/>
         <source>Save connection</source>
         <translation>保存连接</translation>
     </message>
     <message>
         <location filename="ui/syncsettingspage.cpp" line="48"/>
+        <location filename="ui/syncsettingspage.cpp" line="48"/>
         <source>Test connection</source>
         <translation>测试连接</translation>
     </message>
     <message>
+        <location filename="ui/syncsettingspage.cpp" line="49"/>
         <location filename="ui/syncsettingspage.cpp" line="49"/>
         <source>Sync now</source>
         <translation>立即同步</translation>
@@ -846,57 +869,63 @@ Then quit and reopen Pastes.</source>
     <name>WebDavSync</name>
     <message>
         <location filename="sync/webdavsync.cpp" line="17"/>
-        <location filename="sync/webdavsync.cpp" line="106"/>
+        <location filename="sync/webdavsync.cpp" line="155"/>
         <source>Sync is off.</source>
         <translation>同步已关闭。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="67"/>
+        <location filename="sync/webdavsync.cpp" line="79"/>
+        <location filename="sync/webdavsync.cpp" line="290"/>
+        <source>Could not save synchronized history.</source>
+        <translation>无法保存同步的历史记录。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavsync.cpp" line="116"/>
         <source>Enter an HTTPS WebDAV folder address without embedded credentials or query parameters.</source>
         <translation>请输入 HTTPS WebDAV 目录地址，地址中不要包含账号、密码或查询参数。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="70"/>
+        <location filename="sync/webdavsync.cpp" line="119"/>
         <source>The account name contains unsupported characters.</source>
         <translation>账号含有不支持的字符。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="101"/>
+        <location filename="sync/webdavsync.cpp" line="150"/>
         <source>Could not save sync settings.</source>
         <translation>无法保存同步设置。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="106"/>
+        <location filename="sync/webdavsync.cpp" line="155"/>
         <source>Ready to sync.</source>
         <translation>已就绪，可以同步。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="137"/>
+        <location filename="sync/webdavsync.cpp" line="202"/>
         <source>Connection verified: read, write and delete are available.</source>
         <translation>连接成功，读取、写入和删除均可用。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="141"/>
+        <location filename="sync/webdavsync.cpp" line="287"/>
         <source>Up to date.</source>
         <translation>已同步至最新。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="141"/>
+        <location filename="sync/webdavsync.cpp" line="288"/>
         <source>Sync finished with skipped items: %1</source>
         <translation>同步完成，部分条目已跳过：%1</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="181"/>
+        <location filename="sync/webdavsync.cpp" line="240"/>
         <source>Enable sync to share your clipboard history.</source>
         <translation>请先开启同步，再同步剪贴板历史。</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="191"/>
+        <location filename="sync/webdavsync.cpp" line="256"/>
         <source>Testing connection…</source>
         <translation>正在测试连接…</translation>
     </message>
     <message>
-        <location filename="sync/webdavsync.cpp" line="191"/>
+        <location filename="sync/webdavsync.cpp" line="256"/>
         <source>Syncing items…</source>
         <translation>正在逐条同步…</translation>
     </message>
@@ -904,109 +933,114 @@ Then quit and reopen Pastes.</source>
 <context>
     <name>WebDavWorker</name>
     <message>
-        <location filename="sync/webdavworker.cpp" line="59"/>
+        <location filename="sync/webdavworker.cpp" line="67"/>
         <source>Could not create the local sync cache.</source>
         <translation>无法创建本地同步缓存。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="62"/>
+        <location filename="sync/webdavworker.cpp" line="70"/>
         <source>Could not read the local sync index.</source>
         <translation>无法读取本地同步索引。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="65"/>
+        <location filename="sync/webdavworker.cpp" line="73"/>
         <source>The local sync index is damaged.</source>
         <translation>本地同步索引损坏。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="74"/>
-        <location filename="sync/webdavworker.cpp" line="218"/>
+        <location filename="sync/webdavworker.cpp" line="82"/>
+        <location filename="sync/webdavworker.cpp" line="204"/>
         <source>The sync history exceeds the record limit.</source>
         <translation>同步记录数量超过上限。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="80"/>
+        <location filename="sync/webdavworker.cpp" line="88"/>
         <source>The local sync cache is damaged.</source>
         <translation>本地同步缓存损坏。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="94"/>
+        <location filename="sync/webdavworker.cpp" line="102"/>
         <source>Could not save the local sync index.</source>
         <translation>无法保存本地同步索引。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="102"/>
+        <location filename="sync/webdavworker.cpp" line="110"/>
         <source>Could not save a sync record.</source>
         <translation>无法保存同步记录。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="178"/>
+        <location filename="sync/webdavworker.cpp" line="128"/>
+        <source>Could not read a committed sync record.</source>
+        <translation>无法读取已保存的同步记录。</translation>
+    </message>
+    <message>
+        <location filename="sync/webdavworker.cpp" line="164"/>
         <source>The server response exceeds the size limit.</source>
         <translation>服务器响应超过大小限制。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="179"/>
+        <location filename="sync/webdavworker.cpp" line="165"/>
         <source>Connection failed. Check the address, certificate and network.</source>
         <translation>连接失败，请检查地址、证书和网络。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="180"/>
+        <location filename="sync/webdavworker.cpp" line="166"/>
         <source>The server redirected the request. Enter its final WebDAV address.</source>
         <translation>服务器重定向了请求，请填写最终的 WebDAV 地址。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="181"/>
+        <location filename="sync/webdavworker.cpp" line="167"/>
         <source>Access denied. Check the account, password and folder permissions.</source>
         <translation>访问被拒绝，请检查账号、密码和目录权限。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="198"/>
+        <location filename="sync/webdavworker.cpp" line="184"/>
         <source>Could not create the sync folder (HTTP %1).</source>
         <translation>无法创建同步目录（HTTP %1）。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="207"/>
+        <location filename="sync/webdavworker.cpp" line="193"/>
         <source>The address is not a readable WebDAV folder (HTTP %1).</source>
         <translation>此地址不是可读取的 WebDAV 目录（HTTP %1）。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="226"/>
+        <location filename="sync/webdavworker.cpp" line="212"/>
         <source>The server returned an invalid WebDAV listing.</source>
         <translation>服务器返回的 WebDAV 目录列表无效。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="231"/>
+        <location filename="sync/webdavworker.cpp" line="217"/>
         <source>The WebDAV folder is not writable (HTTP %1).</source>
         <translation>WebDAV 目录不可写入（HTTP %1）。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="235"/>
+        <location filename="sync/webdavworker.cpp" line="221"/>
         <source>The WebDAV read/delete check failed.</source>
         <translation>WebDAV 读取或删除检查失败。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="261"/>
+        <location filename="sync/webdavworker.cpp" line="248"/>
         <source>Could not download a sync record (HTTP %1).</source>
         <translation>无法下载同步记录（HTTP %1）。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="262"/>
-        <location filename="sync/webdavworker.cpp" line="352"/>
+        <location filename="sync/webdavworker.cpp" line="249"/>
+        <location filename="sync/webdavworker.cpp" line="325"/>
         <source>The downloaded record failed its integrity check.</source>
         <translation>下载的记录未通过完整性校验。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="344"/>
+        <location filename="sync/webdavworker.cpp" line="317"/>
         <source>Could not read an outgoing sync record.</source>
         <translation>无法读取待上传的同步记录。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="347"/>
+        <location filename="sync/webdavworker.cpp" line="320"/>
         <source>Could not upload a sync record (HTTP %1).</source>
         <translation>无法上传同步记录（HTTP %1）。</translation>
     </message>
     <message>
-        <location filename="sync/webdavworker.cpp" line="370"/>
+        <location filename="sync/webdavworker.cpp" line="349"/>
         <source>Could not remove expired sync data (HTTP %1).</source>
         <translation>无法清理过期同步数据（HTTP %1）。</translation>
     </message>

@@ -10,10 +10,11 @@ class QNetworkAccessManager;
 class QNetworkReply;
 struct SyncDelivery {
 	QString id;
+	QString key;
+	EventState events;
 	SyncContent::Snapshot content;
 	QList<QByteArray> replaced;
 	bool deleted = false;
-	quint64 serial = 0;
 };
 Q_DECLARE_METATYPE(SyncDelivery)
 
@@ -21,15 +22,18 @@ class WebDavWorker final : public QObject
 {
 	Q_OBJECT
 public:
-	void configure(const SyncSettings &settings, const QString &password, const QString &directory);
-	void capture(SyncContent::Snapshot snapshot, bool bootstrap, bool deleted, quint64 serial);
+	void configure(const SyncSettings &settings, const QString &password, const QString &directory,
+		bool committedOnly = true);
+	void accept(QByteArray document, bool pending = true, const QString &knownId = {});
 	void run(bool probe);
 	void stop(void);
 	void acknowledge(const QString &id) { m_delivered.insert(id); }
 signals:
+	void uploaded(QString id);
 	void delivered(const SyncDelivery &delivery);
 	void finished(const QString &message, bool success, bool probe);
 	void warning(const QString &message);
+
 private:
 	using Response = std::function<void(int, const QByteArray &)>;
 	void request(const QByteArray &method, const QString &relative, const QByteArray &body, Response done);
@@ -62,7 +66,7 @@ private:
 	QNetworkReply *m_reply = nullptr;
 	bool m_running = false;
 	bool m_probe = false;
-	quint64 m_serial = 0;
-	qint64 m_clock = 0;
+	bool m_committedOnly = false;
+	QSet<QString> m_durable, m_remote;
 };
 #endif

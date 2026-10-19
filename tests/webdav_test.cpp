@@ -1,6 +1,8 @@
 #include "tests/testsupport.h"
+#include "tests/davfixture.h"
 #include "sync/webdavsync.h"
 #include "core/clipboarddata.h"
+#include "core/sourceicon.h"
 #include "platform/secretstore.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -16,102 +18,6 @@
 #include <QJsonDocument>
 
 namespace {
-class DavServer final : public QTcpServer
-{
-public:
-	DavServer()
-	{
-		require(listen(QHostAddress::LocalHost), "Cannot listen on local WebDAV test port");
-		connect(this, &QTcpServer::newConnection, this, [this] {
-			while (hasPendingConnections()) {
-				auto *socket = nextPendingConnection();
-				auto bytes = std::make_shared<QByteArray>();
-				connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
-				connect(socket, &QTcpSocket::readyRead, this, [this,socket,bytes] {
-					bytes->append(socket->readAll());
-					const int end = bytes->indexOf("\r\n\r\n");
-					if (end < 0) return;
-					const auto headers = bytes->left(end).split('\n');
-					const auto request = headers.first().trimmed().split(' ');
-					QHash<QByteArray,QByteArray> fields;
-					for (const auto &line : headers) {
-						const int colon = line.indexOf(':');
-						if (colon > 0) fields[line.left(colon).trimmed().toLower()] = line.mid(colon+1).trimmed();
-					}
-					const int length = fields.value("content-length").toInt();
-					if (bytes->size() < end+4+length) return;
-					const QByteArray body = bytes->mid(end+4, length);
-					const QByteArray method = request.value(0);
-					const QString path = QString::fromUtf8(request.value(1));
-					int status = 200; QByteArray response;
-					if (fields.value("authorization") != "Basic dXNlcjpwYXNz") status = 401;
-					else if (redirect) status = 302;
-					else if (method == "MKCOL") status = 201;
-					else if (method == "PROPFIND") {
-						++listings;
-						status = 207; response = "<d:multistatus xmlns:d=\"DAV:\">";
-						for (auto it = files.begin(); it != files.end(); ++it)
-							response += "<d:response><d:href>"+it.key().toUtf8()+"</d:href></d:response>";
-						response += "</d:multistatus>";
-						if (badListing) response = "<html>login required</html>";
-					} else if (method == "GET") {
-						++gets;
-						if (!files.contains(path)) status = 404;
-						else response = corrupt ? QByteArray("{}") : files.value(path);
-					} else if (method == "PUT") {
-						++puts;
-						if (failPut) { failPut = false; status = 503; }
-						else if (files.contains(path) && fields.value("if-none-match") == "*") status = 412;
-						else { files[path] = body; status = 201; }
-					} else if (method == "DELETE") {
-						status = files.remove(path) ? 204 : 404;
-					} else status = 405;
-					socket->write("HTTP/1.1 "+QByteArray::number(status)+" Result\r\nConnection: close\r\nContent-Length: "+QByteArray::number(response.size())+"\r\n\r\n"+response);
-					socket->disconnectFromHost();
-				});
-			}
-		});
-	}
-	SyncSettings settings() const { return {QUrl(QString("http://127.0.0.1:%1/").arg(serverPort())), "user", true}; }
-	QHash<QString,QByteArray> files;
-	int puts = 0, gets = 0, listings = 0;
-	bool failPut = false, corrupt = false, redirect = false, badListing = false;
-};
-class Client final : public QObject
-{
-public:
-	Client(const SyncSettings &settings, const QString &directory, const QString &password = "pass")
-	{
-		worker = new WebDavWorker;
-		worker->moveToThread(&thread);
-		connect(&thread, &QThread::finished, worker, &QObject::deleteLater);
-		connect(worker, &WebDavWorker::delivered, this, [this](const SyncDelivery &value) { deliveries.append(value); });
-		connect(worker, &WebDavWorker::finished, this, [this](const QString &message, bool ok, bool) { ++finished; success = ok; error = message; });
-		thread.start();
-		QMetaObject::invokeMethod(worker, [=] { worker->configure(settings, password, directory); });
-	}
-	~Client() { QMetaObject::invokeMethod(worker, &WebDavWorker::stop, Qt::BlockingQueuedConnection); thread.quit(); thread.wait(); }
-	void capture(const HistoryEntry &entry, bool bootstrap = false, bool deleted = false)
-	{
-		const auto value = SyncContent::snapshot(*entry);
-		const quint64 sequence = ++serial;
-		QMetaObject::invokeMethod(worker, [=] { worker->capture(value, bootstrap, deleted, sequence); });
-	}
-	void run(bool probe = false)
-	{
-		const int previous = finished;
-		deliveries.clear();
-		QMetaObject::invokeMethod(worker, [=] { worker->run(probe); });
-		waitUntil([&] { return finished > previous; }, 10000);
-	}
-	QThread thread;
-	WebDavWorker *worker;
-	QList<SyncDelivery> deliveries;
-	quint64 serial = 0;
-	int finished = 0;
-	bool success = false;
-	QString error;
-};
 void incrementalAndDelete()
 {
 	DavServer server; QTemporaryDir temp;
@@ -138,6 +44,7 @@ void incrementalAndDelete()
 	bool deleted = false;
 	for (const auto &delivery : stale.deliveries) deleted |= delivery.deleted;
 	require(deleted, "Old local history overrode the deletion marker");
+	old->time = QDateTime::currentDateTime();
 	first.capture(old); first.run(); second.run();
 	bool restored = false;
 	for (const auto &delivery : second.deliveries) if (!delivery.deleted && delivery.content.text == "first item") restored = true;
@@ -166,10 +73,14 @@ void favoritesSync()
 	document["favorite"] = false;
 	document["favoriteModified"] = now-40LL*86400000;
 	document["modified"] = now-40LL*86400000;
+	auto unstar = EventState::parse(document.value("events").toObject());
+	unstar.favorite = EventVersion::legacy(now - 40LL * 86400000);
+	document["events"] = unstar.json();
 	const auto unstarred = SyncContent::bytes(document);
 	server.files["/Pastes/v1/events/"+SyncContent::digest(unstarred)+".json"] = unstarred;
 	second.run();
-	require(second.success && second.deliveries.size() == 1 && second.deliveries.first().deleted,
+	require(second.success, qPrintable(second.error));
+	require(second.deliveries.size() == 1 && second.deliveries.first().deleted,
 		"Expired unstar resurrected an older favorite");
 	require(server.files.size() == 1, "Favorite/unfavorite payloads remained after retention cleanup");
 	error.clear();
@@ -203,7 +114,8 @@ void favoriteDetailsSync(void)
 		"Favorite details failed to sync between devices");
 	QString error;
 	auto document = QJsonDocument::fromJson(server.files.cbegin().value()).object();
-	require(document.value("version").toInt() == 3, "Named favorites did not declare the metadata protocol");
+	require(document.value("version").toInt() == 4,
+		"Named favorites did not declare the metadata protocol");
 	auto invalid = document; invalid["favoriteName"] = QString(81, 'x');
 	SyncContent::parse(SyncContent::bytes(invalid), &error);
 	require(!error.isEmpty(), "Remote favorite name exceeded its bounds");
@@ -216,9 +128,15 @@ void favoriteDetailsSync(void)
 	};
 	auto rename = document;
 	rename["modified"] = now-3000; rename["favoriteName"] = "renamed"; rename["favoriteNameModified"] = now-3000;
+	auto renameEvents = EventState::parse(rename.value("events").toObject());
+	renameEvents.name = EventVersion::legacy(now - 3000);
+	rename["events"] = renameEvents.json();
 	publish(rename);
 	auto reorder = document;
 	reorder["modified"] = now-2000; reorder["favoritePosition"] = 4096; reorder["favoritePositionModified"] = now-2000;
+	auto reorderEvents = EventState::parse(reorder.value("events").toObject());
+	reorderEvents.position = EventVersion::legacy(now - 2000);
+	reorder["events"] = reorderEvents.json();
 	publish(reorder);
 	// A later legacy content update must retain both independent edits.
 	auto stale = document; stale["version"] = 2; stale["modified"] = now-1000; stale["copied"] = now-1000;
@@ -235,6 +153,7 @@ void favoriteDetailsSync(void)
 	auto recovered = SyncContent::materialize(merged);
 	recovered->favoriteDetails.position = 512;
 	recovered->favoriteDetails.positionModified = now-500;
+	recovered->events.position = EventVersion::legacy(now - 500);
 	first.capture(recovered, true); first.run(); second.run();
 	require(second.success && !second.deliveries.isEmpty() && second.deliveries.last().content.favoriteDetails.position == 512,
 		"Bootstrap skipped a new metadata field behind a later content clock");
@@ -362,13 +281,6 @@ void mixedImageSync(void)
 	require(SyncContent::snapshot(*entry).kind.isEmpty(), "A file icon entered image synchronization");
 }
 
-class MemorySecrets final : public SecretStore
-{
-public:
-	QString read(const QString &account, QString *) override { return values.value(account); }
-	bool write(const QString &account, const QString &secret, QString *) override { values[account] = secret; return true; }
-	QHash<QString,QString> values;
-};
 void servicePersistence()
 {
 	DavServer server; QTemporaryDir temp;
@@ -407,39 +319,6 @@ void servicePersistence()
 	require(deleted, "Disabled-session deletion was lost on restart/re-enable");
 }
 
-void disabledFavoriteRestart()
-{
-	DavServer server; QTemporaryDir temp;
-	QSettings::setDefaultFormat(QSettings::IniFormat);
-	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, temp.path()+"/preferences");
-	MemorySecrets secrets;
-	auto item = textEntry("offline favorite");
-	{
-		MemoryRepository repository; HistoryService history(repository);
-		WebDavSync service(history, secrets, temp.path()+"/cache");
-		history.load(); repository.finishLoad({item});
-		QString error;
-		require(service.save(server.settings(), "pass", &error), "Could not configure favorite sync");
-		service.synchronize(); waitUntil([&] { return !service.busy(); });
-		auto disabled = server.settings(); disabled.enabled = false;
-		require(service.save(disabled, {}, &error), "Could not disable favorite sync");
-		history.setFavorite(item->id, true);
-		history.setFavoriteName(item->id, "offline name");
-	}
-	{
-		MemoryRepository repository; HistoryService history(repository);
-		WebDavSync service(history, secrets, temp.path()+"/cache");
-		history.load(); repository.finishLoad({cloneEntry(*item)});
-		QString error;
-		require(service.save(server.settings(), {}, &error), "Could not re-enable favorite sync");
-		service.synchronize(); waitUntil([&] { return !service.busy(); });
-		require(service.lastSuccess().isValid(), "Offline favorite did not synchronize after restart");
-	}
-	Client other(server.settings(), temp.path()+"/other"); other.run();
-	require(other.success && other.deliveries.size() == 1 && other.deliveries.first().content.favorite &&
-		other.deliveries.first().content.favoriteDetails.name == "offline name",
-		"Disabled-session favorite state was lost");
-}
 
 void imageRoundTrip()
 {
@@ -478,6 +357,7 @@ void sourceIconRoundTrip()
 	Client first(server.settings(), directory.path()+"/a"), second(server.settings(), directory.path()+"/b");
 	auto item = textEntry("icon upgrade", QDateTime::currentDateTime().addSecs(-30));
 	item->icon = QImage(16, 16, QImage::Format_ARGB32); item->icon.fill(Qt::green);
+	item->icon = SourceIcon::observed(item->icon, item->time.toMSecsSinceEpoch());
 	first.capture(item); first.run(); second.run();
 	require(first.success && second.success && second.deliveries.size() == 1, "Initial source icon sync failed");
 	MemoryRepository repository; HistoryService history(repository);
@@ -487,6 +367,7 @@ void sourceIconRoundTrip()
 	const auto entryId = history.entries().first()->id;
 	item->icon = QImage(128, 128, QImage::Format_ARGB32); item->icon.fill(Qt::blue);
 	item->icon.setPixelColor(7, 8, Qt::white);
+	item->icon = SourceIcon::observed(item->icon, item->time.toMSecsSinceEpoch());
 	first.capture(item); first.run(); second.run();
 	require(first.success && second.success && second.deliveries.size() == 1, "High-resolution icon upgrade was not delivered");
 	const auto updated = second.deliveries.first();
@@ -512,6 +393,9 @@ void missingSyncedSourceIcons()
 	document["content"] = content;
 	document["modified"] = document.value("modified").toInteger()+1;
 	document["copied"] = item->time.addSecs(1).toMSecsSinceEpoch();
+	auto eventState = EventState::parse(document.value("events").toObject());
+	eventState.copy.physical += 1000;
+	document["events"] = eventState.json();
 	const auto bytes = SyncContent::bytes(document);
 	server.files["/Pastes/v1/events/"+SyncContent::digest(bytes)+".json"] = bytes;
 	second.run();
@@ -530,6 +414,138 @@ void missingSyncedSourceIcons()
 	second.capture(item, false, true); second.run(); fresh.run();
 	require(second.success && fresh.success && fresh.deliveries.size() == 1 && fresh.deliveries.first().deleted,
 		"Recovering source icons resurrected deleted content");
+}
+
+void observedSourceIconsConverge()
+{
+	for (bool legacy : {false, true}) {
+		DavServer server;
+		QTemporaryDir directory;
+		Client first(server.settings(), directory.path() + "/a"),
+			second(server.settings(), directory.path() + "/b");
+		const auto copied = QDateTime::currentDateTime().addSecs(-30);
+		QImage oldIcon(64, 64, QImage::Format_ARGB32);
+		oldIcon.fill(Qt::red);
+		auto old = textEntry("source echo", copied.addDays(-2));
+		old->icon = legacy ? oldIcon : SourceIcon::observed(oldIcon, old->time.toMSecsSinceEpoch());
+		second.capture(old);
+		second.run();
+		first.run();
+		auto fresh = textEntry("source echo", copied);
+		QImage newIcon(64, 64, QImage::Format_ARGB32);
+		newIcon.fill(Qt::blue);
+		fresh->icon = SourceIcon::observed(newIcon, copied.toMSecsSinceEpoch());
+		first.capture(fresh);
+		first.run();
+		/* The other device sees a new copy but inherits its old source. Its
+		 * newer record timestamp must not make that icon authoritative. */
+		auto echo = textEntry("source echo", copied.addSecs(2));
+		echo->icon = old->icon;
+		second.capture(echo);
+		second.run();
+		first.run();
+		auto check = [&](const Client &client, const QImage &expected, QDateTime latestCopy,
+						 qint64 observed) {
+			require(client.success && client.deliveries.size() == 1 &&
+					client.deliveries.first().content.icon == expected &&
+					client.deliveries.first().content.time == latestCopy &&
+					SourceIcon::captured(client.deliveries.first().content.icon) == observed,
+				"An inherited sync echo replaced the newest real source observation");
+		};
+		check(first, newIcon, echo->time, copied.toMSecsSinceEpoch());
+		check(second, newIcon, echo->time, copied.toMSecsSinceEpoch());
+		const int puts = server.puts;
+		first.run();
+		second.run();
+		require(first.success && second.success && server.puts == puts,
+			"Source observation merge kept manufacturing sync records");
+		{
+			Client third(server.settings(), directory.path() + "/restart");
+			third.run();
+			check(third, newIcon, echo->time, copied.toMSecsSinceEpoch());
+		}
+		{
+			Client restarted(server.settings(), directory.path() + "/restart");
+			echo->time = copied.addSecs(3);
+			restarted.capture(echo);
+			restarted.run();
+			check(restarted, newIcon, echo->time, copied.toMSecsSinceEpoch());
+		}
+		/* A genuinely new source remains free to replace the previous app. */
+		auto real = textEntry("source echo", copied.addSecs(4));
+		real->icon = SourceIcon::observed(oldIcon, real->time.toMSecsSinceEpoch());
+		second.capture(real);
+		second.run();
+		first.run();
+		check(first, oldIcon, real->time, real->time.toMSecsSinceEpoch());
+	}
+}
+
+void sourceObservationValidation()
+{
+	auto entry = textEntry("validated source", QDateTime::currentDateTime().addSecs(-10));
+	QImage icon(256, 192, QImage::Format_ARGB32);
+	icon.fill(Qt::blue);
+	entry->icon = SourceIcon::observed(icon, entry->time.toMSecsSinceEpoch());
+	QString error;
+	const auto payload = SyncContent::encode(SyncContent::snapshot(*entry), &error);
+	const auto decoded = SyncContent::decode(payload, &error);
+	require(error.isEmpty() && decoded.icon.size() == QSize(128, 96) &&
+			SourceIcon::captured(decoded.icon) == entry->time.toMSecsSinceEpoch(),
+		"Bounding or encoding a source icon discarded its observation clock");
+	QJsonObject document{{"version", 1}, {"key", SyncContent::key(decoded)},
+		{"modified", entry->time.toMSecsSinceEpoch()}, {"copied", entry->time.toMSecsSinceEpoch()},
+		{"deleted", false}, {"content", payload}};
+	const auto record = SyncContent::parse(SyncContent::bytes(document), &error);
+	require(error.isEmpty() && record.iconCaptured == entry->time.toMSecsSinceEpoch(),
+		"A valid icon observation was not indexed");
+	entry->icon = SourceIcon::observed(icon, entry->time.addSecs(1).toMSecsSinceEpoch());
+	document["content"] = SyncContent::encode(SyncContent::snapshot(*entry), &error);
+	SyncContent::parse(SyncContent::bytes(document), &error);
+	require(error.isEmpty() &&
+			!SyncContent::parse(SyncContent::bytes(document), &error).events.source.valid(),
+		"Legacy PNG hints manufactured a trusted source observation");
+	auto value = SyncContent::snapshot(*entry);
+	value.events.copy = {entry->time.toMSecsSinceEpoch(), 0, "native"};
+	value.events.source = value.events.copy;
+	value.events.sourceCaptured = entry->time.addSecs(1).toMSecsSinceEpoch();
+	error.clear();
+	auto typed = QJsonDocument::fromJson(SyncContent::document(value, false, {}, &error)).object();
+	auto events = EventState::parse(typed.value("events").toObject());
+	events.source.logical = -1;
+	typed["events"] = events.json();
+	SyncContent::parse(SyncContent::bytes(typed), &error);
+	require(!error.isEmpty(), "Malformed observation version was accepted");
+}
+
+void bootstrapSourceObservation()
+{
+	DavServer server;
+	QTemporaryDir directory;
+	Client first(server.settings(), directory.path() + "/a"),
+		second(server.settings(), directory.path() + "/b");
+	const auto copied = QDateTime::currentDateTime().addSecs(-30);
+	auto echo = textEntry("offline observed source", copied.addSecs(2));
+	echo->icon = QImage(64, 64, QImage::Format_ARGB32);
+	echo->icon.fill(Qt::red);
+	first.capture(echo);
+	first.run();
+	second.run();
+	auto local = textEntry("offline observed source", copied);
+	QImage icon(64, 64, QImage::Format_ARGB32);
+	icon.fill(Qt::blue);
+	local->icon = SourceIcon::observed(icon, copied.toMSecsSinceEpoch());
+	/* Startup may know a real source absent from the cached head, even
+	 * though the head already contains a later copy with a fallback icon. */
+	second.capture(local, true);
+	second.run();
+	first.run();
+	require(first.success && second.success && first.deliveries.size() == 1 &&
+			first.deliveries.first().content.icon == icon &&
+			first.deliveries.first().content.time == echo->time &&
+			SourceIcon::captured(first.deliveries.first().content.icon) ==
+				copied.toMSecsSinceEpoch(),
+		"Startup discarded a real source observation or rewound the newest copy time");
 }
 
 void localCredentialFiles()
@@ -642,10 +658,15 @@ int main(int argc, char **argv)
 	failures += runTest("file exclusion and server validation", limitsAndIntegrity);
 	failures += runTest("supplied clipboard images sync without accompanying local paths", mixedImageSync);
 	failures += runTest("service settings and disabled-session persistence", servicePersistence);
-	failures += runTest("favorite changes survive disabled sync and restart", disabledFavoriteRestart);
 	failures += runTest("image content and timestamp round trip", imageRoundTrip);
 	failures += runTest("source icon resolution and incremental upgrades", sourceIconRoundTrip);
 	failures += runTest("missing source icons recover across sync and re-copy", missingSyncedSourceIcons);
+	failures += runTest(
+		"observed source icons survive inherited echoes and restart", observedSourceIconsConverge);
+	failures += runTest("source observation clocks survive encoding and are validated",
+		sourceObservationValidation);
+	failures += runTest("startup source observations retain the newest content copy time",
+		bootstrapSourceObservation);
 	failures += runTest("private local credential files and process restart", localCredentialFiles);
 	failures += runTest("saved local credentials resume automatic sync", localCredentialSyncRestart);
 	return failures ? 1 : 0;

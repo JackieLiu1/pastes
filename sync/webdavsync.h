@@ -25,8 +25,8 @@ private:
 	QString account(const SyncSettings &settings) const;
 	void configure(void);
 	void bootstrap(void);
-	void capture(const HistoryEntry &entry, bool bootstrap = false, bool deleted = false);
 	void run(bool probe);
+	void finishRun(void);
 	void schedule(void);
 	HistoryService &m_history;
 	SecretStore &m_secrets;
@@ -36,8 +36,11 @@ private:
 	QThread m_thread;
 	WebDavWorker *m_worker;
 	QTimer m_timer;
-	QSet<QString> m_applied;
-	quint64 m_serial = 0, m_epoch = 0;
+	QSet<QString> m_applied, m_pendingApplies, m_pendingPublishes, m_loadedJournal;
+	QString m_runError;
+	bool m_transportDone = false, m_workerStarted = false;
+	quint64 m_runToken = 0;
+	quint64 m_epoch = 0;
 	bool m_ready = false, m_configured = false, m_credentialsLoaded = false, m_busy = false, m_again = false, m_applying = false;
 };
 #endif
