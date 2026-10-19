@@ -192,9 +192,24 @@ public:
 	void remove(const QByteArray &) override {}
 	void updateIcon(const QByteArray &, const QImage &) override {}
 	void updateFavorite(const QByteArray &, bool, qint64, const FavoriteDetails &) override {}
+	quint64 save(const HistoryEntry &, const HistoryWrite &) override
+	{
+		const auto request = ++m_request;
+		QTimer::singleShot(0, this, [this, request] { emit committed(request, {}); });
+		return request;
+	}
+	void loadOutbox(const QString &account, quint64 token, const QSet<QString> &) override
+	{
+		emit outboxLoaded(account, token, {});
+	}
+	void markPublished(const QString &account, const QString &id) override
+	{
+		emit published(account, id);
+	}
 
 private:
 	QList<HistoryEntry> m_entries;
+	quint64 m_request = 0;
 };
 
 void measureView(const QList<HistoryEntry> &entries, QJsonObject &result)

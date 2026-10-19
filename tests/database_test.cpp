@@ -2,6 +2,7 @@
 #include "storage/database.h"
 #include "application/historyservice.h"
 #include "core/clipboarddata.h"
+#include "core/sourceicon.h"
 #include <QCoreApplication>
 #include <QTemporaryDir>
 #include <QUrl>
@@ -247,6 +248,7 @@ void sourceIconResolution(void)
 			auto entry = textEntry(QString::number(size));
 			QImage image(size, size, QImage::Format_ARGB32);
 			image.fill(Qt::green); image.setPixelColor(3, 5, Qt::red);
+			if (size > 16) image = SourceIcon::observed(image, entry->time.toMSecsSinceEpoch());
 			entry->icon = image;
 			expected.insert(entry->md5, image);
 			repository.insert(entry);
@@ -256,14 +258,19 @@ void sourceIconResolution(void)
 		repository.insert(late);
 		QImage icon(128, 96, QImage::Format_ARGB32);
 		icon.fill(Qt::blue); icon.setPixelColor(60, 30, Qt::white);
+		icon = SourceIcon::observed(icon, late->time.toMSecsSinceEpoch());
 		expected.insert(late->md5, icon);
 		repository.updateIcon(late->md5, icon);
 	}
 	Database repository(path);
 	const auto entries = read(repository);
 	require(entries.size() == expected.size(), "Source icon records lost after restart");
-	for (const auto &entry : entries)
-		require(entry->icon == expected.value(entry->md5), "Source icon resampled during persistence");
+	for (const auto &entry : entries) {
+		const auto image = expected.value(entry->md5);
+		require(entry->icon == image &&
+				SourceIcon::captured(entry->icon) == SourceIcon::captured(image),
+			"Source icon pixels or observation time changed during persistence");
+	}
 }
 
 void imageDuplicateRestart(void)
@@ -303,6 +310,64 @@ void imageDuplicateRestart(void)
 		"Image duplicate removal did not persist across a second restart");
 }
 
+void canonicalJournalCompaction(void)
+{
+	QTemporaryDir directory;
+	auto value = textEntry("canonical source tie", QDateTime::fromMSecsSinceEpoch(1900000000123));
+	value->events.copy = {1900000000123, 0, "source"};
+	value->favorite = true;
+	value->favoriteModified = value->events.copy.physical;
+	value->events.favorite = value->events.copy;
+	struct Candidate {
+		QImage icon;
+		QByteArray key;
+		QString id;
+	};
+	QList<Candidate> candidates;
+	Candidate old, winner;
+	for (int i = 0; i < 64 && winner.icon.isNull(); ++i) {
+		QImage icon(8, 8, QImage::Format_ARGB32);
+		icon.fill(QColor(i * 4, 255 - i * 3, i * 2));
+		observeIcon(value, icon);
+		QString error;
+		const auto document =
+			SyncContent::document(SyncContent::snapshot(*value), false, {}, &error);
+		require(error.isEmpty(), "Cannot encode compaction fixture");
+		Candidate candidate{icon, SourceIcon::key(icon), SyncContent::digest(document)};
+		for (const auto &previous : candidates) {
+			if ((candidate.key > previous.key) == (candidate.id > previous.id)) continue;
+			old = candidate.key > previous.key ? previous : candidate;
+			winner = candidate.key > previous.key ? candidate : previous;
+			break;
+		}
+		candidates.append(candidate);
+	}
+	require(!winner.icon.isNull(), "Missing opposite source-key and digest ordering fixture");
+	Database repository(directory.filePath("canonical.db"));
+	observeIcon(value, old.icon);
+	repository.save(value);
+	observeIcon(value, winner.icon);
+	repository.save(value);
+	QList<SyncContent::JournalRecord> journal;
+	bool loaded = false;
+	QObject::connect(&repository, &HistoryRepository::outboxLoaded, &repository,
+		[&](const QString &, quint64, const QList<SyncContent::JournalRecord> &records) {
+			journal = records;
+			loaded = true;
+		});
+	repository.loadOutbox("test", 1);
+	waitUntil([&] { return loaded; });
+	require(journal.size() == 1, "Canonical compaction retained a superseded record");
+	QString error;
+	const auto record = SyncContent::parse(journal.first().document, &error);
+	require(error.isEmpty() && record.iconKey == winner.key,
+		"Journal compaction discarded the canonical source winner");
+	observeIcon(value, old.icon);
+	repository.save(value);
+	const auto entries = read(repository);
+	require(entries.size() == 1 && entries.first()->icon == winner.icon,
+		"Compacted source winner was lost on replay");
+}
 }
 
 int main(int argc, char **argv)
@@ -316,5 +381,7 @@ int main(int argc, char **argv)
 	failures += runTest("encoded images and independent connections", imagesAndConnections);
 	failures += runTest("source icon pixels survive insert, update and restart", sourceIconResolution);
 	failures += runTest("image duplicates collapse durably after restart", imageDuplicateRestart);
+	failures +=
+		runTest("journal compaction preserves canonical source ties", canonicalJournalCompaction);
 	return failures ? 1 : 0;
 }

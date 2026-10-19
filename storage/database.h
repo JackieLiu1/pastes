@@ -20,7 +20,15 @@ public:
 	void updateIcon(const QByteArray &md5, const QImage &icon) override;
 	void updateFavorite(const QByteArray &md5, bool favorite, qint64 modified, const FavoriteDetails &details) override;
 
+	quint64 save(const HistoryEntry &entry, const HistoryWrite &write = {}) override;
+	void loadOutbox(
+		const QString &account, quint64 token, const QSet<QString> &known = {}) override;
+	void markPublished(const QString &account, const QString &id) override;
+
 signals:
+	void saveRequested(StoredEntry entry, HistoryWrite write, quint64 request);
+	void outboxRequested(QString account, quint64 token, QSet<QString> known);
+	void publishedRequested(QString account, QString id);
 	void loadRequested(void);
 	void insertRequested(StoredEntry entry, quint64 request);
 	void removeRequested(QByteArray md5);

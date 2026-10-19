@@ -2,12 +2,16 @@
 #define PASTES_STOREDENTRY_H
 
 #include "core/itemdata.h"
+#include "core/synccontent.h"
 
 /* Only value types cross the SQL worker boundary. Formats retain their
  * original order; image encoding stays on the database thread. */
 struct StoredEntry
 {
+	SyncContent::Snapshot portable;
+	EventState events;
 	QByteArray md5;
+	QString contentKey;
 	QDateTime time;
 	bool favorite = false;
 	qint64 favoriteModified = 0;
@@ -18,6 +22,7 @@ struct StoredEntry
 	QImage image;
 	bool hasImage = false;
 
+	static StoredEntry fromPortable(const SyncContent::Snapshot &value);
 	static StoredEntry snapshot(const ItemData &entry);
 	HistoryEntry materialize(void) const;
 };
