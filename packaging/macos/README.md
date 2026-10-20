@@ -11,8 +11,8 @@ cmake -S . -B build/macos-package -DCMAKE_BUILD_TYPE=Release \
 cmake --build build/macos-package --target package --parallel
 ```
 
-The target creates a `.pkg` installer, a drag-to-Applications `.dmg`, and SHA-256
-checksums in `build/macos-package/dist`. It stages a separate `Pastes.app`,
+The target creates a `.pkg` installer and its SHA-256 checksum in
+`build/macos-package/dist`. It stages a separate `Pastes.app`,
 bundles Qt frameworks and plugins, verifies runtime dependencies and
 architectures, and signs the final application. The original build bundle
 is unchanged. The minimum system version is derived from all shipped binaries;
@@ -21,12 +21,11 @@ Prebuilt Qt and other libraries can require a newer macOS version than
 `CMAKE_OSX_DEPLOYMENT_TARGET`; that flag cannot lower their existing requirements.
 
 Quit the running development or installed copy before installing. The `.pkg`
-installs `/Applications/Pastes.app`; alternatively, drag the application from
-the `.dmg` to Applications. Launch it there and use `Shift+Cmd+V`. Pastes runs
-in the menu bar without a Dock icon. Existing history and settings remain in
-the user's Library. After moving from a development bundle, turn launch at
-sign-in off and on in Settings to register the installed copy. Automatic paste
-requires Accessibility permission for that copy.
+installs `/Applications/Pastes.app`. Launch it there and use `Shift+Cmd+V`.
+Pastes runs in the menu bar without a Dock icon. Existing history and settings
+remain in the user's Library. After moving from a development bundle, turn
+launch at sign-in off and on in Settings to register the installed copy.
+Automatic paste requires Accessibility permission for that copy.
 
 If automatic paste still requests permission while the Pastes switch is on,
 quit Pastes, remove its old entry in System Settings > Privacy & Security >

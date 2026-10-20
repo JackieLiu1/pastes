@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a self-contained macOS application, installer and disk image."""
+"""Build a self-contained macOS application and PKG installer."""
 
 import argparse
 import hashlib
@@ -243,40 +243,14 @@ def main():
         run("/usr/bin/productbuild", "--distribution", str(distribution),
             "--package-path", str(stage), *installer_sign, str(package))
 
-        image_root = stage / "image"
-        image_root.mkdir()
-        run("/usr/bin/ditto", str(app), str(image_root / "Pastes.app"))
-        (image_root / "Applications").symlink_to("/Applications")
-        instructions = (
-            "Pastes {} — macOS {}+ ({})\n\n"
-            "先退出正在运行的 Pastes，将 Pastes.app 拖入 Applications。\n"
-            "从应用程序打开 Pastes，使用 Shift+Cmd+V 唤出剪贴板历史。\n"
-            "程序运行在菜单栏，不显示 Dock 图标。\n"
-            "在设置中开启开机启动；自动粘贴需要系统辅助功能权限。\n"
-            "更新不会删除已有历史记录或设置。\n\n"
-            "Quit Pastes before copying it to Applications, then launch it there.\n"
-            "Open clipboard history with Shift+Cmd+V. Enable launch at sign-in\n"
-            "in Settings. Automatic paste needs Accessibility permission.\n"
-        ).format(args.version, minimum, architecture)
-        if args.identity == "-" or args.local_signing:
-            instructions += "\n本地签名版本，未经 Apple 公证。\n"
-        (image_root / "安装说明.txt").write_text(instructions, encoding="utf-8")
-        image = output / (name + ".dmg")
-        run("/usr/bin/hdiutil", "create", "-ov", "-srcfolder", str(image_root),
-            "-volname", "Pastes", "-format", "UDZO", "-fs", "HFS+", str(image))
-        run("/usr/bin/hdiutil", "verify", str(image))
-        checksums = []
-        for artifact in (package, image):
-            digest = hashlib.sha256()
-            with artifact.open("rb") as stream:
-                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                    digest.update(chunk)
-            checksums.append(digest.hexdigest() + "  " + artifact.name)
+        digest = hashlib.sha256()
+        with package.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
         (output / (name + "-SHA256.txt")).write_text(
-            "\n".join(checksums) + "\n", encoding="utf-8")
+            digest.hexdigest() + "  " + package.name + "\n", encoding="utf-8")
         print("Packaged macOS {}+ ({})".format(minimum, architecture))
         print(package)
-        print(image)
 
 
 if __name__ == "__main__":
