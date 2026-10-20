@@ -427,6 +427,7 @@ private:
 			const auto &a = next->events;
 			const auto &b = old.events;
 			const bool covers = a.copy >= b.copy && a.erase >= b.erase && a.source >= b.source &&
+				a.legacyPresence >= b.legacyPresence &&
 				a.favorite >= b.favorite && a.name >= b.name && a.position >= b.position &&
 				(a.source > b.source || a.sourceRevision >= b.sourceRevision) &&
 				(!old.icon || next->icon || a.deleted());

@@ -223,7 +223,7 @@ void HistoryService::retryPersistence(void)
 		auto value = it.value();
 		for (const auto &current : m_entries)
 			if (current->md5 == value.entry->md5) {
-				if (current->events.copy > value.entry->events.erase) {
+				if (current->events.presence() > value.entry->events.erase) {
 					value.entry = cloneEntry(*current);
 					value.entry->id = current->id;
 					value.deleted = false;
@@ -556,7 +556,7 @@ void HistoryService::mergeIncoming(HistoryEntry entry, const QList<QByteArray> &
 			++row;
 			continue;
 		}
-		if (!entry && events.erase.valid() && previous->events.copy > events.erase) {
+		if (!entry && events.erase.valid() && previous->events.presence() > events.erase) {
 			auto tombstone = SyncContent::materialize(metadata);
 			tombstone->events = events;
 			if (inheritFavorite(previous, tombstone)) emit entryChanged(previous->id);

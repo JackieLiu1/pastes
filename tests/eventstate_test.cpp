@@ -110,11 +110,124 @@ void callbackAndDeletion(void)
 			kept.events.source == initial.events.source,
 		"A payload-free tombstone falsely attributed the retained icon to another observation");
 }
+void legacyPresenceMigration(void)
+{
+	const qint64 copied = 1700000000123;
+	const auto value = SyncContent::snapshot(
+		*textEntry("legacy undo", QDateTime::fromMSecsSinceEpoch(copied)));
+	QString error;
+	const auto payload = SyncContent::encode(value, &error);
+	for (int version : {1, 2, 3}) {
+		QJsonObject initial{{"version", version}, {"key", SyncContent::key(value)},
+			{"modified", copied}, {"copied", copied}, {"deleted", false},
+			{"content", payload}, {"favorite", false}};
+		if (version == 3) {
+			initial["favoriteName"] = "";
+			initial["favoriteNameModified"] = 0;
+			initial["favoritePosition"] = 0;
+			initial["favoritePositionModified"] = 0;
+		}
+		auto recopy = initial;
+		recopy["modified"] = copied + 1000;
+		recopy["copied"] = copied + 1000;
+		auto deleted = initial;
+		deleted["modified"] = copied + 2000;
+		deleted["deleted"] = true;
+		deleted.remove("content");
+		deleted.remove("copied");
+		auto restored = recopy;
+		restored["modified"] = copied + 3103;
+		// Old metadata can carry an older copy time than another live record.
+		auto metadata = initial;
+		metadata["modified"] = copied + 4000;
+		QList<SyncContent::Record> records;
+		for (const auto &object : {initial, recopy, deleted, restored, metadata}) {
+			const auto bytes = SyncContent::bytes(object);
+			const auto record = SyncContent::parse(bytes, &error);
+			const auto inspected = SyncContent::inspect(bytes, &error);
+			require(error.isEmpty() && record.events.json() == inspected.events.json(),
+				"Legacy parsing and SQL inspection disagree");
+			records.append(record);
+		}
+		auto reduce = [&](const QList<SyncContent::Record> &inputs) {
+			const auto bytes = SyncContent::reduce(inputs, {}, &error);
+			const auto result = SyncContent::parse(bytes, &error);
+			require(error.isEmpty(), qPrintable(error));
+			return result;
+		};
+		std::array<int, 5> order{0, 1, 2, 3, 4};
+		QJsonObject expected;
+		do {
+			QList<SyncContent::Record> reordered;
+			for (int index : order) reordered.append(records[index]);
+			const auto result = reduce(reordered);
+			require(!result.deleted && result.copied == copied + 1000 &&
+					result.events.copy == EventVersion::legacy(copied + 1000) &&
+					!result.events.source.valid(),
+				"Legacy presence migration lost an undo or rewrote copy/source identity");
+			if (expected.isEmpty()) expected = result.document;
+			require(result.document == expected, "Legacy migration depends on delivery order");
+			auto folded = reordered.takeFirst();
+			for (const auto &record : reordered) folded = reduce({folded, record});
+			require(folded.document == expected && reduce({result, result}).document == expected,
+				"Legacy migration did not survive incremental compaction or replay");
+		} while (std::next_permutation(order.begin(), order.end()));
+		const auto migrated = reduce(records);
+		for (qint64 invalid : {qint64(-1), EventVersion::maxPhysical + 1}) {
+			auto document = migrated.document;
+			auto events = document.value("events").toObject();
+			events["legacyPresence"] = invalid;
+			document["events"] = events;
+			SyncContent::parse(SyncContent::bytes(document), &error);
+			require(!error.isEmpty(), "Invalid migrated presence passed validation");
+			error.clear();
+		}
+		auto tied = restored;
+		tied["modified"] = deleted.value("modified");
+		const auto tiedRecord = SyncContent::parse(SyncContent::bytes(tied), &error);
+		require(error.isEmpty() && reduce({records[2], tiedRecord}).deleted,
+			"A legacy live record at the deletion time revived the item");
+		require(!SyncContent::expired(migrated, copied + 30LL * 86400000) &&
+				SyncContent::expired(migrated, copied + 1000 + 30LL * 86400000),
+			"Legacy presence updates changed the content retention time");
+		// Typed metadata retains its old presence even when modified is newer.
+		auto typed = value;
+		typed.events = records.first().events;
+		typed.events.favorite = {copied + 5000, 0, "favorite"};
+		typed.favoriteModified = copied + 5000;
+		typed.favorite = true;
+		const auto typedRecord = SyncContent::parse(
+			SyncContent::document(typed, false, {}, &error), &error);
+		require(reduce({records[2], typedRecord}).deleted,
+			"Typed metadata was incorrectly treated as a legacy restore");
+		EventClock clock;
+		clock.observe(migrated.events.latest());
+		auto removed = value;
+		removed.events = migrated.events;
+		removed.events.erase = clock.tick(copied);
+		removed.events.erasedAt = copied + 5000;
+		const auto marker = SyncContent::parse(
+			SyncContent::document(removed, true, migrated.key, &error), &error);
+		require(error.isEmpty() && marker.deleted && reduce({migrated, marker}).deleted,
+			"A native delete did not advance past the migrated presence");
+		require(reduce({marker, records[3], records[4]}).deleted,
+			"Replayed legacy records revived a newer native deletion");
+		auto undo = removed;
+		undo.events.copy = clock.tick(copied - 1000);
+		const auto undoRecord = SyncContent::parse(
+			SyncContent::document(undo, false, {}, &error), &error);
+		const auto recovered = reduce({marker, undoRecord, records[4]});
+		require(error.isEmpty() && !recovered.deleted && recovered.copied == copied &&
+				recovered.events.copy == undo.events.copy,
+			"Native undo after migration changed the retained original copy time");
+	}
+}
 } // namespace
 int main(int argc, char **argv)
 {
 	QCoreApplication app(argc, argv);
 	return runTest("persistent causal versions", versions) +
 		runTest("field merge permutations and replay", permutations) +
-		runTest("source completion and deletion are independent", callbackAndDeletion);
+		runTest("source completion and deletion are independent", callbackAndDeletion) +
+		runTest("legacy presence migration preserves copy identity", legacyPresenceMigration);
 }

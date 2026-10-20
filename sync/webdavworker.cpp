@@ -44,9 +44,9 @@ void WebDavWorker::remember(SyncContent::Record record)
 {
 	record.document = {}; // Payloads stay on disk; the index contains metadata only.
 	const QString previous = m_heads.value(record.key);
-	const auto version = qMax(record.events.copy, record.events.erase);
+	const auto version = qMax(record.events.presence(), record.events.erase);
 	const auto oldVersion =
-		qMax(m_records.value(previous).events.copy, m_records.value(previous).events.erase);
+		qMax(m_records.value(previous).events.presence(), m_records.value(previous).events.erase);
 	if (previous.isEmpty() || version > oldVersion ||
 		(version == oldVersion &&
 			(record.modified > m_records[previous].modified ||
@@ -290,6 +290,7 @@ void WebDavWorker::uploadNext(void)
 			const auto id = m_heads.value(it->key);
 			const auto head = m_records.value(id);
 			const bool covered = head.events.copy >= it->events.copy &&
+				head.events.legacyPresence >= it->events.legacyPresence &&
 				head.events.erase >= it->events.erase && head.events.source >= it->events.source &&
 				head.events.favorite >= it->events.favorite &&
 				head.events.name >= it->events.name && head.events.position >= it->events.position;

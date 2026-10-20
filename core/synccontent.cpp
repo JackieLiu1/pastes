@@ -400,6 +400,8 @@ static Record parseRecord(const QByteArray &data, QString *error, bool verifyCon
 			}
 		}
 		if (record.events.sourceRevision < 0 || record.events.sourceRevision > 1 ||
+			record.events.legacyPresence < 0 ||
+			record.events.legacyPresence > EventVersion::maxPhysical ||
 			record.events.erasedAt < 0 || record.events.sourceCaptured < 0 ||
 			record.events.deleted() != record.deleted ||
 			(!record.deleted && !record.events.copy.valid()) ||
@@ -409,6 +411,9 @@ static Record parseRecord(const QByteArray &data, QString *error, bool verifyCon
 		}
 	} else {
 		record.events.copy = EventVersion::legacy(record.copied);
+		// Old undo and metadata records retain copied. Preserve their live
+		// ordering without advancing the copy time or claiming a source observation.
+		if (!record.deleted) record.events.legacyPresence = record.modified;
 		if (record.deleted) {
 			record.events.erase = EventVersion::legacy(record.modified);
 			record.events.erasedAt = record.modified;
@@ -505,7 +510,11 @@ QByteArray reduce(const QList<Record> &records,
 	document["favoritePosition"] = position.favoriteDetails.position;
 	document["favoritePositionModified"] = position.favoriteDetails.positionModified;
 	if (!deleted) {
-		document["copied"] = copy.copied;
+		// A compacted tombstone can retain a later legacy copy version after
+		// dropping its payload. Its physical component is the original copy
+		// time; a restored older payload must not rewind that time.
+		document["copied"] = state.copy.logical == 0 && state.copy.device.isEmpty()
+			? state.copy.physical : copy.copied;
 		document["content"] = payload;
 	}
 	return bytes(document);

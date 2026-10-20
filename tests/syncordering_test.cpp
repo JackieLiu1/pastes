@@ -7,6 +7,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QFile>
+#include <QJsonArray>
 
 namespace
 {
@@ -406,6 +407,123 @@ void favoriteDeleteUndoAndRecopy()
 			second.entries().first()->favoriteDetails.name.isEmpty(),
 		"A new copy inherited metadata cleared by deletion");
 }
+void legacyUndoAcrossLayers()
+{
+	for (int version : {1, 2, 3}) for (bool cachedDelete : {false, true}) {
+		DavServer server;
+		QTemporaryDir directory;
+		preferences(directory.path() + "/preferences");
+		MemorySecrets secrets;
+		const auto settings = server.settings();
+		const auto account = SyncContent::digest(
+			settings.url.toEncoded() + QByteArray(1, '\0') + settings.username.toUtf8());
+		const auto cache = directory.path() + "/cache";
+		const auto path = directory.filePath("history.db");
+		const qint64 copied = QDateTime::currentMSecsSinceEpoch() - 23LL * 86400000 + 123;
+		const qint64 erased = copied + 86400000;
+		auto original = textEntry("legacy restored history", QDateTime::fromMSecsSinceEpoch(copied));
+		if (version == 2) {
+			QImage image(24, 16, QImage::Format_ARGB32);
+			image.fill(Qt::green);
+			original->mimeData = std::make_unique<QMimeData>();
+			original->mimeData->setImageData(image);
+			original->md5 = ClipboardContent::fingerprint(*original->mimeData);
+		}
+		QString error;
+		const auto portable = SyncContent::snapshot(*original);
+		const auto payload = SyncContent::encode(portable, &error);
+		const auto key = SyncContent::key(SyncContent::decode(payload, &error));
+		require(error.isEmpty(), qPrintable(error));
+		QJsonObject live{{"version", version}, {"key", key}, {"modified", copied},
+			{"copied", copied}, {"deleted", false}, {"content", payload}, {"favorite", false}};
+		if (version == 3) {
+			live["favoriteName"] = "";
+			live["favoriteNameModified"] = 0;
+			live["favoritePosition"] = 0;
+			live["favoritePositionModified"] = 0;
+		}
+		auto marker = live;
+		marker["modified"] = erased;
+		marker["deleted"] = true;
+		marker.remove("copied");
+		marker.remove("content");
+		auto restored = live;
+		restored["modified"] = erased + 1103;
+		for (const auto &object : {live, restored}) {
+			const auto bytes = SyncContent::bytes(object);
+			server.files["/Pastes/v1/events/" + SyncContent::digest(bytes) + ".json"] = bytes;
+		}
+		const auto markerBytes = SyncContent::bytes(marker);
+		const auto markerId = SyncContent::digest(markerBytes);
+		if (cachedDelete) {
+			const auto accountCache = cache + "/" + account;
+			require(QDir().mkpath(accountCache + "/events"), "Cannot create legacy cache fixture");
+			QFile record(accountCache + "/events/" + markerId + ".json");
+			require(record.open(QIODevice::WriteOnly) && record.write(markerBytes) == markerBytes.size(),
+				"Cannot seed cached legacy deletion");
+			record.close();
+			QFile index(accountCache + "/index.json");
+			const auto bytes = SyncContent::bytes({{"local", QJsonArray{markerId}}});
+			require(index.open(QIODevice::WriteOnly) && index.write(bytes) == bytes.size(),
+				"Cannot seed legacy cache index");
+		} else
+			server.files["/Pastes/v1/events/" + markerId + ".json"] = markerBytes;
+		EventState migrated;
+		{
+			Database repository(path);
+			HistoryService history(repository);
+			WebDavSync service(history, secrets, cache);
+			load(history);
+			// Reproduce a previous upgrade that already committed the wrong tombstone.
+			auto hidden = portable;
+			hidden.events.copy = EventVersion::legacy(copied);
+			hidden.events.erase = EventVersion::legacy(erased);
+			hidden.events.erasedAt = erased;
+			history.applySynced({}, {}, hidden.events, key, account, "old-migration", hidden);
+			require(read(repository).isEmpty() && sql(path, "select count(*) from sync_events") == 1,
+				"Cannot seed the previously migrated deletion");
+			save(service, settings);
+			run(service);
+			run(service);
+			require(service.lastSuccess().isValid() && history.entries().size() == 1,
+				"Legacy undo was removed while merging WebDAV, cache and SQL state");
+			const auto entry = history.entries().first();
+			migrated = entry->events;
+			const auto stored = read(repository);
+			require(stored.size() == 1 && entry->time == original->time &&
+					stored.first()->time == original->time && !migrated.deleted() &&
+					migrated.copy == EventVersion::legacy(copied) &&
+					stored.first()->events.json() == migrated.json(),
+				"Migrated presence or original copy milliseconds did not reach SQL");
+			const auto content = SyncContent::decode(
+				SyncContent::encode(SyncContent::snapshot(*stored.first()), &error), &error);
+			require(error.isEmpty() && SyncContent::key(content) == key,
+				"Legacy migration changed text or image content");
+		}
+		require(QDir(cache).removeRecursively(), "Cannot remove temporary transport cache");
+		Database repository(path);
+		HistoryService history(repository);
+		WebDavSync service(history, secrets, cache);
+		load(history);
+		require(history.entries().size() == 1 &&
+				history.entries().first()->events.json() == migrated.json(),
+			"SQL restart lost the migrated presence");
+		run(service);
+		run(service);
+		require(service.lastSuccess().isValid() && history.entries().size() == 1 &&
+				history.entries().first()->time == original->time,
+			"Restart or legacy replay removed restored history");
+		history.remove(history.entries().first()->id);
+		run(service);
+		run(service);
+		Client observer(settings, directory.path() + "/observer");
+		observer.run();
+		require(observer.success && observer.deliveries.size() == 1 &&
+				observer.deliveries.first().deleted && history.entries().isEmpty() &&
+				read(repository).isEmpty(),
+			"Legacy replay revived a later native deletion");
+	}
+}
 void staleSnapshotsRespectDurableProjection()
 {
 	QTemporaryDir directory;
@@ -580,6 +698,7 @@ int main(int argc, char **argv)
 	failures += runTest("disabled favorite changes survive SQL restart", disabledFavoriteRestart);
 	failures +=
 		runTest("favorite deletion, undo and new copy converge", favoriteDeleteUndoAndRecopy);
+	failures += runTest("legacy undo survives WebDAV, cache and SQL restart", legacyUndoAcrossLayers);
 	failures += runTest(
 		"stale captures respect the durable projection", staleSnapshotsRespectDurableProjection);
 	failures +=

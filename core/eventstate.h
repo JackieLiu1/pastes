@@ -43,17 +43,21 @@ Q_DECLARE_METATYPE(EventVersion)
 
 struct EventState {
 	EventVersion copy, erase, source, favorite, name, position;
+	// Legacy live records order presence by modified, independently of copied.
+	qint64 legacyPresence = 0;
 	qint64 sourceCaptured = 0;
 	int sourceRevision = 0;
 	qint64 erasedAt = 0;
-	bool deleted(void) const { return erase.valid() && erase >= copy; }
+	EventVersion presence(void) const { return qMax(copy, EventVersion::legacy(legacyPresence)); }
+	bool deleted(void) const { return erase.valid() && erase >= presence(); }
 	EventVersion latest(void) const
 	{
-		return qMax(qMax(qMax(copy, erase), qMax(source, favorite)), qMax(name, position));
+		return qMax(qMax(qMax(presence(), erase), qMax(source, favorite)), qMax(name, position));
 	}
 	void observe(const EventState &other)
 	{
 		copy = qMax(copy, other.copy);
+		legacyPresence = qMax(legacyPresence, other.legacyPresence);
 		if (other.erase > erase) {
 			erase = other.erase;
 			erasedAt = other.erasedAt;
@@ -70,15 +74,18 @@ struct EventState {
 	}
 	QJsonObject json(void) const
 	{
-		return {{"copy", copy.json()}, {"erase", erase.json()}, {"source", source.json()},
+		QJsonObject object{{"copy", copy.json()}, {"erase", erase.json()}, {"source", source.json()},
 			{"sourceCaptured", sourceCaptured}, {"sourceRevision", sourceRevision},
 			{"erasedAt", erasedAt}, {"favorite", favorite.json()}, {"name", name.json()},
 			{"position", position.json()}};
+		if (legacyPresence) object["legacyPresence"] = legacyPresence;
+		return object;
 	}
 	static EventState parse(const QJsonObject &o)
 	{
 		EventState s;
 		s.copy = EventVersion::parse(o.value("copy").toObject());
+		s.legacyPresence = o.value("legacyPresence").toInteger();
 		s.erase = EventVersion::parse(o.value("erase").toObject());
 		s.source = EventVersion::parse(o.value("source").toObject());
 		s.sourceCaptured = o.value("sourceCaptured").toInteger();
