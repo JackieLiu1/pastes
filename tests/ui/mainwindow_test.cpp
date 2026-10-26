@@ -3,6 +3,7 @@
 #include "application/clipboardcontroller.h"
 #include "ui/window/mainwindow.h"
 #include "ui/history/historyview.h"
+#include "ui/cards/pasteitem.h"
 #include "ui/preview/previewdialog.h"
 #include "ui/dialogs/appdialog.h"
 #include "ui/dialogs/settingsdialog.h"
@@ -22,6 +23,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSettings>
+#include <QScrollBar>
 #include <QTemporaryDir>
 #include <memory>
 
@@ -108,6 +110,159 @@ void trayPanelActionFollowsVisibility(void)
 		"Shortcut toggle could not reopen after direct dismissal");
 	window.hide_window();
 	waitUntil([&] { return !window.isVisible(); });
+}
+
+void openingFollowsHiddenCopies(void)
+{
+	WindowFixture fixture;
+	auto &window = fixture.window;
+	auto *view = window.findChild<HistoryView *>();
+	auto *list = view->findChild<QListWidget *>();
+	auto selected = [&] {
+		return qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry();
+	};
+	const auto now = QDateTime::currentDateTime();
+	QList<HistoryEntry> entries;
+	for (int i = 0; i < 12; ++i)
+		entries.append(textEntry(QString("local %1").arg(i), now.addSecs(-10-i)));
+	fixture.history.load();
+	fixture.repository.finishLoad(entries);
+	auto remote = textEntry("startup remote", now);
+	fixture.history.mergeSynced(remote, {});
+	require(!window.isVisible() && selected() == entries.first(),
+		"Hidden startup sync showed the panel or changed its current selection");
+	window.show_window();
+	require(selected() == remote && list->horizontalScrollBar()->value() == 0,
+		"First opening did not select the newest synchronized copy");
+	list->setCurrentRow(list->count()-1);
+	view->focusCurrent();
+	const auto chosen = selected();
+	const int position = list->horizontalScrollBar()->value();
+	fixture.history.mergeSynced(textEntry("visible remote", now.addSecs(1)), {});
+	require(selected() == chosen && list->horizontalScrollBar()->value() == position,
+		"Visible sync changed the selected content or browsing position");
+	window.hide();
+	window.show_window();
+	require(selected() == chosen, "Reopening without hidden arrivals reset selection");
+	window.hide();
+	fixture.history.mergeSynced(textEntry("older remote", now.addDays(-1)), {});
+	window.show_window();
+	require(selected() == chosen, "An older synchronized record reset selection");
+	window.hide();
+	auto newest = textEntry("hidden newest remote", now.addSecs(2));
+	fixture.history.mergeSynced(newest, {});
+	require(selected() == chosen, "A hidden arrival changed selection before opening");
+	window.show_window();
+	require(selected() == newest && list->horizontalScrollBar()->value() == 0,
+		"Reopening after a hidden leading copy did not select and reveal it");
+	window.hide_window();
+	window.show_window();
+	require(selected() == newest, "Reversing dismissal changed the selected copy");
+	list->setCurrentRow(list->count()-2);
+	const auto beforeDeletedArrival = selected();
+	window.hide();
+	auto temporary = textEntry("removed before opening", now.addSecs(3));
+	fixture.history.mergeSynced(temporary, {});
+	fixture.history.mergeSynced(nullptr, {temporary->md5});
+	window.show_window();
+	require(selected() == beforeDeletedArrival,
+		"An arrival deleted before opening still reset the browsing selection");
+	window.hide();
+	auto surviving = textEntry("surviving hidden arrival", now.addSecs(4));
+	fixture.history.mergeSynced(surviving, {});
+	auto removed = textEntry("removed newer hidden arrival", now.addSecs(5));
+	fixture.history.mergeSynced(removed, {});
+	fixture.history.mergeSynced(nullptr, {removed->md5});
+	window.show_window();
+	require(selected() == surviving,
+		"Deleting the newest hidden arrival forgot a surviving new leading copy");
+	window.hide();
+}
+
+void metadataDoesNotResetOpening(void)
+{
+	WindowFixture fixture;
+	auto &window = fixture.window;
+	auto *list = window.findChild<QListWidget *>();
+	const auto now = QDateTime::currentDateTime();
+	auto head = textEntry("metadata head", now);
+	auto chosen = textEntry("browsing selection", now.addSecs(-10));
+	fixture.history.load();
+	fixture.repository.finishLoad({head, chosen});
+	window.show_window();
+	list->setCurrentRow(1);
+	window.hide();
+	/* Portable MIME normalization can replace the local identity without
+	 * creating a new copy event. It must not request a jump to the head. */
+	auto normalized = cloneEntry(*head);
+	normalized->md5 = QByteArray(16, 'n');
+	fixture.history.mergeSynced(normalized, {head->md5});
+	fixture.history.setFavorite(normalized->id, true);
+	window.show_window();
+	require(qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == chosen,
+		"Payload normalization or favorite metadata reset the next opening");
+	window.hide();
+	fixture.history.mergeSynced(cloneEntry(*normalized), {});
+	window.show_window();
+	require(qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == chosen,
+		"A replay of the same copy reset the next opening");
+	window.hide();
+	auto recopied = cloneEntry(*normalized);
+	recopied->time = now.addSecs(10);
+	recopied->events.copy = nextVersion(normalized->events.copy);
+	fixture.history.mergeSynced(recopied, {});
+	window.show_window();
+	require(qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == recopied,
+		"A new copy of existing content did not refresh the next opening");
+	fixture.history.mergeSynced(nullptr, {recopied->md5});
+	require(qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == chosen,
+		"Deleting the selected copy did not select its surviving neighbor");
+	fixture.history.mergeSynced(nullptr, {chosen->md5});
+	require(list->count() == 0 && !list->currentItem(),
+		"Deleting the final copy retained a stale selection");
+	window.hide();
+}
+
+void openingPreservesFilteredContext(void)
+{
+	WindowFixture fixture;
+	auto &window = fixture.window;
+	auto *list = window.findChild<QListWidget *>();
+	auto *search = window.findChild<QLineEdit *>();
+	const auto now = QDateTime::currentDateTime();
+	auto alpha = textEntry("saved alpha", now.addSecs(-20));
+	auto beta = textEntry("saved beta", now.addSecs(-30));
+	fixture.history.load();
+	fixture.repository.finishLoad({alpha, beta});
+	fixture.history.setFavorite(alpha->id, true);
+	fixture.history.setFavorite(beta->id, true);
+	window.show_window();
+	search->setText("saved");
+	list->setCurrentRow(1);
+	window.hide_window();
+	waitUntil([&] { return !window.isVisible(); });
+	fixture.history.mergeSynced(textEntry("saved newest", now), {});
+	window.show_window();
+	window.activateWindow();
+	require(window.isVisible(), "Reopening the search panel immediately hid it again");
+	// Offscreen validates the input target; native activation is a desktop contract.
+	require(window.focusWidget() == search, "Reopening did not restore the search input target");
+	if (QGuiApplication::platformName() != QStringLiteral("offscreen"))
+		waitUntil([&] { return search->hasFocus(); });
+	require(search->text() == "saved" &&
+			qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == beta,
+		"A hidden arrival reset the search selection or query");
+	search->clear();
+	window.findChild<QPushButton *>("FavoritesTab")->click();
+	list->setCurrentRow(1);
+	window.hide_window();
+	waitUntil([&] { return !window.isVisible(); });
+	fixture.history.mergeSynced(textEntry("ordinary newest", now.addSecs(1)), {});
+	window.show_window();
+	require(window.findChild<QPushButton *>("FavoritesTab")->isChecked() &&
+			qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == beta,
+		"A hidden history arrival reset the favorites context");
+	window.hide();
 }
 
 void backdropUsesOpaqueFallback(void)
@@ -307,6 +462,9 @@ void previewKeepsHistoryVisible(void)
 			if (!dialog || !dialog->isVisible()) return;
 			inspected = true;
 			panelVisible = window.isVisible();
+			if (mode == 0)
+				fixture.history.mergeSynced(textEntry("arrived while previewing",
+					QDateTime::currentDateTime().addSecs(5)), {});
 			focused = dialog->isActiveWindow();
 #if defined(Q_OS_LINUX) || defined(Q_OS_WIN)
 			const auto stacking = window.windowFlags() & (Qt::WindowStaysOnTopHint | Qt::BypassWindowManagerHint);
@@ -342,6 +500,8 @@ void previewKeepsHistoryVisible(void)
 		require(heldSpaceKeptOpen, "Holding Space closed the newly opened preview");
 		require(closedWithKey, "Escape or Space did not close the preview");
 		require(window.isVisible(), "Closing preview hid its history panel");
+		require(qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == entry,
+			"A sync arrival changed the selection when returning from preview");
 	}
 	window.hide_window();
 	waitUntil([&] { return !window.isVisible(); });
@@ -452,12 +612,21 @@ int main(int argc, char **argv)
 	QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, preferences.path());
 	if (app.arguments().contains("--startup-only"))
 		return runTest("delayed history load preserves window state and focus", historyLoadKeepsWindowState);
+	if (app.arguments().contains("--selection-only")) {
+		int failures = runTest("normal opening follows hidden leading copies", openingFollowsHiddenCopies);
+		failures += runTest("metadata and replay preserve the next opening", metadataDoesNotResetOpening);
+		failures += runTest("normal opening preserves search and favorites", openingPreservesFilteredContext);
+		return failures ? 1 : 0;
+	}
 	if (app.arguments().contains("--preview-only")) {
 		int failures = runTest("preview header drag preserves text selection and cancels on close", previewHeaderDrag);
 		failures += runTest("Space preview takes focus and closes with Escape or Space", previewKeepsHistoryVisible);
 		return failures ? 1 : 0;
 	}
 	int failures = runTest("tray history action follows visibility and pending animations", trayPanelActionFollowsVisibility);
+	failures += runTest("normal opening follows hidden leading copies", openingFollowsHiddenCopies);
+	failures += runTest("metadata and replay preserve the next opening", metadataDoesNotResetOpening);
+	failures += runTest("normal opening preserves search and favorites", openingPreservesFilteredContext);
 	failures += runTest("delayed history load preserves window state and focus", historyLoadKeepsWindowState);
 	failures += runTest("backdrop activation and fallback preserve readable surfaces", backdropUsesOpaqueFallback);
 	failures += runTest("light theme text remains readable over black and white backgrounds", lightThemeTextContrast);

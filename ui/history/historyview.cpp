@@ -103,6 +103,8 @@ HistoryView::HistoryView(HistoryService &history, QWidget *window)
 		QScopedValueRollback<const char *> cause(m_selectionCause, "sync.replace");
 		PasteItem *card = m_cards.value(previous);
 		if (!card) return;
+		m_replacedCopies[replacement] = qMax(m_replacedCopies.value(replacement), card->entry()->events.copy);
+		if (m_unseenCopies.remove(previous)) m_unseenCopies.insert(replacement);
 		if (m_list->currentItem() == card->widgetItem()) {
 			m_syncScrollPosition = m_list->horizontalScrollBar()->value();
 			m_syncSelection = replacement;
@@ -673,6 +675,23 @@ void HistoryView::focusCurrent(void)
 	traceFocus("focusCurrent.end");
 }
 
+void HistoryView::focusOnShow(void)
+{
+	const auto &entries = m_history.entries();
+	const bool selectLatest = m_firstShow ||
+		(!entries.isEmpty() && m_unseenCopies.contains(entries.first()->id));
+	m_firstShow = false;
+	m_unseenCopies.clear();
+	LineEdit *search = m_search->findChild<LineEdit *>();
+	if (selectLatest && !m_favoritesOnly && search->text().isEmpty()) {
+		applyFilter(true, false);
+		m_list->doItemsLayout();
+		m_list->horizontalScrollBar()->setValue(m_list->horizontalScrollBar()->minimum());
+	}
+	if (!search->text().isEmpty()) search->setFocus();
+	else focusCurrent();
+}
+
 void HistoryView::focusEntry(const QByteArray &md5)
 {
 	for (int row = 0; row < m_list->count(); ++row) {
@@ -713,6 +732,7 @@ void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 {
 	QScopedValueRollback<const char *> cause(m_selectionCause,
 		change == HistoryChange::Synced ? "sync.add" : "history.add");
+	const EventVersion replacedCopy = m_replacedCopies.take(entry->id);
 	const bool restoreSelection = entry->id == m_syncSelection;
 	const bool restoreFocus = restoreSelection && m_syncCardFocus;
 	if (restoreSelection) { m_syncSelection = 0; m_syncCardFocus = false; }
@@ -753,6 +773,12 @@ void HistoryView::addEntry(HistoryEntry entry, int row, HistoryChange change)
 		return;
 	}
 	item->setHidden(!matchesFilter(card));
+	/* Defer following a new leading copy until the next ordinary opening.
+	 * Replacing a payload or its metadata without a new copy is not an arrival. */
+	if (row == 0 && !m_window->isVisible() &&
+		(change == HistoryChange::Captured ||
+			(change == HistoryChange::Synced && entry->events.copy > replacedCopy)))
+		m_unseenCopies.insert(entry->id);
 	if ((change == HistoryChange::Captured || restoreSelection) && !item->isHidden())
 		m_list->setCurrentItem(item);
 	if (entry->id == m_syncSearchSelection) {
@@ -780,6 +806,7 @@ void HistoryView::removeEntry(EntryId id, HistoryChange change)
 {
 	QScopedValueRollback<const char *> cause(m_selectionCause,
 		change == HistoryChange::Synced ? "sync.remove" : "history.remove");
+	m_unseenCopies.remove(id);
 	if (change == HistoryChange::Synced && currentCard() && currentCard()->entry()->id == id)
 		traceFocus("sync.removeSelected");
 	PasteItem *card = m_cards.take(id);

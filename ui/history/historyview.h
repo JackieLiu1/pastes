@@ -6,6 +6,7 @@
 #include "platform/diagnosticlog.h"
 #include <QHash>
 #include <QPointer>
+#include <QSet>
 
 class SearchBar;
 class PasteItem;
@@ -29,6 +30,7 @@ public:
 	~HistoryView(void) override;
 	void cancelInteractions(bool swipe = true, bool reflow = true, bool scroll = true);
 	void focusCurrent(void);
+	void focusOnShow(void);
 	void focusEntry(const QByteArray &md5);
 	void setPrimaryShortcut(const QString &shortcut);
 	void setRecordingEnabled(bool enabled);
@@ -83,6 +85,8 @@ private:
 	const char *m_selectionCause = nullptr;
 	mutable Platform::DiagnosticLog m_focusLog{Platform::DiagnosticLog::focusPath()};
 	QHash<EntryId, QPointer<PasteItem>> m_cards;
+	QHash<EntryId, EventVersion> m_replacedCopies;
+	QSet<EntryId> m_unseenCopies;
 	QHash<EntryId, quint64> m_dismissals;
 	QLabel *m_count = nullptr;
 	QLabel *m_hint = nullptr;
@@ -101,6 +105,7 @@ private:
 	QString m_shortcutText;
 	bool m_recordingEnabled = true;
 	bool m_favoritesOnly = false;
+	bool m_firstShow = true;
 };
 
 #endif

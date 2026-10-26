@@ -89,7 +89,6 @@ MainWindow::MainWindow(HistoryService &history, ClipboardController &clipboard, 
 void MainWindow::showEvent(QShowEvent *event)
 {
 	qCInfo(windowFocusLog) << "MainWindow.showEvent";
-	__main_frame->focusCurrent();
 	QMainWindow::showEvent(event);
 	updateTrayPanelAction();
 }
@@ -128,10 +127,12 @@ void MainWindow::show_window(void)
 	__hide_animation->setEndValue(QPoint(geometry.x(), geometry.bottom()+1));
 	__hide_animation->setDirection(QAbstractAnimation::Backward);
 	__hide_animation->start();
-	__hide_state = false;
+	// show() can dispatch activation events queued by the previous dismissal.
 	show();
+	__hide_state = false;
 	updateTrayPanelAction();
 	Platform::activatePanel(this);
+	__main_frame->focusOnShow();
 }
 
 void MainWindow::hide_window(void)

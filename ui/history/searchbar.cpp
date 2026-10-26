@@ -135,7 +135,6 @@ bool LineEdit::event(QEvent *event)
 
 void LineEdit::hideEvent(QHideEvent *event)
 {
-	this->clear();
 	m_composing = false;
 	QLineEdit::hideEvent(event);
 }
