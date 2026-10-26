@@ -281,6 +281,58 @@ void freshLocalIconAfterAheadClock()
 			read(repository).first()->icon == icon,
 		"Older wall-clock-ahead icon overrode a later native observation after restart");
 }
+void localCacheWriteRetry(bool indexFailure)
+{
+	DavServer server;
+	QTemporaryDir directory;
+	preferences(directory.path() + "/preferences");
+	MemorySecrets secrets;
+	const auto database = directory.filePath("history.db");
+	Database repository(database);
+	HistoryService history(repository);
+	const auto cache = directory.path() + "/cache";
+	WebDavSync service(history, secrets, cache);
+	load(history);
+	history.record(textEntry("saved before cache failure"));
+	const auto settings = server.settings();
+	save(service, settings);
+	run(service);
+	require(service.lastSuccess().isValid() && server.files.size() == 1,
+		"Initial cache write fixture did not synchronize");
+	const auto previousSuccess = service.lastSuccess();
+	const auto account = SyncContent::digest(
+		settings.url.toEncoded() + QByteArray(1, '\0') + settings.username.toUtf8());
+	QDir accountDirectory(cache + '/' + account);
+	const QString target = indexFailure ? QStringLiteral("index.json") : QStringLiteral("events");
+	const QString held = target + ".held";
+	require(accountDirectory.rename(target, held), "Could not preserve the cache failure fixture");
+	if (indexFailure)
+		require(accountDirectory.mkdir(target), "Could not block the temporary index target");
+	else {
+		QFile blocker(accountDirectory.filePath(target));
+		require(blocker.open(QIODevice::WriteOnly), "Could not block the temporary record directory");
+	}
+	history.record(textEntry("first record during cache failure"));
+	history.record(textEntry("queued behind the failed cache write"));
+	waitUntil([&] { return !history.hasInFlightWrites(); });
+	run(service);
+	require(service.lastSuccess() == previousSuccess && server.files.size() == 1 &&
+		service.status().contains(indexFailure ? "Could not save the local sync index."
+			: "Could not save a sync record."),
+		"A cache write failure was reported as a successful synchronization");
+	const bool removed = indexFailure ? accountDirectory.rmdir(target)
+		: QFile::remove(accountDirectory.filePath(target));
+	require(removed && accountDirectory.rename(held, target),
+		"Could not release the temporary cache write failure");
+	run(service);
+	require(service.lastSuccess() > previousSuccess && service.status() == "Up to date." &&
+		read(repository).size() == 3 && server.files.size() == 3,
+		"Cache write retry retained its old error or skipped a committed SQL record");
+	Client observer(settings, directory.path() + "/observer");
+	observer.run();
+	require(observer.success && observer.deliveries.size() == 3,
+		"A fresh device could not recover every record after cache write retry");
+}
 void atomicReplacementAndOfflineOutbox()
 {
 	DavServer server;
@@ -696,6 +748,8 @@ int main(int argc, char **argv)
 		"fresh native icon follows ahead clock after restart", freshLocalIconAfterAheadClock);
 	failures +=
 		runTest("atomic replacement and durable offline outbox", atomicReplacementAndOfflineOutbox);
+	failures += runTest("local index write failure recovers without restart", [] { localCacheWriteRetry(true); });
+	failures += runTest("local record write failure replays committed SQL state", [] { localCacheWriteRetry(false); });
 	failures += runTest("disabled favorite changes survive SQL restart", disabledFavoriteRestart);
 	failures +=
 		runTest("favorite deletion, undo and new copy converge", favoriteDeleteUndoAndRecopy);

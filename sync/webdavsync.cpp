@@ -172,6 +172,10 @@ void WebDavSync::configure(void)
 	m_workerStarted = false;
 	++m_runToken;
 	const quint64 epoch = m_epoch;
+	connect(m_worker, &WebDavWorker::cacheWriteFailed, this, [this, epoch] {
+		// Reload both the cache and committed SQL payloads on the next attempt.
+		if (epoch == m_epoch) m_configured = false;
+	});
 	connect(m_worker, &WebDavWorker::warning, this, [this, epoch](const QString &message) {
 		if (epoch != m_epoch) return;
 		m_warning = message;

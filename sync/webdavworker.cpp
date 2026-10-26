@@ -2,6 +2,7 @@
 #include "core/historypolicy.h"
 #include "core/sourceicon.h"
 #include <QDir>
+#include <QDebug>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -19,12 +20,20 @@ bool validId(const QString &id)
 	const auto bytes = id.toLatin1();
 	return id.size() == 64 && QByteArray::fromHex(bytes).toHex() == bytes;
 }
-bool writeFile(const QString &path, const QByteArray &bytes)
+bool writeFile(const QString &path, const QByteArray &bytes, QString &error)
 {
 	QSaveFile file(path);
-	if (!file.open(QIODevice::WriteOnly)) return false;
+	auto failed = [&](const char *operation) {
+		error = file.errorString();
+		qWarning() << "Pastes sync cache:" << operation << file.error() << error
+			<< "bytes:" << bytes.size();
+		return false;
+	};
+	if (!file.open(QIODevice::WriteOnly)) return failed("open");
 	file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-	return file.write(bytes) == bytes.size() && file.commit();
+	if (file.write(bytes) != bytes.size()) return failed("write");
+	if (!file.commit()) return failed("commit");
+	return true;
 }
 }
 
@@ -98,8 +107,11 @@ bool WebDavWorker::persistIndex(void)
 	for (auto it = m_bindings.begin(); it != m_bindings.end(); ++it) bindings[QString::fromLatin1(it.key().toHex())] = it.value();
 	QJsonObject object{{"bindings", bindings}, {"pending", QJsonArray::fromStringList(m_pending.values())},
 		{"local", QJsonArray::fromStringList(m_local.values())}};
-	if (writeFile(m_directory+"/index.json", SyncContent::bytes(object))) return true;
-	m_error = tr("Could not save the local sync index.");
+	QString error;
+	const QString index = m_directory+"/index.json";
+	if (writeFile(index, SyncContent::bytes(object), error)) return true;
+	m_error = tr("Could not save the local sync index.")+'\n'+index+'\n'+error;
+	emit cacheWriteFailed();
 	return false;
 }
 bool WebDavWorker::store(const QByteArray &bytes, bool pending)
@@ -107,7 +119,11 @@ bool WebDavWorker::store(const QByteArray &bytes, bool pending)
 	QString error;
 	auto record = SyncContent::parse(bytes, &error);
 	if (!error.isEmpty()) { m_error = error; return false; }
-	if (!writeFile(path(record.id), bytes)) { m_error = tr("Could not save a sync record."); return false; }
+	if (!writeFile(path(record.id), bytes, error)) {
+		m_error = tr("Could not save a sync record.")+'\n'+path(record.id)+'\n'+error;
+		emit cacheWriteFailed();
+		return false;
+	}
 	if (pending) { m_pending.insert(record.id); m_local.insert(record.id); }
 	remember(std::move(record));
 	return persistIndex();

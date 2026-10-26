@@ -57,6 +57,12 @@ int main(int argc, char *argv[])
 		!QSettings().value("pauseRecording", false).toBool());
 	auto secrets = Platform::createSecretStore();
 	WebDavSync sync(history, *secrets, QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)+"/sync");
+	QObject::connect(&sync, &SyncService::statusChanged, &a, [&sync](void) {
+		qInfo().noquote() << "Pastes sync:" << sync.status();
+	});
+	QObject::connect(&history, &HistoryService::loaded, &a, [&history](void) {
+		qInfo() << "Pastes: history loaded" << history.entries().size() << "entries";
+	});
 	MainWindow w(history, clipboard, nullptr, &sync);
 	history.load();
 	const auto &behavior = Platform::applicationBehavior();

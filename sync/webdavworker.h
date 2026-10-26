@@ -33,6 +33,7 @@ signals:
 	void delivered(const SyncDelivery &delivery);
 	void finished(const QString &message, bool success, bool probe);
 	void warning(const QString &message);
+	void cacheWriteFailed(void);
 
 private:
 	using Response = std::function<void(int, const QByteArray &)>;
