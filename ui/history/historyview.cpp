@@ -665,6 +665,11 @@ void HistoryView::resizeEvent(QResizeEvent *event)
 QSize HistoryView::cardSize(void) const { return Platform::cardSize(m_window->size()); }
 QWidget *HistoryView::menuAnchor(void) const { return m_menuButton; }
 
+void HistoryView::clearSearch(void)
+{
+	m_search->findChild<LineEdit *>()->clearSearch();
+}
+
 void HistoryView::focusCurrent(void)
 {
 	traceFocus("focusCurrent.begin");

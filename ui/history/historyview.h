@@ -29,6 +29,7 @@ public:
 	HistoryView(HistoryService &history, QWidget *window);
 	~HistoryView(void) override;
 	void cancelInteractions(bool swipe = true, bool reflow = true, bool scroll = true);
+	void clearSearch(void);
 	void focusCurrent(void);
 	void focusOnShow(void);
 	void focusEntry(const QByteArray &md5);

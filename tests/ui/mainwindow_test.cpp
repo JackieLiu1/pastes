@@ -223,7 +223,45 @@ void metadataDoesNotResetOpening(void)
 	window.hide();
 }
 
-void openingPreservesFilteredContext(void)
+void dismissalClearsSearch(void)
+{
+	WindowFixture fixture;
+	auto &window = fixture.window;
+	auto *view = window.findChild<HistoryView *>();
+	auto *list = window.findChild<QListWidget *>();
+	auto *search = window.findChild<QLineEdit *>();
+	fixture.history.load();
+	fixture.repository.finishLoad({textEntry("alpha"), textEntry("beta")});
+	window.show_window();
+	for (int mode : {0, 1, 2, 3}) {
+		search->setText("beta");
+		view->focusCurrent();
+		require(search->text() == "beta" && list->item(0)->isHidden(),
+			"Moving from search to a result cleared the query");
+		search->setFocus();
+		search->setText("no matches");
+		QWidget outside;
+		if (mode == 0) {
+			outside.show();
+			outside.activateWindow();
+			waitUntil([&] { return !window.isVisible(); });
+		} else if (mode == 1) {
+			window.hide();
+		} else {
+			window.hide_window();
+			if (mode == 2) waitUntil([&] { return !window.isVisible(); });
+		}
+		require(search->text().isEmpty() && !list->item(0)->isHidden() && !list->item(1)->isHidden(),
+			"Dismissing history retained the query or filtered results");
+		outside.hide();
+		window.show_window(); // Also reverse an unfinished hide animation.
+		require(window.isVisible() && search->text().isEmpty() && list->currentRow() == 0,
+			"Reopening history restored the dismissed search");
+	}
+	window.hide();
+}
+
+void openingClearsSearchPreservesFavorites(void)
 {
 	WindowFixture fixture;
 	auto &window = fixture.window;
@@ -241,18 +279,19 @@ void openingPreservesFilteredContext(void)
 	list->setCurrentRow(1);
 	window.hide_window();
 	waitUntil([&] { return !window.isVisible(); });
-	fixture.history.mergeSynced(textEntry("saved newest", now), {});
+	auto newest = textEntry("newest copy", now);
+	fixture.history.mergeSynced(newest, {});
 	window.show_window();
 	window.activateWindow();
 	require(window.isVisible(), "Reopening the search panel immediately hid it again");
+	auto *selected = list->itemWidget(list->currentItem());
 	// Offscreen validates the input target; native activation is a desktop contract.
-	require(window.focusWidget() == search, "Reopening did not restore the search input target");
+	require(window.focusWidget() == selected, "Reopening did not focus the unfiltered selection");
 	if (QGuiApplication::platformName() != QStringLiteral("offscreen"))
-		waitUntil([&] { return search->hasFocus(); });
-	require(search->text() == "saved" &&
-			qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()))->entry() == beta,
-		"A hidden arrival reset the search selection or query");
-	search->clear();
+		waitUntil([&] { return selected->hasFocus(); });
+	require(search->text().isEmpty() &&
+			qobject_cast<PasteItem *>(selected)->entry() == newest && !list->item(0)->isHidden(),
+		"Reopening did not clear search and reveal the newest hidden arrival");
 	window.findChild<QPushButton *>("FavoritesTab")->click();
 	list->setCurrentRow(1);
 	window.hide_window();
@@ -615,7 +654,8 @@ int main(int argc, char **argv)
 	if (app.arguments().contains("--selection-only")) {
 		int failures = runTest("normal opening follows hidden leading copies", openingFollowsHiddenCopies);
 		failures += runTest("metadata and replay preserve the next opening", metadataDoesNotResetOpening);
-		failures += runTest("normal opening preserves search and favorites", openingPreservesFilteredContext);
+		failures += runTest("dismissal clears search and restores unfiltered history", dismissalClearsSearch);
+		failures += runTest("normal opening clears search and preserves favorites", openingClearsSearchPreservesFavorites);
 		return failures ? 1 : 0;
 	}
 	if (app.arguments().contains("--preview-only")) {
@@ -626,7 +666,8 @@ int main(int argc, char **argv)
 	int failures = runTest("tray history action follows visibility and pending animations", trayPanelActionFollowsVisibility);
 	failures += runTest("normal opening follows hidden leading copies", openingFollowsHiddenCopies);
 	failures += runTest("metadata and replay preserve the next opening", metadataDoesNotResetOpening);
-	failures += runTest("normal opening preserves search and favorites", openingPreservesFilteredContext);
+	failures += runTest("dismissal clears search and restores unfiltered history", dismissalClearsSearch);
+	failures += runTest("normal opening clears search and preserves favorites", openingClearsSearchPreservesFavorites);
 	failures += runTest("delayed history load preserves window state and focus", historyLoadKeepsWindowState);
 	failures += runTest("backdrop activation and fallback preserve readable surfaces", backdropUsesOpaqueFallback);
 	failures += runTest("light theme text remains readable over black and white backgrounds", lightThemeTextContrast);

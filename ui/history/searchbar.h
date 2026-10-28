@@ -14,6 +14,7 @@ class LineEdit : public QLineEdit
 public:
 	LineEdit(QWidget *parent = nullptr, int parent_width = 0, int parent_height = 0);
 	void updateIcon(void);
+	void clearSearch(void);
 
 protected:
 	void focusInEvent(QFocusEvent *event) override;

@@ -97,6 +97,7 @@ void MainWindow::hideEvent(QHideEvent *event)
 {
 	qCInfo(windowFocusLog) << "MainWindow.hideEvent";
 	__main_frame->cancelInteractions();
+	__main_frame->clearSearch();
 	QMainWindow::hideEvent(event);
 	updateTrayPanelAction();
 }
@@ -139,6 +140,7 @@ void MainWindow::hide_window(void)
 {
 	if (__main_frame) __main_frame->cancelInteractions();
 	if (__hide_state) return;
+	__main_frame->clearSearch();
 	__hide_animation->setDirection(QAbstractAnimation::Forward);
 	__hide_animation->setStartValue(pos());
 	__hide_animation->setEndValue(QPoint(x(), y()+height()));

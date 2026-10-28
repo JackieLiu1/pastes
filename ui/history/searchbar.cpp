@@ -21,11 +21,14 @@ LineEdit::LineEdit(QWidget *parent, int parent_width, int parent_height) : QLine
 
 	this->updateIcon();
 	this->addAction(m_searchAction, QLineEdit::TrailingPosition);
-	QObject::connect(m_searchAction, &QAction::triggered, this, [this]() {
-		if (m_composing) qApp->inputMethod()->reset();
-		this->clear();
-		m_composing = false;
-	});
+	QObject::connect(m_searchAction, &QAction::triggered, this, &LineEdit::clearSearch);
+}
+
+void LineEdit::clearSearch(void)
+{
+	if (m_composing) qApp->inputMethod()->reset();
+	clear();
+	m_composing = false;
 }
 
 void LineEdit::updateIcon(void)
