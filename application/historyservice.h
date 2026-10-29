@@ -106,10 +106,12 @@ private:
 		QString key, account, record;
 		bool failed = false;
 		bool publish = true;
+		QSet<QString> retiredImageKeys = {};
 	};
 	void persist(const HistoryEntry &entry, const QList<QByteArray> &removed = {},
 		bool deleted = false, const QString &key = {}, const QString &account = {},
-		const QString &record = {}, bool publish = true);
+		const QString &record = {}, bool publish = true,
+		const QSet<QString> &retiredImageKeys = {});
 	void persistHousekeeping(const HistoryEntry &entry, const QList<QByteArray> &removed)
 	{
 		persist(entry, removed, false, {}, {}, {}, false);

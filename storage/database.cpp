@@ -118,6 +118,7 @@ public slots:
 	{
 		auto removed = write.removed;
 		bool deleted = write.deleted;
+		const bool imageReplacement = entry.portable.kind == "image";
 		const bool compress =
 			entry.encodedImage.isEmpty() && ClipboardData::canCompressImage(entry.image);
 		if (entry.hasImage && entry.encodedImage.isEmpty())
@@ -214,6 +215,14 @@ public slots:
 		}
 		if (write.publish && !entry.md5.isEmpty() && !removed.contains(entry.md5))
 			removed.append(entry.md5);
+		auto clock = qMax(m_clock, entry.events.latest());
+		if (!deleted && imageReplacement && !document.isEmpty() &&
+			!retireImageKeys(write.retiredImageKeys, contentKey, entry.events.copy,
+				entry.time.toMSecsSinceEpoch(), removed, clock)) {
+			m_db.rollback();
+			failCommit(request);
+			return;
+		}
 		bool ok = true;
 		for (const auto &md5 : removed)
 			for (const auto &table : {"item", "data", "favorite", "entry_meta"}) {
@@ -223,26 +232,10 @@ public slots:
 				ok = query.exec() && ok;
 			}
 		if (!deleted) ok = writeEntry(entry) && ok;
-		const auto clock = qMax(m_clock, entry.events.latest());
 		query.prepare("update event_clock set version=? where id=1");
 		query.addBindValue(SyncContent::bytes(clock.json()));
 		ok = query.exec() && ok;
-		if (!document.isEmpty()) {
-			query.prepare("insert or ignore into sync_events values(?,?,?,?,?,?)");
-			query.addBindValue(SyncContent::digest(document));
-			query.addBindValue(document);
-			query.addBindValue(contentKey);
-			query.addBindValue(SyncContent::bytes(entry.events.json()));
-			query.addBindValue(!entry.icon.isNull());
-			const qint64 expires = entry.favorite || entry.favoriteModified
-				? 0
-				: (deleted ? entry.events.erasedAt + 60LL * 86400000
-						   : entry.time.toMSecsSinceEpoch() +
-							  qint64(HistoryPolicy::retentionDays) * 86400000);
-			query.addBindValue(expires);
-			ok = query.exec() && ok;
-			ok = compact(contentKey, SyncContent::digest(document)) && ok;
-		}
+		if (!document.isEmpty()) ok = writeJournal(document) && ok;
 		if (!write.record.isEmpty()) {
 			query.prepare("insert or replace into sync_applied values(?,?,?)");
 			query.addBindValue(write.account);
@@ -401,6 +394,77 @@ private:
 		if (entry.hasImage) entry.encodedImage = query.value("imagedata").toByteArray();
 		return entry;
 	}
+	bool writeJournal(const QByteArray &document)
+	{
+		QString error;
+		const auto record = SyncContent::inspect(document, &error);
+		if (!error.isEmpty()) return false;
+		QSqlQuery query(m_db);
+		query.prepare("insert or ignore into sync_events values(?,?,?,?,?,?)");
+		query.addBindValue(record.id);
+		query.addBindValue(document);
+		query.addBindValue(record.key);
+		query.addBindValue(SyncContent::bytes(record.events.json()));
+		query.addBindValue(record.hasIcon);
+		const qint64 expires = record.favorite || record.favoriteModified ? 0 :
+			(record.deleted ? record.events.erasedAt + 60LL * 86400000 :
+				record.copied + qint64(HistoryPolicy::retentionDays) * 86400000);
+		query.addBindValue(expires);
+		return query.exec() && compact(record.key, record.id);
+	}
+
+	bool retireImageKeys(QSet<QString> keys, const QString &replacement,
+		const EventVersion &version, qint64 copied, QList<QByteArray> &removed, EventVersion &clock)
+	{
+		/* A reused temporary URL can keep the local MD5 while its portable
+		 * image identity changes. Read committed keys before removing rows. */
+		QSqlQuery previous(m_db);
+		for (const auto &md5 : removed) {
+			previous.prepare("select content_key from entry_meta where md5=?");
+			previous.addBindValue(md5);
+			if (!previous.exec()) return false;
+			while (previous.next()) {
+				const auto key = previous.value(0).toString();
+				if (!key.isEmpty()) keys.insert(key);
+			}
+		}
+		for (const auto &key : keys) {
+			if (key == replacement) continue;
+			SyncContent::Snapshot tombstone;
+			tombstone.events.erase = version;
+			tombstone.events.erasedAt = copied;
+			tombstone.events.favorite = tombstone.events.name = tombstone.events.position = version;
+			QString error;
+			const auto deletion = SyncContent::document(tombstone, true, key, &error);
+			QList<SyncContent::Record> records{SyncContent::inspect(deletion, &error)};
+			QHash<QString, QByteArray> payloads{{records.first().id, deletion}};
+			QSqlQuery query(m_db);
+			query.prepare("select document from sync_events where content_key=?");
+			query.addBindValue(key);
+			if (!query.exec()) return false;
+			while (query.next()) {
+				const auto bytes = query.value(0).toByteArray();
+				const auto record = SyncContent::inspect(bytes, &error);
+				if (!error.isEmpty()) return false;
+				if (!payloads.contains(record.id)) {
+					records.append(record);
+					payloads.insert(record.id, bytes);
+				}
+			}
+			const auto document = SyncContent::reduce(records,
+				[&payloads](const QString &id) { return payloads.value(id); }, &error);
+			const auto result = SyncContent::inspect(document, &error);
+			/* A newer durable copy must not be removed by a stale replacement. */
+			if (!error.isEmpty() || !result.deleted || !writeJournal(document)) return false;
+			clock = qMax(clock, result.events.latest());
+			query.prepare("select md5 from entry_meta where content_key=?");
+			query.addBindValue(key);
+			if (!query.exec()) return false;
+			while (query.next()) removed.append(query.value(0).toByteArray());
+		}
+		return true;
+	}
+
 	bool compact(const QString &key, const QString &canonical)
 	{
 		struct Metadata {

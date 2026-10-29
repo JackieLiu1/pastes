@@ -4,6 +4,7 @@
 #include "core/eventstate.h"
 #include <QByteArray>
 #include <QDateTime>
+#include <QColorSpace>
 #include <QImage>
 #include <QMimeData>
 #include <QSharedPointer>
@@ -42,6 +43,8 @@ struct ItemData final
 	QString contentKey;
 	/* Cached pixel comparison; the persisted MD5 and original MIME stay intact. */
 	QByteArray imageContentKey;
+	QColorSpace imageColorSpace;
+	QString imageSyncKey;
 	QDateTime time;
 	bool favorite = false;
 	qint64 favoriteModified = 0;

@@ -166,11 +166,31 @@ bool HistoryService::sameContent(const HistoryEntry &left, const HistoryEntry &r
 		!ClipboardContent::prefersImage(*right->mimeData)) return false;
 	const QSize size = ClipboardData::imageSize(left->mimeData.get());
 	if (!size.isValid() || size != ClipboardData::imageSize(right->mimeData.get())) return false;
-	for (const auto &entry : {left, right})
-		if (entry->imageContentKey.isEmpty())
-			entry->imageContentKey = ClipboardContent::imageContentKey(
-				qvariant_cast<QImage>(entry->mimeData->imageData()));
-	return !left->imageContentKey.isEmpty() && left->imageContentKey == right->imageContentKey;
+	QImage images[2];
+	const HistoryEntry entries[] = {left, right};
+	for (int i = 0; i < 2; ++i)
+		if (entries[i]->imageContentKey.isEmpty()) {
+			images[i] = qvariant_cast<QImage>(entries[i]->mimeData->imageData());
+			entries[i]->imageContentKey = ClipboardContent::imageContentKey(images[i]);
+			entries[i]->imageColorSpace = images[i].colorSpace();
+		}
+	if (!left->imageContentKey.isEmpty() && left->imageContentKey == right->imageContentKey)
+		return true;
+	/* Most same-size screenshots share a profile. Cached metadata avoids
+	 * decoding them again when their exact pixel keys already differ. */
+	if (!left->imageColorSpace.isValid() || !right->imageColorSpace.isValid() ||
+		left->imageColorSpace.iccProfile() == right->imageColorSpace.iccProfile()) return false;
+	for (int i = 0; i < 2; ++i)
+		if (images[i].isNull()) images[i] = qvariant_cast<QImage>(entries[i]->mimeData->imageData());
+	if (!ClipboardContent::sameImageColors(images[0], images[1])) return false;
+	for (int i = 0; i < 2; ++i) {
+		if (!entries[i]->imageSyncKey.isEmpty()) continue;
+		SyncContent::Snapshot value;
+		value.kind = "image";
+		value.image = images[i];
+		entries[i]->imageSyncKey = SyncContent::key(value);
+	}
+	return true;
 }
 
 int HistoryService::indexOf(EntryId id) const
@@ -204,13 +224,15 @@ void HistoryService::erase(int row, HistoryChange change, bool write)
 }
 
 void HistoryService::persist(const HistoryEntry &entry, const QList<QByteArray> &removed,
-	bool deleted, const QString &key, const QString &account, const QString &record, bool publish)
+	bool deleted, const QString &key, const QString &account, const QString &record, bool publish,
+	const QSet<QString> &retiredImageKeys)
 {
 	const auto snapshot = cloneEntry(*entry);
 	snapshot->id = entry->id;
 	const quint64 request =
-		m_repository.save(snapshot, {removed, deleted, publish, key, account, record});
-	m_writes.insert(request, {snapshot, removed, deleted, key, account, record, false, publish});
+		m_repository.save(snapshot, {removed, deleted, publish, key, account, record, retiredImageKeys});
+	m_writes.insert(request,
+		{snapshot, removed, deleted, key, account, record, false, publish, retiredImageKeys});
 	emit persistenceStateChanged();
 	if (request && !deleted) m_imageRequests.insert(request, entry->id);
 }
@@ -230,7 +252,7 @@ void HistoryService::retryPersistence(void)
 				}
 			}
 		persist(value.entry, value.removed, value.deleted, value.key, value.account, value.record,
-			value.publish);
+			value.publish, value.retiredImageKeys);
 	}
 }
 
@@ -250,6 +272,7 @@ void HistoryService::record(HistoryEntry entry, quint64 sourceRequest)
 	}
 	m_clock.observe(entry->events.latest());
 	QList<QByteArray> replaced;
+	QSet<QString> retiredImageKeys;
 	for (int row = 0; row < m_entries.size(); ) {
 		const HistoryEntry previous = m_entries.at(row);
 		if (sameContent(previous, entry)) {
@@ -257,13 +280,18 @@ void HistoryService::record(HistoryEntry entry, quint64 sourceRequest)
 				if (sourceRequest)
 					m_sourceRequests.insert(sourceRequest,
 						{previous->id, entry->time.toMSecsSinceEpoch(), entry->events.copy});
-				if (inheritFavorite(previous, entry)) {
-					persist(previous, {previous->md5});
-					emit entryChanged(previous->id);
-				}
+				QSet<QString> retired;
+				if (!entry->imageSyncKey.isEmpty() && entry->imageSyncKey != previous->imageSyncKey)
+					retired.insert(entry->imageSyncKey);
+				const bool changed = inheritFavorite(previous, entry);
+				if (changed || !retired.isEmpty())
+					persist(previous, {previous->md5}, false, {}, {}, {}, true, retired);
+				if (changed) emit entryChanged(previous->id);
 				return;
 			}
 			inheritFavorite(entry, previous);
+			if (!previous->imageSyncKey.isEmpty() && previous->imageSyncKey != entry->imageSyncKey)
+				retiredImageKeys.insert(previous->imageSyncKey);
 			entry->contentKey = previous->contentKey;
 			replaced.append(previous->md5);
 			erase(row, HistoryChange::Replaced, false);
@@ -278,7 +306,7 @@ void HistoryService::record(HistoryEntry entry, quint64 sourceRequest)
 	if (sourceRequest)
 		m_sourceRequests.insert(
 			sourceRequest, {entry->id, entry->time.toMSecsSinceEpoch(), entry->events.copy});
-	persist(entry, replaced);
+	persist(entry, replaced, false, {}, {}, {}, true, retiredImageKeys);
 	emit entryAdded(entry, 0, HistoryChange::Captured);
 }
 
@@ -548,6 +576,7 @@ void HistoryService::mergeIncoming(HistoryEntry entry, const QList<QByteArray> &
 	const QDateTime now = QDateTime::currentDateTime();
 	EntryId replacementId = 0;
 	QList<QByteArray> removed;
+	QSet<QString> retiredImageKeys;
 	for (int row = 0; row < m_entries.size();) {
 		const auto previous = m_entries.at(row);
 		const bool duplicate = entry && sameContent(previous, entry);
@@ -565,11 +594,18 @@ void HistoryService::mergeIncoming(HistoryEntry entry, const QList<QByteArray> &
 		}
 		if (duplicate && previous->events.copy >= entry->events.copy) {
 			const bool changed = inheritFavorite(previous, entry);
-			if (persistResult) persist(previous, {previous->md5}, false, key, account, record);
+			if (!entry->imageSyncKey.isEmpty() && entry->imageSyncKey != previous->imageSyncKey)
+				retiredImageKeys.insert(entry->imageSyncKey);
+			if (persistResult)
+				persist(previous, {previous->md5}, false, key, account, record, true, retiredImageKeys);
 			if (changed) emit entryChanged(previous->id);
 			return;
 		}
-		if (entry) inheritFavorite(entry, previous);
+		if (entry) {
+			inheritFavorite(entry, previous);
+			if (duplicate && !previous->imageSyncKey.isEmpty() && previous->imageSyncKey != entry->imageSyncKey)
+				retiredImageKeys.insert(previous->imageSyncKey);
+		}
 		if (entry && (entry->favorite || !HistoryPolicy::expired(entry->time, now))) {
 			if (!replacementId) replacementId = ++m_nextId;
 			for (auto &source : m_sourceRequests)
@@ -594,6 +630,6 @@ void HistoryService::mergeIncoming(HistoryEntry entry, const QList<QByteArray> &
 		++row;
 	entry->id = replacementId ? replacementId : ++m_nextId;
 	m_entries.insert(row, entry);
-	if (persistResult) persist(entry, removed, false, key, account, record);
+	if (persistResult) persist(entry, removed, false, key, account, record, true, retiredImageKeys);
 	emit entryAdded(entry, row, HistoryChange::Synced);
 }

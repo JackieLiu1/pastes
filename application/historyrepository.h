@@ -11,6 +11,8 @@ struct HistoryWrite {
 	bool deleted = false;
 	bool publish = true;
 	QString key, account, record;
+	/* Retire older portable image identities in the replacement transaction. */
+	QSet<QString> retiredImageKeys = {};
 };
 Q_DECLARE_METATYPE(HistoryWrite)
 

@@ -36,6 +36,8 @@ HistoryEntry cloneEntry(const ItemData &source)
 	entry->md5 = source.md5;
 	entry->contentKey = source.contentKey;
 	entry->imageContentKey = source.imageContentKey;
+	entry->imageColorSpace = source.imageColorSpace;
+	entry->imageSyncKey = source.imageSyncKey;
 	entry->time = source.time;
 	entry->favorite = source.favorite;
 	entry->favoriteModified = source.favoriteModified;

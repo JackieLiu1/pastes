@@ -380,6 +380,136 @@ void atomicReplacementAndOfflineOutbox()
 			observer.deliveries.first().content.icon.pixelColor(0, 0) == QColor(Qt::green),
 		"Committed outbox did not survive restart without a worker cache");
 }
+
+void colorImageReplacementAcrossLayers(bool samePath = false)
+{
+	DavServer server;
+	QTemporaryDir directory;
+	preferences(directory.path() + "/preferences");
+	MemorySecrets secrets;
+	const auto path = directory.filePath("color-images.db");
+	const auto now = QDateTime::currentDateTime();
+	auto makeImage = [&](bool srgb) {
+		auto entry = textEntry("");
+		entry->mimeData->setImageData(colorSpaceImage(srgb));
+		entry->mimeData->setUrls({QUrl::fromLocalFile(samePath ? "/tmp/shared-source.png" :
+			(srgb ? "/tmp/new-source.png" : "/tmp/old-source.png"))});
+		entry->mimeData->setData("application/source-details", srgb ? "latest source" : "old source");
+		entry->md5 = ClipboardContent::fingerprint(*entry->mimeData);
+		entry->time = srgb ? now : now.addSecs(-1);
+		entry->icon = QImage(8, 8, QImage::Format_ARGB32);
+		entry->icon.fill(srgb ? Qt::red : Qt::blue);
+		return entry;
+	};
+	QHash<QString, QByteArray> oldRemoteRecords;
+	EventVersion replacementCopy;
+	{
+		Database repository(path);
+		HistoryService history(repository);
+		WebDavSync service(history, secrets, directory.path() + "/cache");
+		load(history);
+		history.record(makeImage(false));
+		require(read(repository).size() == 1, "Initial color image did not commit");
+		save(service, server.settings()); run(service);
+		oldRemoteRecords = server.files;
+		require(oldRemoteRecords.size() == 1, "Initial image did not reach the fake WebDAV server");
+		auto disabled = server.settings(); disabled.enabled = false;
+		save(service, disabled);
+		sql(path, "create trigger reject_color before insert on item begin select raise(ABORT,'color replacement failure'); end");
+		const auto latest = makeImage(true);
+		history.record(latest, 77);
+		replacementCopy = latest->events.copy;
+		waitUntil([&] { return history.hasPersistenceFailures(); });
+		const auto unchanged = read(repository);
+		require(unchanged.size() == 1 &&
+			qvariant_cast<QImage>(unchanged.first()->mimeData->imageData()).colorSpace() == QColorSpace(QColorSpace::DisplayP3) &&
+			sql(path, "select count(*) from sync_events") == 1,
+			"Failed image replacement committed an old-key tombstone or lost the previous payload");
+		sql(path, "drop trigger reject_color");
+		history.retryPersistence();
+		waitUntil([&] { return !history.hasPersistenceFailures(); });
+		const auto stored = read(repository);
+		require(stored.size() == 1 && stored.first()->events.copy == replacementCopy,
+			"Retry failed to commit the replacement copy");
+		require(stored.first()->mimeData->data("application/source-details") == "latest source" &&
+			stored.first()->icon.pixelColor(0, 0) == QColor(Qt::red),
+			"Retry lost the latest image formats or source");
+		require(qvariant_cast<QImage>(stored.first()->mimeData->imageData())
+			.convertToFormat(QImage::Format_RGBA8888) == colorSpaceImage(true),
+			"Retry changed the replacement image pixels");
+		require(sql(path, "select count(*) from sync_events") == 2,
+			"Retry did not retire the old image identity atomically");
+	}
+	Database repository(path);
+	HistoryService history(repository);
+	WebDavSync service(history, secrets, directory.path() + "/fresh-cache");
+	load(history);
+	require(history.entries().size() == 1 && history.entries().first()->events.copy == replacementCopy,
+		"Disabled-sync restart retained the old image variant");
+	save(service, server.settings()); run(service); run(service);
+	Database peerRepository(directory.filePath("peer.db"));
+	HistoryService peer(peerRepository);
+	WebDavSync peerService(peer, secrets, directory.path() + "/peer-cache");
+	load(peer); run(peerService); run(peerService);
+	require(peer.entries().size() == 1 && peer.entries().first()->events.copy == replacementCopy &&
+		qvariant_cast<QImage>(peer.entries().first()->mimeData->imageData())
+			.convertToFormat(QImage::Format_RGBA8888) == colorSpaceImage(true) &&
+		peer.entries().first()->icon.pixelColor(0, 0) == QColor(Qt::red),
+		"A fresh peer received both color variants or lost the latest source");
+	history.remove(history.entries().first()->id);
+	run(service); run(peerService);
+	for (auto it = oldRemoteRecords.cbegin(); it != oldRemoteRecords.cend(); ++it)
+		server.files.insert(it.key(), it.value()); // Replay the original source after deletion.
+	run(peerService); run(peerService);
+	require(peer.entries().isEmpty() && read(peerRepository).isEmpty(),
+		"Replaying the retired color variant revived a deleted image");
+	Client observer(server.settings(), directory.path() + "/observer");
+	observer.run();
+	require(observer.success && observer.deliveries.size() == 2 &&
+		observer.deliveries[0].deleted && observer.deliveries[1].deleted,
+		"The old image identity remained live after replacement and deletion");
+	const auto copiedAgain = makeImage(false);
+	history.record(copiedAgain);
+	run(service); run(peerService);
+	require(peer.entries().size() == 1 && peer.entries().first()->events.copy == copiedAgain->events.copy,
+		"Retiring an image identity blocked a genuinely new copy of that variant");
+}
+
+void staleColorReplacementRollsBack()
+{
+	QTemporaryDir directory;
+	const auto path = directory.filePath("stale-color.db");
+	Database repository(path);
+	HistoryService history(repository);
+	load(history);
+	const auto now = QDateTime::currentMSecsSinceEpoch();
+	auto newer = textEntry("");
+	newer->mimeData->setImageData(colorSpaceImage());
+	newer->md5 = ClipboardContent::fingerprint(*newer->mimeData);
+	newer->time = QDateTime::fromMSecsSinceEpoch(now);
+	newer->events.copy = {now, 2, "durable"};
+	history.record(newer);
+	const auto original = read(repository);
+	require(original.size() == 1 && !original.first()->contentKey.isEmpty(), "Newer durable image missing");
+	auto stale = textEntry("");
+	stale->mimeData->setImageData(colorSpaceImage(true));
+	stale->md5 = ClipboardContent::fingerprint(*stale->mimeData);
+	stale->time = QDateTime::fromMSecsSinceEpoch(now);
+	stale->events.copy = {now, 1, "stale"};
+	bool failed = false;
+	QObject::connect(&repository, &HistoryRepository::commitFailed, &repository,
+		[&](quint64, const QString &) { failed = true; });
+	HistoryWrite write;
+	write.removed = {newer->md5};
+	write.retiredImageKeys = {original.first()->contentKey};
+	repository.save(stale, write);
+	waitUntil([&] { return failed; });
+	const auto kept = read(repository);
+	require(kept.size() == 1 && kept.first()->events.copy == newer->events.copy &&
+		kept.first()->contentKey == original.first()->contentKey &&
+		sql(path, "select count(*) from sync_events") == 1,
+		"A stale replacement removed newer durable pixels or journaled its retirement");
+}
 void disabledFavoriteRestart()
 {
 	DavServer server;
@@ -736,6 +866,10 @@ int main(int argc, char **argv)
 	QCoreApplication app(argc, argv);
 	app.setOrganizationName("PastesTests");
 	app.setApplicationName("SyncOrderingContracts");
+	if (app.arguments().contains("--color-only"))
+		return runTest("color image replacement across SQLite and WebDAV", [] { colorImageReplacementAcrossLayers(); }) |
+			runTest("color image replacement reuses a temporary path", [] { colorImageReplacementAcrossLayers(true); }) |
+			runTest("stale image replacement rolls back", staleColorReplacementRollsBack);
 	int failures = 0;
 	failures += runTest("database to wire preserves milliseconds and provenance", databaseThenWire);
 	failures += runTest("empty-history account switch", accountSwitchEmptyHistory);
@@ -748,6 +882,9 @@ int main(int argc, char **argv)
 		"fresh native icon follows ahead clock after restart", freshLocalIconAfterAheadClock);
 	failures +=
 		runTest("atomic replacement and durable offline outbox", atomicReplacementAndOfflineOutbox);
+	failures += runTest("color image replacement, rollback and replay across SQLite and WebDAV", [] { colorImageReplacementAcrossLayers(); });
+	failures += runTest("color image replacement reuses a temporary path", [] { colorImageReplacementAcrossLayers(true); });
+	failures += runTest("stale image replacement preserves newer durable data", staleColorReplacementRollsBack);
 	failures += runTest("local index write failure recovers without restart", [] { localCacheWriteRetry(true); });
 	failures += runTest("local record write failure replays committed SQL state", [] { localCacheWriteRetry(false); });
 	failures += runTest("disabled favorite changes survive SQL restart", disabledFavoriteRestart);

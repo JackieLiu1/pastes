@@ -72,3 +72,47 @@ QByteArray ClipboardContent::imageContentKey(const QImage &image)
 		hash.addData(QByteArrayView(reinterpret_cast<const char *>(pixels.constScanLine(row)), rowBytes));
 	return hash.result();
 }
+
+bool ClipboardContent::sameImageColors(const QImage &left, const QImage &right)
+{
+	auto ordinaryRgb = [](const QImage &image) {
+		switch (image.format()) {
+		case QImage::Format_RGB32:
+		case QImage::Format_ARGB32:
+		case QImage::Format_ARGB32_Premultiplied:
+		case QImage::Format_RGB888:
+		case QImage::Format_RGBX8888:
+		case QImage::Format_RGBA8888:
+		case QImage::Format_RGBA8888_Premultiplied:
+			return true;
+		default:
+			return false;
+		}
+	};
+	if (left.isNull() || left.size() != right.size() ||
+		!ordinaryRgb(left) || !ordinaryRgb(right) ||
+		!left.colorSpace().isValid() || !right.colorSpace().isValid()) return false;
+	const bool converted = left.colorSpace() != right.colorSpace();
+	QImage a = left.convertToFormat(QImage::Format_RGBA8888);
+	QImage b = right.convertToFormat(QImage::Format_RGBA8888);
+	if (a.isNull() || b.isNull()) return false;
+	if (converted) {
+		a.convertToColorSpace(QColorSpace::SRgb);
+		b.convertToColorSpace(QColorSpace::SRgb);
+		if (a.colorSpace() != QColorSpace(QColorSpace::SRgb) ||
+			b.colorSpace() != QColorSpace(QColorSpace::SRgb)) return false;
+	}
+	const int tolerance = converted ? 1 : 0;
+	for (int row = 0; row < a.height(); ++row) {
+		const auto *first = a.constScanLine(row);
+		const auto *second = b.constScanLine(row);
+		for (int column = 0; column < a.width(); ++column) {
+			const qsizetype offset = qsizetype(column)*4;
+			if (first[offset+3] != second[offset+3]) return false;
+			for (int channel = 0; channel < 3; ++channel)
+				if (qAbs(int(first[offset+channel])-int(second[offset+channel])) > tolerance)
+					return false;
+		}
+	}
+	return true;
+}

@@ -20,6 +20,11 @@ QByteArray imageFingerprint(const QImage &image);
  * ignores packing, row padding and an accompanying temporary file path. */
 QByteArray imageContentKey(const QImage &image);
 
+/* Ordinary RGB copies may round by one 8-bit step when applications change
+ * color spaces. Compare at full size in sRGB; alpha remains exact. Equal
+ * color spaces, untagged images and high-precision data get no tolerance. */
+bool sameImageColors(const QImage &left, const QImage &right);
+
 }
 
 #endif

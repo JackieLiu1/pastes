@@ -30,6 +30,7 @@ public:
 	}
 	quint64 save(const HistoryEntry &entry, const HistoryWrite &write) override
 	{
+		retiredImages.append(write.retiredImageKeys);
 		const auto &removed = write.removed;
 		const bool deleted = write.deleted;
 		const auto key = write.key, account = write.account, record = write.record;
@@ -73,6 +74,7 @@ public:
 	QList<QByteArray> removals;
 	QList<QByteArray> iconUpdates;
 	QList<QByteArray> favoriteUpdates;
+	QList<QSet<QString>> retiredImages;
 };
 
 #endif

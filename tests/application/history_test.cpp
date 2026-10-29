@@ -139,6 +139,88 @@ void imageContentIdentity(void)
 		"Pixel comparison discarded high precision samples");
 }
 
+void colorImageIdentity(void)
+{
+	const QImage p3 = colorSpaceImage();
+	QImage srgb = colorSpaceImage(true);
+	const auto exact = srgb;
+	srgb.scanLine(5)[7*4] += 1;
+	require(ClipboardContent::sameImageColors(p3, srgb) &&
+		ClipboardContent::sameImageColors(srgb, p3), "One-step color conversion rounding was not symmetric");
+	require(!ClipboardContent::sameImageColors(exact, srgb), "Same-profile edits received color tolerance");
+	srgb.scanLine(5)[7*4] += 1;
+	require(!ClipboardContent::sameImageColors(p3, srgb), "A two-step color edit was merged");
+	srgb = exact;
+	srgb.scanLine(5)[7*4+3] = 254;
+	require(!ClipboardContent::sameImageColors(p3, srgb), "Alpha changes received color tolerance");
+	srgb = exact;
+	srgb.setColorSpace(QColorSpace());
+	require(!ClipboardContent::sameImageColors(p3, srgb), "An untagged image received color tolerance");
+	require(!ClipboardContent::sameImageColors(p3, exact.copy(0, 0, 23, 16)), "Different dimensions were merged");
+	require(!ClipboardContent::sameImageColors(p3.convertToFormat(QImage::Format_RGBA64),
+		exact.convertToFormat(QImage::Format_RGBA64)), "High-precision images received color tolerance");
+	require(!ClipboardContent::sameImageColors(p3.convertToFormat(QImage::Format_Grayscale8),
+		exact.convertToFormat(QImage::Format_Grayscale8)), "Grayscale images received color tolerance");
+}
+
+void colorImageCopies(void)
+{
+	for (bool reverse : {false, true}) {
+		MemoryRepository repository;
+		HistoryService history(repository);
+		history.load(); repository.finishLoad();
+		const auto now = QDateTime::currentDateTime();
+		const auto previous = imageEntry(colorSpaceImage(reverse), "/tmp/previous.png", now.addSecs(-1));
+		previous->icon = QImage(8, 8, QImage::Format_ARGB32); previous->icon.fill(Qt::blue);
+		history.record(previous, 41);
+		history.setFavorite(previous->id, true);
+		const auto latest = imageEntry(colorSpaceImage(!reverse), "/tmp/latest.png", now);
+		latest->icon = QImage(8, 8, QImage::Format_ARGB32); latest->icon.fill(Qt::red);
+		latest->mimeData->setData("application/source-details", "latest native payload");
+		history.record(latest, 42);
+		require(history.entries().size() == 1 && history.entries().first() == latest && latest->favorite,
+			"Color conversion retained two items or lost the favorite");
+		require(latest->time == now && latest->icon.pixelColor(0, 0) == QColor(Qt::red) &&
+			latest->mimeData->urls().first().toLocalFile() == "/tmp/latest.png" &&
+			latest->mimeData->data("application/source-details") == "latest native payload" &&
+			qvariant_cast<QImage>(latest->mimeData->imageData()).colorSpace() == colorSpaceImage(!reverse).colorSpace(),
+			"Replacement altered the latest image, source, time or native formats");
+		require(repository.retiredImages.last() == QSet<QString>{previous->imageSyncKey} &&
+			!previous->imageSyncKey.isEmpty() && previous->imageSyncKey != latest->imageSyncKey,
+			"The obsolete image identity was not included in the replacement transaction");
+		QImage late(8, 8, QImage::Format_ARGB32); late.fill(Qt::green);
+		history.setSourceIcon(41, late);
+		require(latest->icon.pixelColor(0, 0) == QColor(Qt::red), "An old source completion changed the replacement");
+		history.setSourceIcon(42, late);
+		require(latest->icon == late, "The latest source completion was lost");
+	}
+}
+
+void syncedColorImageCopies(void)
+{
+	for (bool incomingNewer : {false, true}) {
+		MemoryRepository repository;
+		HistoryService history(repository); history.load(); repository.finishLoad();
+		const auto now = QDateTime::currentDateTime();
+		const auto local = imageEntry(colorSpaceImage(), "/tmp/local-profile.png", now);
+		local->icon = QImage(8, 8, QImage::Format_ARGB32); local->icon.fill(Qt::blue);
+		history.record(local);
+		const auto remote = imageEntry(colorSpaceImage(true), "", now.addSecs(incomingNewer ? 1 : -1));
+		remote->events.copy = incomingNewer ? nextVersion(local->events.copy) :
+			EventVersion{local->events.copy.physical-1, 0, "older-peer"};
+		QImage icon(8, 8, QImage::Format_ARGB32); icon.fill(Qt::red);
+		observeIcon(remote, icon, remote->events.copy);
+		history.mergeSynced(remote, {});
+		const auto kept = incomingNewer ? remote : local;
+		const auto retired = incomingNewer ? local : remote;
+		require(history.entries().size() == 1 && history.entries().first() == kept &&
+			kept->icon.pixelColor(0, 0) == QColor(incomingNewer ? Qt::red : Qt::blue),
+			"Sync kept duplicate color variants or rewound the latest copy and source");
+		require(repository.retiredImages.last() == QSet<QString>{retired->imageSyncKey},
+			"Sync did not retire the losing color variant");
+	}
+}
+
 void imageCopiesAndUndo(void)
 {
 	MemoryRepository repository;
@@ -514,6 +596,9 @@ int main(int argc, char **argv)
 	failures += runTest("retention and startup", retentionAndStartup);
 	failures += runTest("deduplication and source identity", duplicateAndSourceIdentity);
 	failures += runTest("image content ignores packing and retains precision", imageContentIdentity);
+	failures += runTest("color conversion comparison retains strict pixel boundaries", colorImageIdentity);
+	failures += runTest("color converted copies retain the latest image and source", colorImageCopies);
+	failures += runTest("color converted sync copies keep the newest version in either delivery order", syncedColorImageCopies);
 	failures += runTest("image copies, file references and undo", imageCopiesAndUndo);
 	failures += runTest("stored image duplicates without startup decoding", storedImageDuplicates);
 	failures += runTest("synced image duplicates preserve newest copy time", syncedImageDuplicates);

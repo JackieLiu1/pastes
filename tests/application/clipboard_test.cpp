@@ -312,6 +312,33 @@ void sourceObservationClock(void)
 		"A real native re-copy failed to replace the previous source icon");
 }
 
+void colorConvertedCapture(void)
+{
+	MemoryRepository repository;
+	HistoryService history(repository);
+	history.load(); repository.finishLoad();
+	TestFeed feed;
+	feed.icon = QImage(16, 16, QImage::Format_ARGB32); feed.icon.fill(Qt::blue);
+	auto &clipboard = *QGuiApplication::clipboard();
+	ClipboardController controller(history, feed, clipboard, true);
+	clipboard.setImage(colorSpaceImage()); feed.notify(); controller.flushPending();
+	require(history.entries().size() == 1, "First color image was not captured");
+	const auto first = history.entries().first();
+	const auto original = colorSpaceImage(true);
+	auto *mime = new QMimeData;
+	mime->setImageData(original);
+	mime->setUrls({QUrl::fromLocalFile("/tmp/converted-copy.png")});
+	feed.icon.fill(Qt::red);
+	clipboard.setMimeData(mime); feed.notify(); controller.flushPending();
+	require(history.entries().size() == 1 && history.entries().first()->events.copy > first->events.copy,
+		"A cross-application color conversion created duplicate history");
+	const auto latest = history.entries().first();
+	require(latest->icon == feed.icon && latest->events.source == latest->events.copy &&
+		qvariant_cast<QImage>(latest->mimeData->imageData()) == original &&
+		latest->mimeData->urls().first().toLocalFile() == "/tmp/converted-copy.png",
+		"Capture lost the latest source or changed its original image payload");
+}
+
 int main(int argc, char **argv)
 {
 	QGuiApplication app(argc, argv);
@@ -320,6 +347,7 @@ int main(int argc, char **argv)
 		runTest("clipboard pause, copy and native synchronization", clipboardLifecycle) |
 		runTest("native captures timestamp source icons while internal copies retain provenance",
 			sourceObservationClock) |
+		runTest("color converted native copies merge without altering the latest image", colorConvertedCapture) |
 		runTest("clipboard capture exclusion and recovery", capturePolicy) |
 		runTest("mixed clipboard image snapshots preserve original formats", mixedImageSnapshot) |
 		runTest("clipboard transfer, plain text and reentrant replacement", clipboardOwnership);
