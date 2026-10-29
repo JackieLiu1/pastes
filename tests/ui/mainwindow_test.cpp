@@ -9,6 +9,7 @@
 #include "ui/dialogs/settingsdialog.h"
 #include "ui/common/roundedwidgets.h"
 #include "platform/windowintegration.h"
+#include "platform/pastetarget.h"
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
@@ -110,6 +111,41 @@ void trayPanelActionFollowsVisibility(void)
 		"Shortcut toggle could not reopen after direct dismissal");
 	window.hide_window();
 	waitUntil([&] { return !window.isVisible(); });
+}
+
+void pasteHidesBeforeClipboardWrite(void)
+{
+	WindowFixture fixture;
+	auto &window = fixture.window;
+	auto *list = window.findChild<QListWidget *>();
+	auto *search = window.findChild<QLineEdit *>();
+	fixture.history.load();
+	fixture.repository.finishLoad({textEntry("newest"), textEntry("older paste")});
+	window.show_window();
+	search->setText("older paste");
+	auto *card = qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()));
+	require(card && card->entry()->mimeData->text() == "older paste", "Paste selection missing");
+	bool clipboardChanged = false, visibleOnWrite = false, visibleOnClear = false;
+	QObject observer;
+	QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, &observer, [&] {
+		clipboardChanged = true;
+		visibleOnWrite |= window.isVisible();
+	});
+	QObject::connect(search, &QLineEdit::textChanged, &observer, [&](const QString &text) {
+		if (text.isEmpty()) visibleOnClear |= window.isVisible();
+	});
+	card->copyData();
+	window.findChild<PasteTarget *>()->cancel(); // This contract never injects native input.
+	require(!window.isVisible(), "Paste waited for the dismissal animation");
+	require(!visibleOnClear && search->text().isEmpty(), "Paste reset search while the panel was visible");
+	require(clipboardChanged && !visibleOnWrite, "Paste wrote clipboard data before hiding the panel");
+	require(QApplication::clipboard()->text() == "older paste", "Hiding changed the chosen clipboard item");
+	window.show_window();
+	require(window.isVisible(), "Immediate paste dismissal prevented reopening");
+	card = qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()));
+	card->copyData(false, false);
+	require(window.isVisible(), "Copy-only action dismissed the panel");
+	window.hide();
 }
 
 void openingFollowsHiddenCopies(void)
@@ -664,6 +700,7 @@ int main(int argc, char **argv)
 		return failures ? 1 : 0;
 	}
 	int failures = runTest("tray history action follows visibility and pending animations", trayPanelActionFollowsVisibility);
+	failures += runTest("paste hides before search reset and clipboard writes", pasteHidesBeforeClipboardWrite);
 	failures += runTest("normal opening follows hidden leading copies", openingFollowsHiddenCopies);
 	failures += runTest("metadata and replay preserve the next opening", metadataDoesNotResetOpening);
 	failures += runTest("dismissal clears search and restores unfiltered history", dismissalClearsSearch);

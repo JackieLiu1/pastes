@@ -151,7 +151,13 @@ void MainWindow::hide_window(void)
 
 void MainWindow::copyEntry(HistoryEntry entry, bool plainText, bool paste)
 {
-	if (paste) hide_window();
+	if (paste) {
+		/* Release native focus before clipboard work can rebuild the list.
+		 * Ordinary dismissal keeps its animation; pasting should be immediate. */
+		__hide_animation->stop();
+		__hide_state = true;
+		hide();
+	}
 	if (__clipboard.copy(*entry, plainText) && paste)
 		__paste_target->paste(this, entry->mimeData->hasUrls());
 }
