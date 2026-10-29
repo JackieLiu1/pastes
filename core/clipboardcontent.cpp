@@ -19,7 +19,9 @@ bool ClipboardContent::prefersImage(const QMimeData &mime)
 	/* Stored file copies can contain a synthesized file icon. Treat only
 	 * accompanying raster-image paths as bitmap content, without file I/O. */
 	const QMimeType type = QMimeDatabase().mimeTypeForFile(urls.first().fileName(), QMimeDatabase::MatchExtension);
-	return type.name().startsWith("image/") && !type.inherits("image/svg+xml");
+	/* Compressed SVG can inherit only application/gzip in the system database. */
+	return type.name().startsWith("image/") && !type.inherits("image/svg+xml") &&
+		!type.inherits("image/svg+xml-compressed");
 }
 
 QByteArray ClipboardContent::fingerprint(const QMimeData &mime)

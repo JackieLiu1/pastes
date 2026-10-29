@@ -57,9 +57,12 @@ void fingerprintContract(void)
 	require(ClipboardContent::fingerprint(bitmap) == QCryptographicHash::hash(picture.toEncoded(), QCryptographicHash::Md5),
 		"Presenting mixed content as an image changed persisted identity");
 	require(!ClipboardContent::prefersImage(plain), "File-only content was classified as an image");
-	for (const char *path : {"/document.docx", "/vector.svg", "/vector.svgz"}) {
+	for (const char *path : {"/document.docx", "/vector.svg", "/vector.svgz", "/vector.svg.gz"}) {
 		bitmap.setUrls({QUrl::fromLocalFile(path)});
 		require(!ClipboardContent::prefersImage(bitmap), "A file icon was treated as copied image content");
+		require(ClipboardContent::fingerprint(bitmap) ==
+			QCryptographicHash::hash(bitmap.urls().first().toEncoded(), QCryptographicHash::Md5),
+			"File presentation changed persisted URL identity");
 	}
 	QMimeData empty;
 	empty.setText(" \n ");
