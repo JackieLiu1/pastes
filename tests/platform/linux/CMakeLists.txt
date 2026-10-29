@@ -10,6 +10,14 @@ if(PASTES_XVFB_RUN_EXECUTABLE)
 endif()
 
 find_package(X11 REQUIRED COMPONENTS Xtst)
+add_executable(pastetarget_linux_test pastetarget_linux_test.cpp ${pastes_test_resources})
+target_link_libraries(pastetarget_linux_test PRIVATE pastes_ui pastes_storage X11::X11 X11::Xtst)
+if(PASTES_XVFB_RUN_EXECUTABLE)
+    pastes_add_contract(pastetarget_linux_contract headless
+        ${PASTES_XVFB_RUN_EXECUTABLE} -a $<TARGET_FILE:pastetarget_linux_test>
+        -platform xcb --isolated-x11)
+endif()
+
 add_executable(shortcut_linux_test shortcut_linux_test.cpp)
 target_link_libraries(shortcut_linux_test PRIVATE pastes_platform X11::X11 X11::Xtst)
 pastes_add_contract(shortcut_linux_contract desktop shortcut_linux_test)

@@ -194,8 +194,8 @@ ctest --test-dir build -L desktop --output-on-failure
 `QApplication` 和测试中的 `show()` 用于驱动控件布局、绘制与事件生命周期，
 不代表一定会在屏幕上显示窗口；组件测试由 `QT_QPA_PLATFORM=offscreen` 隔离。
 Windows 的 `pastetarget_windows_contract`、macOS 托盘菜单和 Linux 原生快捷键测试
-属于 `desktop`，需要可交互桌面。Linux 的独立 Xvfb 剪贴板测试属于 `headless`：
-它验证真实 X11 协议，但窗口只存在于虚拟显示服务器。
+属于 `desktop`，需要可交互桌面。Linux 的独立 Xvfb 剪贴板和目标粘贴测试属于
+`headless`：它们验证真实 X11 协议，但窗口只存在于虚拟显示服务器。
 新增测试必须标明运行环境，不能把 offscreen 的结果当作原生焦点或输入注入的覆盖。
 
 新增或移动面向用户的字符串后，运行 `cmake --build build --target update_translations`，
@@ -210,6 +210,7 @@ Windows 的 `pastetarget_windows_contract`、macOS 托盘菜单和 Linux 原生�
 | `diagnostics_contract` | 公共日志元数据、快照去重、两代大小轮换、记录上限和写入失败 |
 | `clipboard_macos_contract` | 独立原生剪贴板的临时/自动/保密标记、多条目标记、延迟载荷不被读取；仅 macOS |
 | `shortcut_linux_contract` | Win+V 与锁定键、长按只触发一次、无显示服务时回退、立即退出、注册冲突及连接释放；输入不泄漏检查需要支持 XTest 的 X11 服务 |
+| `pastetarget_linux_contract` | 独立 Xvfb 中跨进程粘贴、隐藏后恢复焦点、按键与鼠标释放、取消及请求替换、切换应用和目标退出、历史回采及临时 SQLite 重载；需要 xvfb-run |
 | `historyview_contract` | 卡片绑定、复制/删除/撤销、搜索恢复、空条目清理、拖动方向锁定、回弹及即时撤销 |
 | `architecture_dependencies` | 各层禁止的源码依赖 |
 
