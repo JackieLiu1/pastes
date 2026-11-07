@@ -102,6 +102,7 @@ void WebDavWorker::configure(const SyncSettings &settings, const QString &passwo
 		if (!index.open(QIODevice::ReadOnly) || index.size() > 8*1024*1024) { m_error = tr("Could not read the local sync index."); return; }
 		QJsonParseError error;
 		const auto json = QJsonDocument::fromJson(index.readAll(), &error);
+		index.close(); // Windows cannot atomically replace an open cache index.
 		if (error.error != QJsonParseError::NoError || !json.isObject()) { m_error = tr("The local sync index is damaged."); return; }
 		const auto object = json.object();
 		if (object.value("validationVersion").toInt() == cacheValidationVersion)
