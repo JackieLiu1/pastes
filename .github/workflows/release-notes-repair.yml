@@ -1,0 +1,23 @@
+name: Repair v0.8 release notes
+
+on:
+  push:
+    branches: [codex/release-v0.8-notes]
+
+jobs:
+  notes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore the annotated release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse 'v0.8^{}')" = 7b56d3b8111c99a7d74f4ca6df0dae253f6d096b
+          git tag -l --format='%(contents)' v0.8 > release-notes.txt
+          test "$(head -n 1 release-notes.txt)" = 'Pastes 0.8.0'
+          gh release edit v0.8 --notes-file release-notes.txt
