@@ -388,7 +388,6 @@ void WebDavWorker::uploadNext(void)
 				m_pending.remove(id);
 				m_remote.insert(id);
 				emit uploaded(id);
-				if (!persistIndex()) { complete(m_error); return; }
 				uploadNext();
 			});
 			return;
@@ -396,7 +395,6 @@ void WebDavWorker::uploadNext(void)
 		m_pending.remove(id);
 		m_remote.insert(id);
 		emit uploaded(id);
-		if (!persistIndex()) { complete(m_error); return; }
 		uploadNext();
 	});
 }
@@ -455,11 +453,15 @@ void WebDavWorker::deliver(void)
 	for (const auto &id : expired) forget(id);
 	for (auto it = m_bindings.begin(); it != m_bindings.end(); )
 		it = m_heads.contains(it.value()) ? ++it : m_bindings.erase(it);
-	if (!persistIndex()) { complete(m_error); return; }
 	complete();
 }
 void WebDavWorker::complete(const QString &error)
 {
+	// Persist upload progress once per run, including partial failures. If
+	// interrupted before this write, old pending IDs are safe to retry with
+	// If-None-Match and hash verification; SQL remains the durable authority.
+	QString result = error;
+	if (!m_probe && m_error.isEmpty() && !persistIndex()) result = m_error;
 	m_running = false;
-	emit finished(error, error.isEmpty(), m_probe);
+	emit finished(result, result.isEmpty(), m_probe);
 }

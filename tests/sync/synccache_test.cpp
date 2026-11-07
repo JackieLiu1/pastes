@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QFile>
 #include <QImageReader>
+#include <QJsonArray>
 #include <QTemporaryDir>
 
 class WebDavWorkerTestAccess
@@ -165,6 +166,76 @@ void expirationWithoutNewEvents(void)
 			!SyncContent::expired(tombstone, now+365LL*86400000),
 		"A clean group did not create its durable favorite removal marker at expiry");
 }
+void batchedUploadProgress(void)
+{
+	QTemporaryDir directory;
+	DavServer server;
+	const auto cache = directory.path()+"/cache";
+	const auto indexPath = cache+"/index.json";
+	QByteArray staleIndex;
+	int pendingDuringSecondPut = -1;
+	server.onRequest = [&](const QByteArray &method) {
+		if (method != "PUT") return;
+		if (!server.puts) staleIndex = read(indexPath);
+		if (server.puts == 1) {
+			pendingDuringSecondPut = QJsonDocument::fromJson(read(indexPath))
+				.object()["pending"].toArray().size();
+			server.failPut = true;
+		}
+	};
+	{
+		Client client(server.settings(), cache);
+		for (int index = 0; index < 3; ++index)
+			client.capture(textEntry(QString("batch item %1").arg(index)));
+		client.run();
+		require(!client.success && server.files.size() == 1, "Partial upload fixture did not fail");
+		require(pendingDuringSecondPut == 3, "Upload rewrote the index before the batch finished");
+		require(QJsonDocument::fromJson(read(indexPath)).object()["pending"].toArray().size() == 2,
+			"Failed batch did not save completed upload progress");
+	}
+	server.onRequest = {};
+	{
+		Client restarted(server.settings(), cache);
+		restarted.run();
+		require(restarted.success && server.files.size() == 3 && server.puts == 4,
+			"Restart did not resume the remaining partial batch");
+	}
+	// A crash after PUT but before the final index commit can leave old pending
+	// IDs. Replaying that index must safely verify the immutable remote bytes.
+	write(indexPath, staleIndex);
+	const int gets = server.gets;
+	Client interrupted(server.settings(), cache);
+	interrupted.run();
+	require(interrupted.success && server.files.size() == 3 && server.gets == gets+3 &&
+			QJsonDocument::fromJson(read(indexPath)).object()["pending"].toArray().isEmpty(),
+		"An interrupted index commit did not recover through idempotent uploads");
+}
+void uploadIndexFailure(void)
+{
+	QTemporaryDir directory;
+	DavServer server;
+	const auto cache = directory.path()+"/cache";
+	const auto indexPath = cache+"/index.json";
+	bool blocked = false;
+	server.onRequest = [&](const QByteArray &method) {
+		if (method == "PUT" && !blocked)
+			blocked = QFile::rename(indexPath, indexPath+".saved") && QDir().mkpath(indexPath);
+	};
+	{
+		Client client(server.settings(), cache);
+		client.capture(textEntry("upload with failed index commit"));
+		client.run();
+		require(blocked && server.files.size() == 1 && !client.success && !client.error.isEmpty(),
+			"A failed final index write was reported as successful sync");
+	}
+	server.onRequest = {};
+	require(QDir().rmdir(indexPath) && QFile::rename(indexPath+".saved", indexPath),
+		"Cannot restore the index fixture");
+	Client restarted(server.settings(), cache);
+	restarted.run();
+	require(restarted.success && server.files.size() == 1,
+		"A failed index write prevented safe restart and retry");
+}
 }
 
 int main(int argc, char **argv)
@@ -174,5 +245,7 @@ int main(int argc, char **argv)
 	int failures = runTest("reuse validation only for unchanged cached bytes", cachedValidation);
 	failures += runTest("unchanged and unrelated groups do not read old payloads", unchangedPayloadsStayOnDisk);
 	failures += runTest("expiry and clock rollback without new events", expirationWithoutNewEvents);
+	failures += runTest("batch upload index progress and interrupted restart", batchedUploadProgress);
+	failures += runTest("failed upload index commit reports failure and retries", uploadIndexFailure);
 	return failures ? 1 : 0;
 }
