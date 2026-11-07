@@ -84,9 +84,9 @@ To return to automatic selection, remove the override with
 CPack writes the package and its SHA-256 checksum to `build/dist`:
 
 - RPM: `pastes-<version>-<release>.<architecture>.rpm`, such as
-  `pastes-0.7.0-1.ky11.aarch64.rpm`. The release can include a distribution suffix.
+  `pastes-0.8.0-1.ky11.aarch64.rpm`. The release can include a distribution suffix.
 - DEB: `pastes_<version>_<architecture>.deb`, such as
-  `pastes_0.7.0_arm64.deb`.
+  `pastes_0.8.0_arm64.deb`.
 
 The package includes the executable, Chinese translation, application icon,
 license, application menu launcher and existing UKUI autostart entry.
