@@ -10,6 +10,7 @@
 #include "ui/common/roundedwidgets.h"
 #include "platform/windowintegration.h"
 #include "platform/pastetarget.h"
+#include "platform/globalshortcut.h"
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
@@ -91,7 +92,13 @@ void trayPanelActionFollowsVisibility(void)
 	auto &window = fixture.window;
 	auto *action = window.findChild<QAction *>("ShowHistoryAction");
 	require(action, "Tray history action missing");
-	const QString showLabel = action->text();
+	QString showLabel = action->text();
+	QObject observer;
+	QObject::connect(window.findChild<GlobalShortcut *>(), &GlobalShortcut::primaryShortcutChanged,
+		&observer, [&](const QString &shortcut) {
+			// Native registration can fall back while show() dispatches events.
+			showLabel = QObject::tr("Show History (%1)").arg(shortcut);
+		});
 	action->trigger();
 	require(window.isVisible(), "Tray action did not open history");
 	require(action->text() != showLabel, "Visible history still offers a show action");
