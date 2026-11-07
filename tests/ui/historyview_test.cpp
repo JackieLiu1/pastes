@@ -687,8 +687,16 @@ void dragReleaseInertia(void)
 			sampleTimer.start();
 		}
 		if (initialSpeed) {
-			pause(32);
-			*initialSpeed = (scroll.position()-released)/(coastClock.nsecsElapsed()/1e9);
+			// Measure a completed frame, not a timeout that can run before a
+			// pending animation frame and divide old motion by newer wall time.
+			bool moved = false;
+			QObject observer;
+			QObject::connect(bar, &QScrollBar::valueChanged, &observer, [&] {
+				if (moved || scroll.position() == released) return;
+				*initialSpeed = (scroll.position()-released)/(coastClock.nsecsElapsed()/1e9);
+				moved = true;
+			});
+			waitUntil([&] { return moved; });
 		}
 		settle();
 		sampleTimer.stop();
