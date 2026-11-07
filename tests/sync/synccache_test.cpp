@@ -10,6 +10,11 @@ class WebDavWorkerTestAccess
 {
 public:
 	static QString error(const WebDavWorker &worker) { return worker.m_error; }
+	static bool retain(WebDavWorker &worker, qint64 now) { return worker.prepareRetention(now); }
+	static SyncContent::Record head(const WebDavWorker &worker, const QString &key)
+	{
+		return worker.m_records.value(worker.m_heads.value(key));
+	}
 };
 
 namespace {
@@ -100,6 +105,66 @@ void cachedValidation(void)
 	require(!WebDavWorkerTestAccess::error(added).isEmpty(),
 		"New cache data bypassed full validation");
 }
+void unchangedPayloadsStayOnDisk(void)
+{
+	QTemporaryDir directory;
+	DavServer server;
+	const auto cache = directory.path()+"/cache";
+	Client client(server.settings(), cache);
+	auto image = imageEntry();
+	client.capture(image);
+	client.run();
+	require(client.success && client.deliveries.size() == 1, "Initial image sync failed");
+	const auto id = client.deliveries.first().id;
+	QMetaObject::invokeMethod(client.worker, [worker = client.worker, id] { worker->acknowledge(id); });
+	// Make the old bodies unavailable. Unchanged polls and an unrelated new
+	// item must use the in-memory metadata, without reopening old payloads.
+	require(QDir().rename(cache+"/events", cache+"/held"), "Cannot hold old payloads");
+	require(QDir().mkpath(cache+"/events"), "Cannot create new payload directory");
+	const int puts = server.puts, gets = server.gets;
+	for (int round = 0; round < 3; ++round) {
+		client.run();
+		require(client.success && client.deliveries.isEmpty() && server.puts == puts &&
+				server.gets == gets, "Unchanged poll reread or retransmitted old content");
+	}
+	client.capture(textEntry("independent new content"));
+	client.run();
+	require(client.success && client.deliveries.size() == 1 &&
+			client.deliveries.first().content.text == "independent new content",
+		"Changing one key required unrelated payloads");
+	for (const auto &name : QDir(cache+"/held").entryList(QDir::Files))
+		require(QFile::rename(cache+"/held/"+name, cache+"/events/"+name), "Cannot restore payload");
+	image->time = image->time.addSecs(1);
+	client.capture(image);
+	client.run();
+	bool updated = false;
+	for (const auto &delivery : client.deliveries)
+		updated |= delivery.content.kind == "image" && delivery.content.time == image->time;
+	require(client.success && updated, "A changed image key did not invalidate its previous merge");
+}
+void expirationWithoutNewEvents(void)
+{
+	QTemporaryDir directory;
+	DavServer server;
+	const auto now = QDateTime::currentMSecsSinceEpoch();
+	const auto copied = now-30LL*86400000+1000;
+	auto item = textEntry("expired unstar", QDateTime::fromMSecsSinceEpoch(copied));
+	item->favoriteModified = now-1000;
+	const auto bytes = document(item);
+	const auto key = SyncContent::key(SyncContent::snapshot(*item));
+	WebDavWorker worker;
+	worker.configure(server.settings(), "pass", directory.path(), false);
+	worker.accept(bytes);
+	require(WebDavWorkerTestAccess::retain(worker, now), "Initial reduction failed");
+	require(!WebDavWorkerTestAccess::head(worker, key).deleted, "Content expired too early");
+	require(WebDavWorkerTestAccess::retain(worker, now-5000), "Clock rollback failed");
+	require(!WebDavWorkerTestAccess::head(worker, key).deleted, "Clock rollback deleted content");
+	require(WebDavWorkerTestAccess::retain(worker, now+1000), "Timed expiry failed");
+	const auto tombstone = WebDavWorkerTestAccess::head(worker, key);
+	require(tombstone.deleted && tombstone.favoriteModified &&
+			!SyncContent::expired(tombstone, now+365LL*86400000),
+		"A clean group did not create its durable favorite removal marker at expiry");
+}
 }
 
 int main(int argc, char **argv)
@@ -107,5 +172,7 @@ int main(int argc, char **argv)
 	QCoreApplication app(argc, argv);
 	qRegisterMetaType<SyncDelivery>();
 	int failures = runTest("reuse validation only for unchanged cached bytes", cachedValidation);
+	failures += runTest("unchanged and unrelated groups do not read old payloads", unchangedPayloadsStayOnDisk);
+	failures += runTest("expiry and clock rollback without new events", expirationWithoutNewEvents);
 	return failures ? 1 : 0;
 }

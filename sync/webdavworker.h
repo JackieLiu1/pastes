@@ -43,7 +43,7 @@ private:
 	void list(void);
 	void downloadNext(void);
 	void uploadNext(void);
-	bool prepareRetention(void);
+	bool prepareRetention(qint64 now);
 	void cleanupNext(void);
 	void deliver(void);
 	void complete(const QString &error = {});
@@ -51,6 +51,7 @@ private:
 	bool store(const QByteArray &bytes, bool pending);
 	QByteArray read(const QString &id);
 	void remember(SyncContent::Record record);
+	void forget(const QString &id);
 	QString path(const QString &id) const;
 
 	SyncSettings m_settings;
@@ -63,6 +64,7 @@ private:
 	QSet<QString> m_pending;
 	QSet<QString> m_local;
 	QSet<QString> m_delivered;
+	QSet<QString> m_dirtyKeys;
 	QStringList m_downloads, m_uploads, m_cleanup;
 	QNetworkAccessManager *m_network = nullptr;
 	QNetworkReply *m_reply = nullptr;

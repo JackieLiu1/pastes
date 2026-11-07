@@ -56,6 +56,7 @@ QByteArray WebDavWorker::read(const QString &id)
 }
 void WebDavWorker::remember(SyncContent::Record record)
 {
+	if (!m_records.contains(record.id)) m_dirtyKeys.insert(record.key);
 	record.document = {}; // Payloads stay on disk; the index contains metadata only.
 	const QString previous = m_heads.value(record.key);
 	const auto version = qMax(record.events.presence(), record.events.erase);
@@ -68,6 +69,21 @@ void WebDavWorker::remember(SyncContent::Record record)
 		m_heads[record.key] = record.id;
 	m_records.insert(record.id, std::move(record));
 }
+void WebDavWorker::forget(const QString &id)
+{
+	const auto record = m_records.constFind(id);
+	if (record != m_records.cend()) {
+		m_dirtyKeys.insert(record->key);
+		if (m_heads.value(record->key) == id) m_heads.remove(record->key);
+		m_records.erase(record);
+	}
+	m_pending.remove(id);
+	m_local.remove(id);
+	m_delivered.remove(id);
+	m_durable.remove(id);
+	m_remote.remove(id);
+	QFile::remove(path(id));
+}
 void WebDavWorker::configure(const SyncSettings &settings, const QString &password,
 	const QString &directory, bool committedOnly)
 {
@@ -77,6 +93,7 @@ void WebDavWorker::configure(const SyncSettings &settings, const QString &passwo
 	m_committedOnly = committedOnly;
 	m_durable.clear();
 	m_remote.clear();
+	m_dirtyKeys.clear();
 	QSet<QString> validated;
 	if (!m_network) m_network = new QNetworkAccessManager(this);
 	if (!QDir().mkpath(m_directory+"/events")) { m_error = tr("Could not create the local sync cache."); return; }
@@ -271,7 +288,7 @@ void WebDavWorker::list(void)
 void WebDavWorker::downloadNext(void)
 {
 	if (m_downloads.isEmpty()) {
-		if (!prepareRetention()) { complete(m_error); return; }
+		if (!prepareRetention(QDateTime::currentMSecsSinceEpoch())) { complete(m_error); return; }
 		m_uploads = m_pending.values(); uploadNext(); return;
 	}
 	const QString id = m_downloads.takeLast();
@@ -288,16 +305,25 @@ void WebDavWorker::downloadNext(void)
 		downloadNext();
 	});
 }
-bool WebDavWorker::prepareRetention(void)
+bool WebDavWorker::prepareRetention(qint64 now)
 {
+	// Expiration is time-dependent even when no new events have arrived.
+	// Ordinary expired records are removed below; an unstar needs a durable
+	// tombstone so an offline favorite cannot revive it.
+	for (auto head = m_heads.cbegin(); head != m_heads.cend(); ++head) {
+		const auto record = m_records.constFind(head.value());
+		if (record != m_records.cend() && !record->deleted && !record->favorite &&
+			record->favoriteModified && SyncContent::expired(*record, now))
+			m_dirtyKeys.insert(head.key());
+	}
 	QHash<QString, QList<SyncContent::Record>> groups;
-	for (const auto &record : m_records)
-		groups[record.key].append(record);
+	for (auto record = m_records.cbegin(); record != m_records.cend(); ++record)
+		if (m_dirtyKeys.contains(record->key)) groups[record->key].append(*record);
 	for (auto group = groups.cbegin(); group != groups.cend(); ++group) {
 		QString error;
 		auto document = SyncContent::reduce(
 			group.value(), [this](const QString &id) { return read(id); }, &error);
-		document = SyncContent::expire(document, QDateTime::currentMSecsSinceEpoch(), &error);
+		document = SyncContent::expire(document, now, &error);
 		if (!error.isEmpty()) {
 			m_error = error;
 			return false;
@@ -307,9 +333,11 @@ bool WebDavWorker::prepareRetention(void)
 		m_heads[group.key()] = id;
 		m_local.remove(id);
 		if (!m_committedOnly) m_durable.insert(id);
+		m_dirtyKeys.remove(group.key());
 	}
+	m_dirtyKeys.clear(); // Also drop keys whose last record was removed.
 	for (auto it = m_records.cbegin(); it != m_records.cend(); ++it)
-		if (SyncContent::expired(it.value(), QDateTime::currentMSecsSinceEpoch()) &&
+		if (SyncContent::expired(it.value(), now) &&
 			!m_cleanup.contains(it.key()))
 			m_cleanup.append(it.key());
 	return true;
@@ -382,15 +410,7 @@ void WebDavWorker::cleanupNext(void)
 				complete(tr("Could not remove expired sync data (HTTP %1).").arg(status));
 				return;
 			}
-			if (m_heads.value(m_records.value(id).key) == id)
-				m_heads.remove(m_records.value(id).key);
-			m_records.remove(id);
-			m_pending.remove(id);
-			m_local.remove(id);
-			m_delivered.remove(id);
-			m_durable.remove(id);
-			m_remote.remove(id);
-			QFile::remove(path(id));
+			forget(id);
 			cleanupNext();
 		});
 }
@@ -429,14 +449,10 @@ void WebDavWorker::deliver(void)
 		emit delivered(delivery);
 	}
 	// Local cache follows the same retention policy, including deletion markers.
-	for (auto it = m_records.begin(); it != m_records.end(); ) {
-		if (SyncContent::expired(it.value(), now)) {
-			if (m_heads.value(it->key) == it.key()) m_heads.remove(it->key);
-			QFile::remove(path(it.key())); m_pending.remove(it.key()); m_local.remove(it.key()); m_delivered.remove(it.key());
-			it = m_records.erase(it);
-		} else
-			++it;
-	}
+	QStringList expired;
+	for (auto it = m_records.cbegin(); it != m_records.cend(); ++it)
+		if (SyncContent::expired(it.value(), now)) expired.append(it.key());
+	for (const auto &id : expired) forget(id);
 	for (auto it = m_bindings.begin(); it != m_bindings.end(); )
 		it = m_heads.contains(it.value()) ? ++it : m_bindings.erase(it);
 	if (!persistIndex()) { complete(m_error); return; }
