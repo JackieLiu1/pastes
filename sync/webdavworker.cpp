@@ -15,6 +15,11 @@
 #include <algorithm>
 
 namespace {
+// Bump this whenever full content validation or identity rules change. The
+// local index records successful validation of immutable document hashes;
+// new or changed documents still go through the full parser.
+constexpr int cacheValidationVersion = 1;
+
 bool validId(const QString &id)
 {
 	const auto bytes = id.toLatin1();
@@ -72,6 +77,7 @@ void WebDavWorker::configure(const SyncSettings &settings, const QString &passwo
 	m_committedOnly = committedOnly;
 	m_durable.clear();
 	m_remote.clear();
+	QSet<QString> validated;
 	if (!m_network) m_network = new QNetworkAccessManager(this);
 	if (!QDir().mkpath(m_directory+"/events")) { m_error = tr("Could not create the local sync cache."); return; }
 	QFile index(m_directory+"/index.json");
@@ -81,6 +87,9 @@ void WebDavWorker::configure(const SyncSettings &settings, const QString &passwo
 		const auto json = QJsonDocument::fromJson(index.readAll(), &error);
 		if (error.error != QJsonParseError::NoError || !json.isObject()) { m_error = tr("The local sync index is damaged."); return; }
 		const auto object = json.object();
+		if (object.value("validationVersion").toInt() == cacheValidationVersion)
+			for (const auto &id : object.value("validated").toArray())
+				if (validId(id.toString())) validated.insert(id.toString());
 		const auto mappings = object.value("bindings").toObject();
 		for (auto it = mappings.begin(); it != mappings.end(); ++it)
 			if (validId(it.value().toString())) m_bindings.insert(QByteArray::fromHex(it.key().toLatin1()), it.value().toString());
@@ -93,20 +102,27 @@ void WebDavWorker::configure(const SyncSettings &settings, const QString &passwo
 		const QString id = file.chopped(5);
 		if (!validId(id)) continue;
 		QString error;
-		auto record = SyncContent::parse(read(id), &error);
+		const auto data = read(id);
+		// Inspect still checks metadata and hashes the entire document. An
+		// unchanged, previously validated image needs no pixel decode here.
+		auto record = validated.contains(id) ? SyncContent::inspect(data, &error)
+			: SyncContent::parse(data, &error);
 		if (!error.isEmpty() || record.id != id) { m_error = tr("The local sync cache is damaged."); return; }
 		if (!record.favoriteModified && SyncContent::expired(record, QDateTime::currentMSecsSinceEpoch())) {
 			QFile::remove(path(id)); m_pending.remove(id); m_local.remove(id); continue;
 		}
 		remember(std::move(record));
 	}
+	persistIndex();
 }
 bool WebDavWorker::persistIndex(void)
 {
 	QJsonObject bindings;
 	for (auto it = m_bindings.begin(); it != m_bindings.end(); ++it) bindings[QString::fromLatin1(it.key().toHex())] = it.value();
 	QJsonObject object{{"bindings", bindings}, {"pending", QJsonArray::fromStringList(m_pending.values())},
-		{"local", QJsonArray::fromStringList(m_local.values())}};
+		{"local", QJsonArray::fromStringList(m_local.values())},
+		{"validationVersion", cacheValidationVersion},
+		{"validated", QJsonArray::fromStringList(m_records.keys())}};
 	QString error;
 	const QString index = m_directory+"/index.json";
 	if (writeFile(index, SyncContent::bytes(object), error)) return true;

@@ -36,6 +36,7 @@ signals:
 	void cacheWriteFailed(void);
 
 private:
+	friend class WebDavWorkerTestAccess;
 	using Response = std::function<void(int, const QByteArray &)>;
 	void request(const QByteArray &method, const QString &relative, const QByteArray &body, Response done);
 	void ensureDirectory(int index);

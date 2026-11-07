@@ -125,7 +125,7 @@ QJsonObject encode(Snapshot value, QString *error)
 		payload["icon"] = QString::fromLatin1(pngBytes(SourceIcon::bounded(value.icon)).toBase64());
 	return payload;
 }
-Snapshot decode(const QJsonObject &payload, QString *error)
+static Snapshot decodeContent(const QJsonObject &payload, QString *error, bool fingerprint)
 {
 	Snapshot value;
 	value.kind = payload.value("kind").toString();
@@ -137,8 +137,9 @@ Snapshot decode(const QJsonObject &payload, QString *error)
 			*error = QObject::tr("Invalid text in sync data.");
 			return {};
 		}
-		value.md5 =
-			QCryptographicHash::hash(value.text.trimmed().toLocal8Bit(), QCryptographicHash::Md5);
+		if (fingerprint)
+			value.md5 =
+				QCryptographicHash::hash(value.text.trimmed().toLocal8Bit(), QCryptographicHash::Md5);
 	} else if (value.kind == "links") {
 		const auto urls = payload.value("urls").toArray();
 		if (urls.isEmpty() || urls.size() > 1000) {
@@ -154,9 +155,9 @@ Snapshot decode(const QJsonObject &payload, QString *error)
 				return {};
 			}
 			value.urls.append(QString::fromUtf8(url.toEncoded()));
-			hash.addData(url.toEncoded());
+			if (fingerprint) hash.addData(url.toEncoded());
 		}
-		value.md5 = hash.result();
+		if (fingerprint) value.md5 = hash.result();
 	} else if (value.kind == "image") {
 		value.png = QByteArray::fromBase64(
 			payload.value("png").toString().toLatin1(), QByteArray::AbortOnBase64DecodingErrors);
@@ -165,7 +166,7 @@ Snapshot decode(const QJsonObject &payload, QString *error)
 			*error = QObject::tr("Invalid or oversized image in sync data.");
 			return {};
 		}
-		value.md5 = ClipboardContent::imageFingerprint(value.image);
+		if (fingerprint) value.md5 = ClipboardContent::imageFingerprint(value.image);
 	} else {
 		*error = QObject::tr("Unsupported sync content.");
 		return {};
@@ -175,6 +176,10 @@ Snapshot decode(const QJsonObject &payload, QString *error)
 		value.icon =
 			SourceIcon::bounded(readImage(icon, SourceIcon::maxPixels * SourceIcon::maxPixels));
 	return value;
+}
+Snapshot decode(const QJsonObject &payload, QString *error)
+{
+	return decodeContent(payload, error, true);
 }
 QString digest(const QByteArray &value)
 {
@@ -371,7 +376,8 @@ static Record parseRecord(const QByteArray &data, QString *error, bool verifyCon
 		const qint64 copied = object.value("copied").toInteger();
 		Snapshot content;
 		if (verifyContent)
-			content = decode(object.value("content").toObject(), error);
+			// Validation uses the portable key below, not the local MD5.
+			content = decodeContent(object.value("content").toObject(), error, false);
 		else {
 			const auto icon = QByteArray::fromBase64(
 				object.value("content").toObject().value("icon").toString().toLatin1());

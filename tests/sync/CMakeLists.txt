@@ -8,3 +8,8 @@ target_link_libraries(syncordering_test PRIVATE
     pastes_sync pastes_storage pastes_platform Qt6::Network Qt6::Sql)
 pastes_add_contract(syncordering_contract headless syncordering_test)
 set_tests_properties(syncordering_contract PROPERTIES TIMEOUT 60)
+
+add_executable(synccache_test synccache_test.cpp)
+target_link_libraries(synccache_test PRIVATE pastes_sync pastes_platform Qt6::Network)
+pastes_add_contract(synccache_contract headless synccache_test)
+set_tests_properties(synccache_contract PROPERTIES TIMEOUT 60)
