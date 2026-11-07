@@ -11,6 +11,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -40,24 +42,14 @@ jobs:
             echo "filepath=${packages[0]}" >> "$GITHUB_OUTPUT"
             echo "filename=$filename" >> "$GITHUB_OUTPUT"
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@master
+      - name: Publish release and checksum
         env:
-            GITHUB_TOKEN: ${{ secrets.PASTES_RELEASE }}
-        with:
-            tag_name: ${{ github.ref }}
-            release_name: Release ${{ github.ref }}
-            draft: false
-            prerelease: false
-
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@master
-        env:
-           GITHUB_TOKEN: ${{ secrets.PASTES_RELEASE }}
-        with:
-           upload_url: ${{ steps.create_release.outputs.upload_url }}
-           asset_path: ${{ steps.build_debian_package.outputs.filepath }}
-           asset_name: ${{ steps.build_debian_package.outputs.filename }}
-           asset_content_type: application/vnd.debian.binary
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          PACKAGE_PATH: ${{ steps.build_debian_package.outputs.filepath }}
+        run: |
+          test -s "$PACKAGE_PATH.sha256"
+          git tag -l --format='%(contents)' "$RELEASE_TAG" > build/release-notes.md
+          gh release create "$RELEASE_TAG" "$PACKAGE_PATH" "$PACKAGE_PATH.sha256" \
+            --verify-tag --title "Release $RELEASE_TAG" \
+            --notes-file build/release-notes.md
