@@ -10,6 +10,12 @@
 #include <QFile>
 #include <QJsonArray>
 
+class WebDavSyncTestAccess
+{
+public:
+	static WebDavWorker *worker(WebDavSync &service) { return service.m_worker; }
+};
+
 namespace
 {
 void preferences(const QString &path)
@@ -250,6 +256,58 @@ void databaseFailureAcknowledged()
 	require(service.lastSuccess().isValid() && read(repository).size() == 1 &&
 			sql(path, "select count(*) from sync_applied") > 0,
 		"Successful retry did not commit history before acknowledgement");
+}
+void restoredAcknowledgements(void)
+{
+	DavServer server;
+	QTemporaryDir directory;
+	preferences(directory.path()+"/preferences");
+	MemorySecrets secrets;
+	Client seed(server.settings(), directory.path()+"/seed");
+	auto item = HistoryEntry::create();
+	item->mimeData = std::make_unique<QMimeData>();
+	QImage image(320, 200, QImage::Format_ARGB32);
+	image.fill(Qt::green);
+	item->mimeData->setImageData(image);
+	item->md5 = ClipboardContent::fingerprint(*item->mimeData);
+	item->time = QDateTime::currentDateTime();
+	seed.capture(item);
+	seed.run();
+	require(seed.success, "Image seed failed");
+	const auto path = directory.filePath("history.db");
+	for (int session = 0; session < 2; ++session) {
+		Database repository(path);
+		HistoryService history(repository);
+		WebDavSync service(history, secrets, directory.path()+"/cache");
+		int deliveries = 0;
+		QObject observer;
+		QObject::connect(WebDavSyncTestAccess::worker(service), &WebDavWorker::delivered,
+			&observer, [&](const SyncDelivery &) { ++deliveries; });
+		load(history);
+		if (!session) save(service, server.settings());
+		for (int round = 0; round < 3; ++round) {
+			deliveries = 0;
+			run(service);
+			require(service.lastSuccess().isValid() && history.entries().size() == 1 &&
+					sql(path, "select count(*) from sync_applied") > 0,
+				"Image was not durably applied");
+			require(deliveries == (!session && !round ? 1 : 0),
+				"Already committed image was decoded and delivered again after restart");
+		}
+		if (!session) continue;
+		auto disabled = server.settings();
+		disabled.enabled = false;
+		save(service, disabled, {});
+		save(service, server.settings(), {});
+		deliveries = 0;
+		run(service);
+		require(deliveries == 0, "Re-enabling sync lost durable acknowledgements");
+		seed.capture(textEntry("new content after acknowledgement restore"));
+		seed.run();
+		run(service);
+		require(deliveries > 0 && history.entries().size() == 2 && read(repository).size() == 2,
+			"Restored acknowledgements suppressed new remote content");
+	}
 }
 void freshLocalIconAfterAheadClock()
 {
@@ -878,6 +936,7 @@ int main(int argc, char **argv)
 	failures += runTest("late icon does not resurrect deletion", lateIconAfterDeletion);
 	failures +=
 		runTest("SQL failure blocks acknowledgement and retries", databaseFailureAcknowledged);
+	failures += runTest("restore durable acknowledgements after restart", restoredAcknowledgements);
 	failures += runTest(
 		"fresh native icon follows ahead clock after restart", freshLocalIconAfterAheadClock);
 	failures +=

@@ -22,6 +22,7 @@ public:
 	QDateTime lastSuccess(void) const override { return m_lastSuccess; }
 	static bool validate(SyncSettings *settings, QString *error);
 private:
+	friend class WebDavSyncTestAccess;
 	QString account(const SyncSettings &settings) const;
 	void configure(void);
 	void bootstrap(void);

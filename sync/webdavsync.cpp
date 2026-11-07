@@ -51,6 +51,13 @@ WebDavSync::WebDavSync(HistoryService &history, SecretStore &secrets, const QStr
 			if (!m_busy || token != m_runToken || accountId != account(m_settings)) return;
 			for (const auto &id : ids)
 				m_applied.insert(id);
+			// Restore only SQL-committed acknowledgements, before outboxLoaded
+			// queues the next run on the same worker. Otherwise a fresh worker
+			// decodes and delivers these records again on every poll.
+			QMetaObject::invokeMethod(m_worker, [worker = m_worker, ids] {
+				for (const auto &id : ids)
+					worker->acknowledge(id);
+			}, Qt::QueuedConnection);
 		});
 	connect(&history, &HistoryService::outboxLoaded, this,
 		[this](const QString &accountId, quint64 token,
