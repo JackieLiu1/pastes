@@ -670,6 +670,8 @@ void HistoryView::clearSearch(void)
 	m_search->findChild<LineEdit *>()->clearSearch();
 }
 
+void HistoryView::selectClipboardTab(void) { m_historyTab->setChecked(true); }
+
 void HistoryView::focusCurrent(void)
 {
 	traceFocus("focusCurrent.begin");

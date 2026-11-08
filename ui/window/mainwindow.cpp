@@ -157,6 +157,7 @@ void MainWindow::copyEntry(HistoryEntry entry, bool plainText, bool paste)
 		__hide_animation->stop();
 		__hide_state = true;
 		hide();
+		__main_frame->selectClipboardTab();
 	}
 	if (__clipboard.copy(*entry, plainText) && paste)
 		__paste_target->paste(this, entry->mimeData->hasUrls());

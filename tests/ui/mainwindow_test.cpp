@@ -119,9 +119,16 @@ void pasteHidesBeforeClipboardWrite(void)
 	auto &window = fixture.window;
 	auto *list = window.findChild<QListWidget *>();
 	auto *search = window.findChild<QLineEdit *>();
+	auto *historyTab = window.findChild<QPushButton *>("HistoryTab");
+	auto *favoritesTab = window.findChild<QPushButton *>("FavoritesTab");
+	const auto now = QDateTime::currentDateTime();
+	auto newest = textEntry("newest", now);
+	auto favorite = textEntry("older paste", now.addSecs(-1));
 	fixture.history.load();
-	fixture.repository.finishLoad({textEntry("newest"), textEntry("older paste")});
+	fixture.repository.finishLoad({newest, favorite});
+	fixture.history.setFavorite(favorite->id, true);
 	window.show_window();
+	favoritesTab->click();
 	search->setText("older paste");
 	auto *card = qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()));
 	require(card && card->entry()->mimeData->text() == "older paste", "Paste selection missing");
@@ -143,8 +150,13 @@ void pasteHidesBeforeClipboardWrite(void)
 	window.show_window();
 	require(window.isVisible(), "Immediate paste dismissal prevented reopening");
 	card = qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()));
+	require(historyTab->isChecked() && card && card->entry() == newest && !list->currentItem()->isHidden(),
+		"Pasting a favorite did not reopen the unfiltered clipboard history");
+	favoritesTab->click();
+	card = qobject_cast<PasteItem *>(list->itemWidget(list->currentItem()));
+	require(card && card->entry() == favorite, "Pasting removed the favorite");
 	card->copyData(false, false);
-	require(window.isVisible(), "Copy-only action dismissed the panel");
+	require(window.isVisible() && favoritesTab->isChecked(), "Copy-only action left the favorites page");
 	window.hide();
 }
 
